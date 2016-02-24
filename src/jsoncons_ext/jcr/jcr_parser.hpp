@@ -64,15 +64,8 @@ enum class states
     exp2,
     exp3,
     n,
-    nu,
-    nul,
     t,  
-    tr,  
-    tru, 
     f,  
-    fa, 
-    fal,
-    fals,
     cr,
     lf,
     done
@@ -105,6 +98,8 @@ class basic_jcr_parser : private basic_parsing_context<CharT>
     const CharT* end_input_;
     const CharT* p_;
     uint8_t precision_;
+    std::pair<const CharT*,size_t> literal_;
+    size_t literal_index_;
 
 public:
     basic_jcr_parser(basic_json_input_handler<CharT>& handler)
@@ -174,7 +169,7 @@ public:
     {
         if (!push(modes::done))
         {
-            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
         }
         state_ = states::start;
         line_ = 1;
@@ -195,7 +190,7 @@ public:
             case ' ':
                 break;
             default:
-                err_handler_->error(std::error_code(json_parser_errc::extra_character, json_error_category()), *this);
+                err_handler_->error(std::error_code(jcr_parser_errc::extra_character, json_error_category()), *this);
                 break;
             }
         }
@@ -214,7 +209,7 @@ public:
             case 0x17:case 0x18:case 0x19:case 0x1a:case 0x1b:case 0x1c:case 0x1d:case 0x1e:case 0x1f:
                 string_buffer_.append(sb,p_-sb);
                 column_ += (p_ - sb + 1);
-                err_handler_->error(std::error_code(json_parser_errc::illegal_control_character, json_error_category()), *this);
+                err_handler_->error(std::error_code(jcr_parser_errc::illegal_control_character, json_error_category()), *this);
                 // recovery - skip
                 done = true;
                 ++p_;
@@ -222,7 +217,7 @@ public:
             case '\r':
                 {
                     column_ += (p_ - sb + 1);
-                    err_handler_->error(std::error_code(json_parser_errc::illegal_character_in_string, json_error_category()), *this);
+                    err_handler_->error(std::error_code(jcr_parser_errc::illegal_character_in_string, json_error_category()), *this);
                     // recovery - keep
                     string_buffer_.append(sb, p_ - sb + 1);
                     pre_line_break_state_ = state_;
@@ -234,7 +229,7 @@ public:
             case '\n':
                 {
                     column_ += (p_ - sb + 1);
-                    err_handler_->error(std::error_code(json_parser_errc::illegal_character_in_string, json_error_category()), *this);
+                    err_handler_->error(std::error_code(jcr_parser_errc::illegal_character_in_string, json_error_category()), *this);
                     // recovery - keep
                     string_buffer_.append(sb, p_ - sb + 1);
                     pre_line_break_state_ = state_;
@@ -246,7 +241,7 @@ public:
             case '\t':
                 {
                     column_ += (p_ - sb + 1);
-                    err_handler_->error(std::error_code(json_parser_errc::illegal_character_in_string, json_error_category()), *this);
+                    err_handler_->error(std::error_code(jcr_parser_errc::illegal_character_in_string, json_error_category()), *this);
                     // recovery - keep
                     string_buffer_.append(sb, p_ - sb + 1);
                     done = true;
@@ -302,7 +297,7 @@ public:
             case 0x00:case 0x01:case 0x02:case 0x03:case 0x04:case 0x05:case 0x06:case 0x07:case 0x08:case 0x0b:
             case 0x0c:case 0x0e:case 0x0f:case 0x10:case 0x11:case 0x12:case 0x13:case 0x14:case 0x15:case 0x16:
             case 0x17:case 0x18:case 0x19:case 0x1a:case 0x1b:case 0x1c:case 0x1d:case 0x1e:case 0x1f:
-                err_handler_->error(std::error_code(json_parser_errc::illegal_control_character, json_error_category()), *this);
+                err_handler_->error(std::error_code(jcr_parser_errc::illegal_control_character, json_error_category()), *this);
                 break;
             default:
                 break;
@@ -363,7 +358,7 @@ public:
                         handler_->begin_json();
                         if (!push(modes::object_member_name))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         state_ = states::object;
                         handler_->begin_object(*this);
@@ -372,7 +367,7 @@ public:
                         handler_->begin_json();
                         if (!push(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         state_ = states::array;
                         handler_->begin_array(*this);
@@ -404,29 +399,35 @@ public:
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::f;
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::false_literal();
+                        literal_index_ = 1;
                         break;
                     case 'n':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::n;
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
+                        literal_index_ = 1;
                         break;
                     case 't':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::t;
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::true_literal();
+                        literal_index_ = 1;
                         break;
                     case '/':
                         saved_state_ = state_;
                         state_ = states::slash;
                         break;
                     case '}':
-                        err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_brace, json_error_category()), *this);
+                        err_handler_->fatal_error(std::error_code(jcr_parser_errc::unexpected_right_brace, json_error_category()), *this);
                         break;
                     case ']':
-                        err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_bracket, json_error_category()), *this);
+                        err_handler_->fatal_error(std::error_code(jcr_parser_errc::unexpected_right_bracket, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->fatal_error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                        err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         break;
                     }
                 }
@@ -481,11 +482,11 @@ public:
                         }
                         else if (peek() == modes::array_element)
                         {
-                            err_handler_->fatal_error(std::error_code(json_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
                         }
                         else
                         {
-                            err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_brace, json_error_category()), *this);
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::unexpected_right_brace, json_error_category()), *this);
                         }
                         break;
                     case ']':
@@ -505,11 +506,11 @@ public:
                         }
                         else if (peek() == modes::object_member_value)
                         {
-                            err_handler_->fatal_error(std::error_code(json_parser_errc::expected_comma_or_right_brace, json_error_category()), *this);
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::expected_comma_or_right_brace, json_error_category()), *this);
                         }
                         else
                         {
-                            err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_bracket, json_error_category()), *this);
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::unexpected_right_bracket, json_error_category()), *this);
                         }
                         break;
                     case ',':
@@ -522,11 +523,11 @@ public:
                     default:
                         if (peek() == modes::array_element)
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
                         }
                         else if (peek() == modes::object_member_value)
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::expected_comma_or_right_brace, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_comma_or_right_brace, json_error_category()), *this);
                         }
                         break;
                     }
@@ -567,7 +568,7 @@ public:
                     case '}':
                         if (!pop(modes::object_member_name))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_object(*this);
                         if (peek() == modes::done)
@@ -588,10 +589,10 @@ public:
                         state_ = states::slash;
                         break;
                     case '\'':
-                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_name, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, json_error_category()), *this);
                         break;
                     }
                 }
@@ -636,13 +637,13 @@ public:
                         state_ = states::slash;
                         break;
                     case '}':
-                        err_handler_->error(std::error_code(json_parser_errc::extra_comma, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::extra_comma, json_error_category()), *this);
                         break;
                     case '\'':
-                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_name, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, json_error_category()), *this);
                         break;
                     }
                 }
@@ -688,7 +689,7 @@ public:
                         state_ = states::slash;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_colon, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_colon, json_error_category()), *this);
                         break;
                     }
                 }
@@ -728,7 +729,7 @@ public:
                     case '{':
                         if (!push(modes::object_member_name))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         state_ = states::object;
                         handler_->begin_object(*this);
@@ -736,7 +737,7 @@ public:
                     case '[':
                         if (!push(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         state_ = states::array;
                         handler_->begin_array(*this);
@@ -763,7 +764,9 @@ public:
                         break;
                     case 'f':
                         state_ = states::f;
-                        if ((p_+4) < end_input_)
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::false_literal();
+                        literal_index_ = 1;
+                        /*if ((p_+4) < end_input_)
                         {
                             if ((*(p_+1) == 'a') & (*(p_+2) == 'l') & (*(p_+3) == 's') & (*(p_+4) == 'e'))
                             {
@@ -781,67 +784,33 @@ public:
                                     state_ = states::expect_comma_or_end;
                                 }
                             }
-                        }
+                        }*/
                         break;
                     case 'n':
                         state_ = states::n;
-                        if ((p_+3) < end_input_)
-                        {
-                            if ((*(p_+1) == 'u') & (*(p_+2) == 'l') & (*(p_+3) == 'l'))
-                            {
-                                p_ += 3;
-                                column_ += 3;
-                                handler_->value(null_type(), *this);
-                                if (peek() == modes::start)
-                                {
-                                    flip(modes::start,modes::done);
-                                    state_ = states::done;
-                                    handler_->end_json();
-                                }
-                                else
-                                {
-                                    state_ = states::expect_comma_or_end;
-                                }
-                            }
-                        }
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
+                        literal_index_ = 1;
                         break;
                     case 't':
                         state_ = states::t;
-                        if ((p_+3) < end_input_)
-                        {
-                            if ((*(p_+1) == 'r') & (*(p_+2) == 'u') & (*(p_+3) == 'e'))
-                            {
-                                p_ += 3;
-                                column_ += 3;
-                                handler_->value(true, *this);
-                                if (peek() == modes::start)
-                                {
-                                    flip(modes::start,modes::done);
-                                    state_ = states::done;
-                                    handler_->end_json();
-                                }
-                                else
-                                {
-                                    state_ = states::expect_comma_or_end;
-                                }
-                            }
-                        }
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::true_literal();
+                        literal_index_ = 1;
                         break;
                     case ']':
                         if (peek() == modes::array_element)
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::extra_comma, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::extra_comma, json_error_category()), *this);
                         }
                         else
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
                         }
                         break;
                     case '\'':
-                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
                         break;
                     }
                 }
@@ -881,7 +850,7 @@ public:
                     case '{':
                         if (!push(modes::object_member_name))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         state_ = states::object;
                         handler_->begin_object(*this);
@@ -889,7 +858,7 @@ public:
                     case '[':
                         if (!push(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         state_ = states::array;
                         handler_->begin_array(*this);
@@ -897,7 +866,7 @@ public:
                     case ']':
                         if (!pop(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_array(*this);
                         if (peek() == modes::done)
@@ -931,7 +900,9 @@ public:
                         break;
                     case 'f':
                         state_ = states::f;
-                        if ((p_+4) < end_input_)
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::false_literal();
+                        literal_index_ = 1;
+                        /*if ((p_+4) < end_input_)
                         {
                             if ((*(p_+1) == 'a') & (*(p_+2) == 'l') & (*(p_+3) == 's') & (*(p_+4) == 'e'))
                             {
@@ -949,57 +920,23 @@ public:
                                     state_ = states::expect_comma_or_end;
                                 }
                             }
-                        }
+                        }*/
                         break;
                     case 'n':
                         state_ = states::n;
-                        if ((p_+3) < end_input_)
-                        {
-                            if ((*(p_+1) == 'u') & (*(p_+2) == 'l') & (*(p_+3) == 'l'))
-                            {
-                                p_ += 3;
-                                column_ += 3;
-                                handler_->value(null_type(), *this);
-                                if (peek() == modes::start)
-                                {
-                                    flip(modes::start,modes::done);
-                                    state_ = states::done;
-                                    handler_->end_json();
-                                }
-                                else
-                                {
-                                    state_ = states::expect_comma_or_end;
-                                }
-                            }
-                        }
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
+                        literal_index_ = 1;
                         break;
                     case 't':
                         state_ = states::t;
-                        if ((p_+3) < end_input_)
-                        {
-                            if ((*(p_+1) == 'r') & (*(p_+2) == 'u') & (*(p_+3) == 'e'))
-                            {
-                                p_ += 3;
-                                column_ += 3;
-                                handler_->value(true, *this);
-                                if (peek() == modes::start)
-                                {
-                                    flip(modes::start,modes::done);
-                                    state_ = states::done;
-                                    handler_->end_json();
-                                }
-                                else
-                                {
-                                    state_ = states::expect_comma_or_end;
-                                }
-                            }
-                        }
+                        literal_ = json_char_traits<CharT, sizeof(CharT)>::true_literal();
+                        literal_index_ = 1;
                         break;
                     case '\'':
-                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1065,7 +1002,7 @@ public:
                         state_ = states::expect_surrogate_pair2;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_codepoint_surrogate_pair, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_codepoint_surrogate_pair, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1080,7 +1017,7 @@ public:
                         state_ = states::u6;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_codepoint_surrogate_pair, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_codepoint_surrogate_pair, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1134,7 +1071,7 @@ public:
                         state_ = states::integer;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1176,7 +1113,7 @@ public:
                         end_integer_value();
                         if (!pop(modes::object_member_value))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_object(*this);
                         if (peek() == modes::done)
@@ -1193,7 +1130,7 @@ public:
                         end_integer_value();
                         if (!pop(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_array(*this);
                         if (peek() == modes::done)
@@ -1216,10 +1153,10 @@ public:
                         begin_member_or_element();
                         break;
                     case '0': case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        err_handler_->error(std::error_code(json_parser_errc::leading_zero, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::leading_zero, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1261,7 +1198,7 @@ public:
                         end_integer_value();
                         if (!pop(modes::object_member_value))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_object(*this);
                         if (peek() == modes::done)
@@ -1278,7 +1215,7 @@ public:
                         end_integer_value();
                         if (!pop(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_array(*this);
                         if (peek() == modes::done)
@@ -1310,7 +1247,7 @@ public:
                         state_ = states::exp1;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1352,7 +1289,7 @@ public:
                         end_fraction_value();
                         if (!pop(modes::object_member_value))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_object(*this);
                         if (peek() == modes::done)
@@ -1369,7 +1306,7 @@ public:
                         end_fraction_value();
                         if (!pop(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_array(*this);
                         if (peek() == modes::done)
@@ -1397,7 +1334,7 @@ public:
                         state_ = states::exp1;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1421,7 +1358,7 @@ public:
                         state_ = states::exp3;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1438,7 +1375,7 @@ public:
                         state_ = states::exp3;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1480,7 +1417,7 @@ public:
                         end_fraction_value();
                         if (!pop(modes::object_member_value))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_object(*this);
                         if (peek() == modes::done)
@@ -1497,7 +1434,7 @@ public:
                         end_fraction_value();
                         if (!pop(modes::array_element))
                         {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
                         handler_->end_array(*this);
                         if (peek() == modes::done)
@@ -1520,7 +1457,7 @@ public:
                         state_ = states::exp3;
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1528,184 +1465,82 @@ public:
                 ++column_;
                 break;
             case states::t: 
+                while (p_ < end_input_ && literal_index_ < literal_.second)
                 {
-                    switch (*p_)
+                    if (*p_ != literal_.first[literal_index_])
                     {
-                    case 'r':
-                        state_ = states::tr;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_value, json_error_category()), *this);
+                    }
+                    ++p_;
+                    ++literal_index_;
+                    ++column_;
+                }
+                if (literal_index_ == literal_.second)
+                {
+                    handler_->value(true, *this);
+                    if (peek() == modes::start)
+                    {
+                        flip(modes::start,modes::done);
+                        state_ = states::done;
+                        handler_->end_json();
+                    }
+                    else
+                    {
+                        state_ = states::expect_comma_or_end;
                     }
                 }
-                ++p_;
-                ++column_;
-                break;
-            case states::tr: 
-                {
-                    switch (*p_)
-                    {
-                    case 'u':
-                        state_ = states::tru;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::tru:  
-                {
-                    switch (*p_)
-                    {
-                    case 'e': 
-                        handler_->value(true, *this);
-                        if (peek() == modes::start)
-                        {
-                            flip(modes::start,modes::done);
-                            state_ = states::done;
-                            handler_->end_json();
-                        }
-                        else
-                        {
-                            state_ = states::expect_comma_or_end;
-                        }
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
                 break;
             case states::f:  
+                while (p_ < end_input_ && literal_index_ < literal_.second)
                 {
-                    switch (*p_)
+                    if (*p_ != literal_.first[literal_index_])
                     {
-                    case 'a':
-                        state_ = states::fa;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_value, json_error_category()), *this);
+                    }
+                    ++p_;
+                    ++literal_index_;
+                    ++column_;
+                }
+                if (literal_index_ == literal_.second)
+                {
+                    handler_->value(false, *this);
+                    if (peek() == modes::start)
+                    {
+                        flip(modes::start,modes::done);
+                        state_ = states::done;
+                        handler_->end_json();
+                    }
+                    else
+                    {
+                        state_ = states::expect_comma_or_end;
                     }
                 }
-                ++p_;
-                ++column_;
-                break;
-            case states::fa: 
-                {
-                    switch (*p_)
-                    {
-                    case 'l': 
-                        state_ = states::fal;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::fal:  
-                {
-                    switch (*p_)
-                    {
-                    case 's':
-                        state_ = states::fals;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::fals:  
-                {
-                    switch (*p_)
-                    {
-                    case 'e':
-                        handler_->value(false, *this);
-                        if (peek() == modes::start)
-                        {
-                            flip(modes::start,modes::done);
-                            state_ = states::done;
-                            handler_->end_json();
-                        }
-                        else
-                        {
-                            state_ = states::expect_comma_or_end;
-                        }
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
                 break;
             case states::n: 
+                while (p_ < end_input_ && literal_index_ < literal_.second)
                 {
-                    switch (*p_)
+                    if (*p_ != literal_.first[literal_index_])
                     {
-                    case 'u':
-                        state_ = states::nu;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_value, json_error_category()), *this);
+                    }
+                    ++p_;
+                    ++literal_index_;
+                    ++column_;
+                }
+                if (literal_index_ == literal_.second)
+                {
+                    handler_->value(null_type(), *this);
+                    if (peek() == modes::start)
+                    {
+                        flip(modes::start,modes::done);
+                        state_ = states::done;
+                        handler_->end_json();
+                    }
+                    else
+                    {
+                        state_ = states::expect_comma_or_end;
                     }
                 }
-                ++p_;
-                ++column_;
-                break;
-            case states::nu:  
-                {
-                    switch (*p_)
-                    {
-                    case 'l': 
-                        state_ = states::nul;
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::nul:  
-                {
-                    switch (*p_)
-                    {
-                    case 'l': 
-                        handler_->value(null_type(), *this);
-                        if (peek() == modes::start)
-                        {
-                            flip(modes::start,modes::done);
-                            state_ = states::done;
-                            handler_->end_json();
-                        }
-                        else
-                        {
-                            state_ = states::expect_comma_or_end;
-                        }
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_value, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
                 break;
             case states::slash: 
                 {
@@ -1718,7 +1553,7 @@ public:
                         state_ = states::slash_slash;
                         break;
                     default:    
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
                         break;
                     }
                 }
@@ -1805,7 +1640,7 @@ public:
         }
         if (!pop(modes::done))
         {
-            err_handler_->error(std::error_code(json_parser_errc::unexpected_eof, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::unexpected_eof, json_error_category()), *this);
         }
     }
 
@@ -1830,7 +1665,7 @@ private:
         }
         catch (...)
         {
-            err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
             handler_->value(null_type(), *this); // recovery
         }
         number_buffer_.clear();
@@ -1847,7 +1682,7 @@ private:
             handler_->end_json();
             break;
         default:
-            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
         }
     }
@@ -1870,7 +1705,7 @@ private:
                 }
                 catch (...)
                 {
-                    err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+                    err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
                     handler_->value(null_type(), *this);
                 }
             }
@@ -1891,7 +1726,7 @@ private:
                 }
                 catch (...)
                 {
-                    err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
+                    err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, json_error_category()), *this);
                     handler_->value(null_type(), *this);
                 }
             }
@@ -1909,7 +1744,7 @@ private:
             handler_->end_json();
             break;
         default:
-            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
         }
         number_buffer_.clear();
@@ -1926,7 +1761,7 @@ private:
             cp_ = append_to_codepoint(cp_, c);
             break;
         default:
-            err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
             break;
         }
     }
@@ -1942,7 +1777,7 @@ private:
             cp2_ = append_to_codepoint(cp2_, c);
             break;
         default:
-            err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::expected_value, json_error_category()), *this);
             break;
         }
     }
@@ -1988,7 +1823,7 @@ private:
             state_ = states::u1;
             break;
         default:    
-            err_handler_->error(std::error_code(json_parser_errc::illegal_escaped_character, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::illegal_escaped_character, json_error_category()), *this);
             break;
         }
     }
@@ -2013,7 +1848,7 @@ private:
             handler_->end_json();
             break;
         default:
-            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
         }
     }
@@ -2033,7 +1868,7 @@ private:
         case modes::done:
             break;
         default:
-            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
         }
     }
@@ -2061,7 +1896,7 @@ private:
         }
         else
         {
-            err_handler_->error(std::error_code(json_parser_errc::invalid_hex_escape_sequence, json_error_category()), *this);
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_hex_escape_sequence, json_error_category()), *this);
         }
         return cp;
     }
@@ -2124,8 +1959,8 @@ private:
     }
 };
 
-typedef basic_jcr_parser<char> json_parser;
-typedef basic_jcr_parser<wchar_t> wjson_parser;
+typedef basic_jcr_parser<char> jcr_parser;
+typedef basic_jcr_parser<wchar_t> wjcr_parser;
 
 }}
 
