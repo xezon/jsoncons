@@ -3212,57 +3212,6 @@ bool basic_json<StringT, Alloc>::operator==(const basic_json<StringT, Alloc>& rh
     return var_ == rhs.var_;
 }
 
-template<typename StringT, typename Alloc>
-basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_2d_array(size_t m, size_t n)
-{
-    basic_json<StringT, Alloc> a = basic_json<StringT, Alloc>::array();
-    a.resize(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<StringT, Alloc>::make_array(n);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-template<typename T>
-basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_2d_array(size_t m, size_t n, T val)
-{
-    basic_json<StringT, Alloc> v;
-    v = val;
-    basic_json<StringT, Alloc> a = make_array(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<StringT, Alloc>::make_array(n, v);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_3d_array(size_t m, size_t n, size_t k)
-{
-    basic_json<StringT, Alloc> a = basic_json<StringT, Alloc>::array();
-    a.resize(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<StringT, Alloc>::make_2d_array(n, k);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-template<typename T>
-basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_3d_array(size_t m, size_t n, size_t k, T val)
-{
-    basic_json<StringT, Alloc> v;
-    v = val;
-    basic_json<StringT, Alloc> a = make_array(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<StringT, Alloc>::make_2d_array(n, k, v);
-    }
-    return a;
-}
 
 template<typename StringT, typename Alloc>
 basic_json<StringT, Alloc> basic_json<StringT, Alloc>::parse_stream(std::basic_istream<char_type>& is)
@@ -3517,6 +3466,61 @@ json_printable<JsonT> pretty_print(const JsonT& val,
 {
     return json_printable<JsonT>(val, true, format);
 }
+
+#if !defined(JSONCONS_NO_DEPRECATED)
+
+template<typename StringT, typename Alloc>
+basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_2d_array(size_t m, size_t n)
+{
+    basic_json<StringT, Alloc> a = basic_json<StringT, Alloc>::array();
+    a.resize(m);
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        a[i] = basic_json<StringT, Alloc>::make_array(n);
+    }
+    return a;
+}
+
+template<typename StringT, typename Alloc>
+template<typename T>
+basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_2d_array(size_t m, size_t n, T val)
+{
+    basic_json<StringT, Alloc> v;
+    v = val;
+    basic_json<StringT, Alloc> a = make_array(m);
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        a[i] = basic_json<StringT, Alloc>::make_array(n, v);
+    }
+    return a;
+}
+
+template<typename StringT, typename Alloc>
+basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_3d_array(size_t m, size_t n, size_t k)
+{
+    basic_json<StringT, Alloc> a = basic_json<StringT, Alloc>::array();
+    a.resize(m);
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        a[i] = basic_json<StringT, Alloc>::make_2d_array(n, k);
+    }
+    return a;
+}
+
+template<typename StringT, typename Alloc>
+template<typename T>
+basic_json<StringT, Alloc> basic_json<StringT, Alloc>::make_3d_array(size_t m, size_t n, size_t k, T val)
+{
+    basic_json<StringT, Alloc> v;
+    v = val;
+    basic_json<StringT, Alloc> a = make_array(m);
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        a[i] = basic_json<StringT, Alloc>::make_2d_array(n, k, v);
+    }
+    return a;
+}
+#endif
 
 typedef basic_json<std::string,std::allocator<char>> json;
 typedef basic_json<std::wstring,std::allocator<wchar_t>> wjson;

@@ -16,15 +16,9 @@
 #include <ostream>
 #include <memory>
 #include <typeinfo>
-#include "jsoncons/json_structures.hpp"
-#include "jsoncons/jsoncons.hpp"
-#include "jsoncons/json_output_handler.hpp"
-#include "jsoncons/output_format.hpp"
-#include "jsoncons/json_serializer.hpp"
-#include "jsoncons/json_deserializer.hpp"
-#include "jsoncons/json_reader.hpp"
-#include "jsoncons/json_type_traits.hpp"
-#include "jsoncons_ext/jcr/jcr_deserializer.hpp"
+#include "jsoncons/json.hpp"
+#include "jcr_deserializer.hpp"
+#include "jcr_structures.hpp"
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -39,8 +33,8 @@ void serialize(basic_json_output_handler<CharT>& os, const T&)
     os.value(null_type());
 }
 
-template <typename StringT, class Alloc>
-class basic_json_schema;
+template <typename JsonT>
+class basic_jcr_validator;
 
 template <typename CharT>
 class basic_parse_error_handler;
@@ -66,27 +60,28 @@ bool is_simple(value_types type)
     return type < value_types::string_t;
 }
 
-template <typename StringT, typename Alloc = std::allocator<typename StringT::value_type>>
-class basic_json_schema
+template <class JsonT>
+class basic_jcr_validator
 {
 public:
+    typedef JsonT json_type;
 
-    typedef Alloc allocator_type;
+    typedef typename JsonT::allocator_type allocator_type;
 
-    typedef typename StringT::value_type char_type;
-    typedef typename StringT::traits_type char_traits_type;
+    typedef typename JsonT::char_type char_type;
+    typedef typename JsonT::char_traits_type char_traits_type;
 
-    typedef typename StringT::allocator_type string_allocator;
-    typedef StringT string_type;
-    typedef basic_json_schema<StringT,Alloc> value_type;
+    typedef typename JsonT::string_allocator string_allocator;
+    typedef typename JsonT::string_type string_type;
+    typedef basic_jcr_validator<JsonT> value_type;
     typedef name_value_pair<string_type,value_type> member_type;
 
-    typedef typename std::allocator_traits<Alloc>:: template rebind_alloc<basic_json_schema<StringT,Alloc>> array_allocator;
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<JsonT> array_allocator;
 
-    typedef typename std::allocator_traits<Alloc>:: template rebind_alloc<member_type> object_allocator;
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<member_type> object_allocator;
 
-    typedef json_array<basic_json_schema<StringT,Alloc>,array_allocator> array;
-    typedef json_object<string_type,basic_json_schema<StringT,Alloc>,object_allocator>  object;
+    typedef jcr_array_validator<value_type,array_allocator> array;
+    typedef jcr_object_validator<string_type,value_type,object_allocator>  object;
 
     typedef jsoncons::null_type null_type;
 
@@ -107,7 +102,7 @@ public:
         }
 
     public:
-        friend class basic_json_schema<StringT, Alloc>;
+        friend class basic_jcr_validator<JsonT>;
 
         IteratorT begin()
         {
@@ -196,14 +191,14 @@ public:
         {
         }
 
-        variant(const Alloc& a)
+        variant(const allocator_type& a)
             : type_(value_types::object_t)
         {
             value_.object_val_ = create_impl<object>(a, object_allocator(a));
         }
 
         variant(std::initializer_list<value_type> init,
-                const Alloc& a)
+                const allocator_type& a)
             : type_(value_types::array_t)
         {
             value_.array_val_ = create_impl<array>(a, std::move(init), array_allocator(a));
@@ -215,7 +210,7 @@ public:
             swap(var);
         }
         
-        explicit variant(variant&& var, const Alloc& a)
+        explicit variant(variant&& var, const allocator_type& a)
             : type_(value_types::null_t)
         {
             swap(var);
@@ -225,7 +220,7 @@ public:
         {
             init_variant(var);
         }
-        explicit variant(const variant& var, const Alloc& a)
+        explicit variant(const variant& var, const allocator_type& a)
             : type_(var.type_)
         {
             init_variant(var);
@@ -237,7 +232,7 @@ public:
             value_.object_val_ = create_impl<object>(val.get_allocator(), val) ;
         }
 
-        variant(const object & val, const Alloc& a)
+        variant(const object & val, const allocator_type& a)
             : type_(value_types::object_t)
         {
             value_.object_val_ = create_impl<object>(a, val, object_allocator(a)) ;
@@ -249,7 +244,7 @@ public:
             value_.object_val_ = create_impl<object>(val.get_allocator(), std::move(val));
         }
 
-        variant(object&& val, const Alloc& a)
+        variant(object&& val, const allocator_type& a)
             : type_(value_types::object_t)
         {
             value_.object_val_ = create_impl<object>(a, std::move(val), object_allocator(a));
@@ -261,7 +256,7 @@ public:
             value_.array_val_ = create_impl<array>(val.get_allocator(), val);
         }
 
-        variant(const array& val, const Alloc& a)
+        variant(const array& val, const allocator_type& a)
             : type_(value_types::array_t)
         {
             value_.array_val_ = create_impl<array>(a, val, array_allocator(a));
@@ -273,7 +268,7 @@ public:
             value_.array_val_ = create_impl<array>(val.get_allocator(), std::move(val));
         }
 
-        variant(array&& val, const Alloc& a)
+        variant(array&& val, const allocator_type& a)
             : type_(value_types::array_t)
         {
             value_.array_val_ = create_impl<array>(a, std::move(val), array_allocator(a));
@@ -308,30 +303,30 @@ public:
             value_.uinteger_val_ = val;
         }
 
-        explicit variant(const string_type& s, const Alloc& a)
+        explicit variant(const string_type& s, const allocator_type& a)
         {
             type_ = value_types::string_t;
-            //value_.string_val_ = create_impl<string_type>(a, s, string_allocator(a));
-            value_.string_val_ = create_string_data(s.data(), s.length(), string_allocator(a));
+            value_.string_val_ = create_impl<string_type>(a, s, string_allocator(a));
+            //value_.string_val_ = create_string_data(s.data(), s.length(), string_allocator(a));
         }
 
-        explicit variant(const char_type* s, const Alloc& a)
+        explicit variant(const char_type* s, const allocator_type& a)
         {
             size_t length = std::char_traits<char_type>::length(s);
             type_ = value_types::string_t;
-            //value_.string_val_ = create_impl<string_type>(a, s, string_allocator(a));
-            value_.string_val_ = create_string_data(s, length, string_allocator(a));
+            value_.string_val_ = create_impl<string_type>(a, s, string_allocator(a));
+            //value_.string_val_ = create_string_data(s, length, string_allocator(a));
         }
 
-        explicit variant(const char_type* s, size_t length, const Alloc& a)
+        explicit variant(const char_type* s, size_t length, const allocator_type& a)
         {
             type_ = value_types::string_t;
-            //value_.string_val_ = create_impl<string_type>(a, s, length, string_allocator(a));
-            value_.string_val_ = create_string_data(s, length, string_allocator(a));
+            value_.string_val_ = create_impl<string_type>(a, s, length, string_allocator(a));
+            //value_.string_val_ = create_string_data(s, length, string_allocator(a));
         }
 
         template<class InputIterator>
-        variant(InputIterator first, InputIterator last, const Alloc& a)
+        variant(InputIterator first, InputIterator last, const allocator_type& a)
             : type_(value_types::array_t)
         {
             value_.array_val_ = create_impl<array>(a, first, last, array_allocator(a));
@@ -359,8 +354,8 @@ public:
                 value_.bool_val_ = var.value_.bool_val_;
                 break;
             case value_types::string_t:
-                //value_.string_val_ = create_impl<string_type>(var.value_.string_val_->get_allocator(), *(var.value_.string_val_), string_allocator(var.value_.string_val_->get_allocator()));
-                value_.string_val_ = create_string_data(var.value_.string_val_->data(), var.value_.string_val_->length(), string_allocator(var.value_.string_val_->get_allocator()));
+                value_.string_val_ = create_impl<string_type>(var.value_.string_val_->get_allocator(), *(var.value_.string_val_), string_allocator(var.value_.string_val_->get_allocator()));
+                //value_.string_val_ = create_string_data(var.value_.string_val_->data(), var.value_.string_val_->length(), string_allocator(var.value_.string_val_->get_allocator()));
                 break;
             case value_types::array_t:
                 value_.array_val_ = create_impl<array>(var.value_.array_val_->get_allocator(), *(var.value_.array_val_), array_allocator(var.value_.array_val_->get_allocator()));
@@ -383,8 +378,8 @@ public:
             switch (type_)
             {
             case value_types::string_t:
-                //destroy_impl(value_.string_val_->get_allocator(), value_.string_val_);
-                destroy_string_data(value_.string_val_->get_allocator(), value_.string_val_);
+                destroy_impl(value_.string_val_->get_allocator(), value_.string_val_);
+                //destroy_string_data(value_.string_val_->get_allocator(), value_.string_val_);
                 break;
             case value_types::array_t:
                 destroy_impl(value_.array_val_->get_allocator(), value_.array_val_);
@@ -480,16 +475,16 @@ public:
         {
             destroy_variant();
             type_ = value_types::string_t;
-            //value_.string_val_ = create_impl<string_type>(s.get_allocator(), s, string_allocator(s.get_allocator()));
-            value_.string_val_ = create_string_data(s.data(), s.length(), string_allocator(s.get_allocator()));
+            value_.string_val_ = create_impl<string_type>(s.get_allocator(), s, string_allocator(s.get_allocator()));
+            //value_.string_val_ = create_string_data(s.data(), s.length(), string_allocator(s.get_allocator()));
         }
 
-        void assign_string(const char_type* s, size_t length, const Alloc& allocator = Alloc())
+        void assign_string(const char_type* s, size_t length, const allocator_type& allocator = allocator_type())
         {
             destroy_variant();
             type_ = value_types::string_t;
-            //value_.string_val_ = create_impl<string_type>(allocator, s, length, string_allocator(allocator));
-            value_.string_val_ = create_string_data(s, length, string_allocator(allocator));
+            value_.string_val_ = create_impl<string_type>(allocator, s, length, string_allocator(allocator));
+            //value_.string_val_ = create_string_data(s, length, string_allocator(allocator));
         }
 
         void assign(int64_t val)
@@ -608,7 +603,7 @@ public:
             return false;
         }
 
-        bool validate(const basic_json<StringT,Alloc>& val) const
+        bool validate(const JsonT& val) const
         {
             if (is_number() & val.is_number())
             {
@@ -636,10 +631,10 @@ public:
             case value_types::string_t:
                 return *(value_.string_val_) == val.as_string();
             case value_types::array_t:
-                return *(value_.array_val_) == val.array_value();
+                return value_.array_val_->validate(val.array_value());
                 break;
             case value_types::object_t:
-                return *(value_.object_val_) == val.object_value();
+                return value_.object_val_->validate(val.object_value());
                 break;
             default:
                 // throw
@@ -710,17 +705,18 @@ public:
             bool bool_val_;
             object* object_val_;
             array* array_val_;
-            string_data* string_val_;
-            char_type small_string_val_[sizeof(int64_t)/sizeof(char_type)];
+            //string_data* string_val_;
+            string_type* string_val_;
+            //char_type small_string_val_[sizeof(int64_t)/sizeof(char_type)];
         } value_;
     };
 
-    static basic_json_schema parse_stream(std::basic_istream<char_type>& is);
-    static basic_json_schema parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);
+    static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is);
+    static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);
 
-    static basic_json_schema parse(const string_type& s)
+    static basic_jcr_validator parse(const string_type& s)
     {
-        basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
+        basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
         basic_json_parser<char_type> parser(handler);
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
@@ -733,9 +729,9 @@ public:
         return handler.get_result();
     }
 
-    static basic_json_schema parse(const string_type& s, basic_parse_error_handler<char_type>& err_handler)
+    static basic_jcr_validator parse(const string_type& s, basic_parse_error_handler<char_type>& err_handler)
     {
-        basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
+        basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
         basic_json_parser<char_type> parser(handler,err_handler);
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
@@ -748,44 +744,44 @@ public:
         return handler.get_result();
     }
 
-    static basic_json_schema parse_file(const std::string& s);
+    static basic_jcr_validator parse_file(const std::string& s);
 
-    static basic_json_schema parse_file(const std::string& s, basic_parse_error_handler<char_type>& err_handler);
+    static basic_jcr_validator parse_file(const std::string& s, basic_parse_error_handler<char_type>& err_handler);
 
-    static basic_json_schema make_array()
+    static basic_jcr_validator make_array()
     {
-        return basic_json_schema::array();
+        return basic_jcr_validator::array();
     }
 
-    static basic_json_schema make_array(size_t n, const array_allocator& allocator = array_allocator())
+    static basic_jcr_validator make_array(size_t n, const array_allocator& allocator = array_allocator())
     {
-        return basic_json_schema::array(n,allocator);
+        return basic_jcr_validator::array(n,allocator);
     }
 
     template <class T>
-    static basic_json_schema make_array(size_t n, const T& val, const array_allocator& allocator = array_allocator())
+    static basic_jcr_validator make_array(size_t n, const T& val, const array_allocator& allocator = array_allocator())
     {
-        return basic_json_schema::array(n, val,allocator);
+        return basic_jcr_validator::array(n, val,allocator);
     }
 
     template <size_t dim>
-    static typename std::enable_if<dim==1,basic_json_schema>::type make_array(size_t n)
+    static typename std::enable_if<dim==1,basic_jcr_validator>::type make_array(size_t n)
     {
         return array(n);
     }
 
     template <size_t dim, class T>
-    static typename std::enable_if<dim==1,basic_json_schema>::type make_array(size_t n, const T& val, const Alloc& allocator = Alloc())
+    static typename std::enable_if<dim==1,basic_jcr_validator>::type make_array(size_t n, const T& val, const allocator_type& allocator = allocator_type())
     {
         return array(n,val,allocator);
     }
 
     template <size_t dim, typename... Args>
-    static typename std::enable_if<(dim>1),basic_json_schema>::type make_array(size_t n, Args... args)
+    static typename std::enable_if<(dim>1),basic_jcr_validator>::type make_array(size_t n, Args... args)
     {
         const size_t dim1 = dim - 1;
 
-        basic_json_schema val = make_array<dim1>(args...);
+        basic_jcr_validator val = make_array<dim1>(args...);
         val.resize(n);
         for (size_t i = 0; i < n; ++i)
         {
@@ -796,102 +792,102 @@ public:
 
     variant var_;
 
-    basic_json_schema() 
+    basic_jcr_validator() 
         : var_()
     {
     }
 
-    basic_json_schema(const Alloc& allocator) 
+    basic_jcr_validator(const allocator_type& allocator) 
         : var_(allocator)
     {
     }
 
-    basic_json_schema(std::initializer_list<value_type> init,
-               const Alloc& allocator = Alloc()) 
+    basic_jcr_validator(std::initializer_list<value_type> init,
+               const allocator_type& allocator = allocator_type()) 
         : var_(std::move(init), allocator)
     {
     }
 
-    basic_json_schema(const basic_json_schema<StringT, Alloc>& val)
+    basic_jcr_validator(const basic_jcr_validator<JsonT>& val)
         : var_(val.var_)
     {
     }
 
-    basic_json_schema(const basic_json_schema<StringT, Alloc>& val, const Alloc& allocator)
+    basic_jcr_validator(const basic_jcr_validator<JsonT>& val, const allocator_type& allocator)
         : var_(val.var_,allocator)
     {
     }
 
-    basic_json_schema(basic_json_schema<StringT,Alloc>&& other)
+    basic_jcr_validator(JsonT&& other)
         : var_(std::move(other.var_))
     {
     }
 
-    basic_json_schema(basic_json_schema<StringT,Alloc>&& other, const Alloc& allocator)
+    basic_jcr_validator(JsonT&& other, const allocator_type& allocator)
         : var_(std::move(other.var_),allocator)
     {
     }
 
-    basic_json_schema(const array& val)
+    basic_jcr_validator(const array& val)
         : var_(val)
     {
     }
 
-    basic_json_schema(array&& other)
+    basic_jcr_validator(array&& other)
         : var_(std::move(other))
     {
     }
 
-    basic_json_schema(const object& other)
+    basic_jcr_validator(const object& other)
         : var_(other)
     {
     }
 
-    basic_json_schema(object&& other)
+    basic_jcr_validator(object&& other)
         : var_(std::move(other))
     {
     }
 
     template <typename T>
-    basic_json_schema(T val)
+    basic_jcr_validator(T val)
         : var_(null_type())
     {
         json_type_traits<value_type,T>::assign(*this,val);
     }
 
-    basic_json_schema(double val, uint8_t precision)
+    basic_jcr_validator(double val, uint8_t precision)
         : var_(val,precision)
     {
     }
 
     template <typename T>
-    basic_json_schema(T val, const Alloc& allocator)
+    basic_jcr_validator(T val, const allocator_type& allocator)
         : var_(allocator)
     {
         json_type_traits<value_type,T>::assign(*this,val);
     }
 
-    basic_json_schema(const char_type *s, size_t length, const Alloc& allocator = Alloc())
+    basic_jcr_validator(const char_type *s, size_t length, const allocator_type& allocator = allocator_type())
         : var_(s, length, allocator)
     {
     }
     template<class InputIterator>
-    basic_json_schema(InputIterator first, InputIterator last, const Alloc& allocator = Alloc())
+    basic_jcr_validator(InputIterator first, InputIterator last, const allocator_type& allocator = allocator_type())
         : var_(first,last,allocator)
     {
     }
 
-    ~basic_json_schema()
+    ~basic_jcr_validator()
     {
     }
 
-    basic_json_schema& operator=(const basic_json_schema<StringT,Alloc>& rhs)
+    basic_jcr_validator& operator=(const JsonT& rhs)
     {
         var_ = rhs.var_;
         return *this;
     }
 
-    basic_json_schema& operator=(basic_json_schema<StringT,Alloc>&& rhs)
+    basic_jcr_validator& operator=(JsonT&& rhs)
     {
         if (this != &rhs)
         {
@@ -901,15 +897,21 @@ public:
     }
 
     template <class T>
-    basic_json_schema<StringT, Alloc>& operator=(T val)
+    basic_jcr_validator<JsonT>& operator=(T val)
     {
         json_type_traits<value_type,T>::assign(*this,val);
         return *this;
     }
 
-    bool operator!=(const basic_json_schema<StringT,Alloc>& rhs) const;
+    bool operator!=(const basic_jcr_validator& rhs) const
+    {
+        return !(*this == rhs);
+    }
 
-    bool operator==(const basic_json_schema<StringT,Alloc>& rhs) const;
+    bool operator==(const basic_jcr_validator& rhs) const
+    {
+        return var_ == rhs.var_;
+    }
 
     size_t size() const JSONCONS_NOEXCEPT
     {
@@ -1116,16 +1118,16 @@ public:
         }
     }
 
-    template<class U=Alloc,
+    template<class U=allocator_type,
          typename std::enable_if<std::is_default_constructible<U>::value
             >::type* = nullptr>
     void create_object_implicitly()
     {
         var_.type_ = value_types::object_t;
-        var_.value_.object_val_ = create_impl<object>(Alloc(),object_allocator(Alloc()));
+        var_.value_.object_val_ = create_impl<object>(allocator_type(),object_allocator(allocator_type()));
     }
 
-    template<class U=Alloc,
+    template<class U=allocator_type,
          typename std::enable_if<!std::is_default_constructible<U>::value
             >::type* = nullptr>
     void create_object_implicitly() const
@@ -1181,152 +1183,7 @@ public:
         }
     }
 
-    template<typename T>
-    T as() const
-    {
-        return json_type_traits<value_type,T>::as(*this);
-    }
-
-    template<typename T>
-    typename std::enable_if<std::is_same<string_type,T>::value>::type as(const string_allocator& allocator) const
-    {
-        return json_type_traits<value_type,T>::as(*this,allocator);
-    }
-
-    bool as_bool() const JSONCONS_NOEXCEPT
-    {
-        switch (var_.type_)
-        {
-        case value_types::null_t:
-        case value_types::empty_object_t:
-            return false;
-        case value_types::bool_t:
-            return var_.value_.bool_val_;
-        case value_types::double_t:
-            return var_.value_.double_val_ != 0.0;
-        case value_types::integer_t:
-            return var_.value_.integer_val_ != 0;
-        case value_types::uinteger_t:
-            return var_.value_.uinteger_val_ != 0;
-        case value_types::string_t:
-            return var_.value_.string_val_->length() != 0;
-        case value_types::array_t:
-            return var_.value_.array_val_->size() != 0;
-        case value_types::object_t:
-            return var_.value_.object_val_->size() != 0;
-        default:
-            return false;
-        }
-    }
-
-    int64_t as_integer() const
-    {
-        switch (var_.type_)
-        {
-        case value_types::double_t:
-            return static_cast<int64_t>(var_.value_.double_val_);
-        case value_types::integer_t:
-            return static_cast<int64_t>(var_.value_.integer_val_);
-        case value_types::uinteger_t:
-            return static_cast<int64_t>(var_.value_.uinteger_val_);
-        case value_types::bool_t:
-            return var_.value_.bool_val_ ? 1 : 0;
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an integer");
-        }
-    }
-
-    uint64_t as_uinteger() const
-    {
-        switch (var_.type_)
-        {
-        case value_types::double_t:
-            return static_cast<uint64_t>(var_.value_.double_val_);
-        case value_types::integer_t:
-            return static_cast<uint64_t>(var_.value_.integer_val_);
-        case value_types::uinteger_t:
-            return static_cast<uint64_t>(var_.value_.uinteger_val_);
-        case value_types::bool_t:
-            return var_.value_.bool_val_ ? 1 : 0;
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an unsigned integer");
-        }
-    }
-
-    double as_double() const
-    {
-        switch (var_.type_)
-        {
-        case value_types::double_t:
-            return var_.value_.double_val_;
-        case value_types::integer_t:
-            return static_cast<double>(var_.value_.integer_val_);
-        case value_types::uinteger_t:
-            return static_cast<double>(var_.value_.uinteger_val_);
-        case value_types::null_t:
-            return std::numeric_limits<double>::quiet_NaN();
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not a double");
-        }
-    }
-
-    string_type as_string() const JSONCONS_NOEXCEPT
-    {
-        switch (var_.type_)
-        {
-        case value_types::string_t:
-            return string_type(var_.value_.string_val_->data(),var_.value_.string_val_->length(),var_.value_.string_val_->get_allocator());
-        default:
-            return to_string();
-        }
-    }
-
-    string_type as_string(const string_allocator& allocator) const JSONCONS_NOEXCEPT
-    {
-        switch (var_.type_)
-        {
-        case value_types::string_t:
-            return string_type(var_.value_.string_val_->data(),var_.value_.string_val_->length(),allocator);
-        default:
-            return to_string(allocator);
-        }
-    }
-
-    string_type as_string(const basic_output_format<char_type>& format) const 
-    {
-        switch (var_.type_)
-        {
-        case value_types::string_t:
-            return string_type(var_.value_.string_val_->data(),var_.value_.string_val_->length(),var_.value_.string_val_->get_allocator());
-        default:
-            return to_string(format);
-        }
-    }
-
-    string_type as_string(const basic_output_format<char_type>& format,
-                          const string_allocator& allocator) const 
-    {
-        switch (var_.type_)
-        {
-        case value_types::string_t:
-            return string_type(var_.value_.string_val_->data(),var_.value_.string_val_->length(),allocator);
-        default:
-            return to_string(format,allocator);
-        }
-    }
-
-    const char_type* as_cstring() const
-    {
-        switch (var_.type_)
-        {
-        case value_types::string_t:
-            return var_.value_.string_val_->c_str();
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not a cstring");
-        }
-    }
-
-    basic_json_schema<StringT, Alloc>& at(const string_type& name)
+    basic_jcr_validator<JsonT>& at(const string_type& name)
     {
         switch (var_.type_)
         {
@@ -1349,42 +1206,42 @@ public:
         }
     }
 
-    basic_json_schema<StringT, Alloc>& evaluate() 
+    basic_jcr_validator<JsonT>& evaluate() 
     {
         return *this;
     }
 
-    basic_json_schema<StringT, Alloc>& evaluate_with_default() 
+    basic_jcr_validator<JsonT>& evaluate_with_default() 
     {
         return *this;
     }
 
-    const basic_json_schema<StringT, Alloc>& evaluate() const
+    const basic_jcr_validator<JsonT>& evaluate() const
     {
         return *this;
     }
 
-    basic_json_schema<StringT, Alloc>& evaluate(size_t i) 
+    basic_jcr_validator<JsonT>& evaluate(size_t i) 
     {
         return at(i);
     }
 
-    const basic_json_schema<StringT, Alloc>& evaluate(size_t i) const
+    const basic_jcr_validator<JsonT>& evaluate(size_t i) const
     {
         return at(i);
     }
 
-    basic_json_schema<StringT, Alloc>& evaluate(const string_type& name) 
+    basic_jcr_validator<JsonT>& evaluate(const string_type& name) 
     {
         return at(name);
     }
 
-    const basic_json_schema<StringT, Alloc>& evaluate(const string_type& name) const
+    const basic_jcr_validator<JsonT>& evaluate(const string_type& name) const
     {
         return at(name);
     }
 
-    const basic_json_schema<StringT, Alloc>& at(const string_type& name) const
+    const basic_jcr_validator<JsonT>& at(const string_type& name) const
     {
         switch (var_.type_)
         {
@@ -1407,7 +1264,7 @@ public:
         }
     }
 
-    basic_json_schema<StringT, Alloc>& at(size_t i)
+    basic_jcr_validator<JsonT>& at(size_t i)
     {
         switch (var_.type_)
         {
@@ -1422,7 +1279,7 @@ public:
         }
     }
 
-    const basic_json_schema<StringT, Alloc>& at(size_t i) const
+    const basic_jcr_validator<JsonT>& at(size_t i) const
     {
         switch (var_.type_)
         {
@@ -1498,13 +1355,13 @@ public:
     }
 
     template<typename T>
-    basic_json_schema<StringT, Alloc> get(const string_type& name, T&& default_val) const
+    basic_jcr_validator<JsonT> get(const string_type& name, T&& default_val) const
     {
         switch (var_.type_)
         {
         case value_types::empty_object_t:
             {
-                return basic_json_schema<StringT,Alloc>(std::forward<T>(default_val));
+                return JsonT(std::forward<T>(default_val));
             }
         case value_types::object_t:
             {
@@ -1515,7 +1372,7 @@ public:
                 }
                 else
                 {
-                    return basic_json_schema<StringT,Alloc>(std::forward<T>(default_val));
+                    return JsonT(std::forward<T>(default_val));
                 }
             }
         default:
@@ -1602,7 +1459,7 @@ public:
         }
     }
 
-    void set(const string_type& name, const basic_json_schema<StringT, Alloc>& value)
+    void set(const string_type& name, const basic_jcr_validator<JsonT>& value)
     {
         switch (var_.type_)
         {
@@ -1618,7 +1475,7 @@ public:
         }
     }
 
-    void set(string_type&& name, const basic_json_schema<StringT, Alloc>& value){
+    void set(string_type&& name, const basic_jcr_validator<JsonT>& value){
         switch (var_.type_){
         case value_types::empty_object_t:
             create_object_implicitly();
@@ -1632,7 +1489,7 @@ public:
         }
     }
 
-    void set(const string_type& name, basic_json_schema<StringT, Alloc>&& value){
+    void set(const string_type& name, basic_jcr_validator<JsonT>&& value){
         switch (var_.type_){
         case value_types::empty_object_t:
             create_object_implicitly();
@@ -1646,7 +1503,7 @@ public:
         }
     }
 
-    void set(string_type&& name, basic_json_schema<StringT, Alloc>&& value)
+    void set(string_type&& name, basic_jcr_validator<JsonT>&& value)
     {
         switch (var_.type_)
         {
@@ -1662,7 +1519,7 @@ public:
         }
     }
 
-    object_iterator set(object_iterator hint, const string_type& name, const basic_json_schema<StringT, Alloc>& value)
+    object_iterator set(object_iterator hint, const string_type& name, const basic_jcr_validator<JsonT>& value)
     {
         switch (var_.type_)
         {
@@ -1678,7 +1535,7 @@ public:
         }
     }
 
-    object_iterator set(object_iterator hint, string_type&& name, const basic_json_schema<StringT, Alloc>& value){
+    object_iterator set(object_iterator hint, string_type&& name, const basic_jcr_validator<JsonT>& value){
         switch (var_.type_){
         case value_types::empty_object_t:
             create_object_implicitly();
@@ -1692,7 +1549,7 @@ public:
         }
     }
 
-    object_iterator set(object_iterator hint, const string_type& name, basic_json_schema<StringT, Alloc>&& value){
+    object_iterator set(object_iterator hint, const string_type& name, basic_jcr_validator<JsonT>&& value){
         switch (var_.type_){
         case value_types::empty_object_t:
             create_object_implicitly();
@@ -1706,7 +1563,7 @@ public:
         }
     } 
 
-    object_iterator set(object_iterator hint, string_type&& name, basic_json_schema<StringT, Alloc>&& value){
+    object_iterator set(object_iterator hint, string_type&& name, basic_jcr_validator<JsonT>&& value){
         switch (var_.type_){
         case value_types::empty_object_t:
             create_object_implicitly();
@@ -1720,7 +1577,7 @@ public:
         }
     }
 
-    void add(const basic_json_schema<StringT, Alloc>& value)
+    void add(const basic_jcr_validator<JsonT>& value)
     {
         switch (var_.type_)
         {
@@ -1734,7 +1591,7 @@ public:
         }
     }
 
-    void add(basic_json_schema<StringT, Alloc>&& value){
+    void add(basic_jcr_validator<JsonT>&& value){
         switch (var_.type_){
         case value_types::array_t:
             var_.value_.array_val_->push_back(std::move(value));
@@ -1746,7 +1603,7 @@ public:
         }
     }
 
-    array_iterator add(const_array_iterator pos, const basic_json_schema<StringT, Alloc>& value)
+    array_iterator add(const_array_iterator pos, const basic_jcr_validator<JsonT>& value)
     {
         switch (var_.type_)
         {
@@ -1760,7 +1617,7 @@ public:
         }
     }
 
-    array_iterator add(const_array_iterator pos, basic_json_schema<StringT, Alloc>&& value){
+    array_iterator add(const_array_iterator pos, basic_jcr_validator<JsonT>&& value){
         switch (var_.type_){
         case value_types::array_t:
             return var_.value_.array_val_->add(pos, std::move(value));
@@ -1782,7 +1639,7 @@ public:
         return var_.length_or_precision_;
     }
 
-    void swap(basic_json_schema<StringT,Alloc>& b)
+    void swap(basic_jcr_validator& b)
     {
         var_.swap(b.var_);
     }
@@ -1798,7 +1655,7 @@ public:
         return v;
     }
 
-    friend void swap(basic_json_schema<StringT,Alloc>& a, basic_json_schema<StringT,Alloc>& b)
+    friend void swap(JsonT& a, JsonT& b)
     {
         a.swap(b);
     }
@@ -1848,15 +1705,15 @@ public:
         var_.assign(rhs,precision);
     }
 
-    static basic_json_schema make_2d_array(size_t m, size_t n);
+    static basic_jcr_validator make_2d_array(size_t m, size_t n);
 
     template <typename T>
-    static basic_json_schema make_2d_array(size_t m, size_t n, T val);
+    static basic_jcr_validator make_2d_array(size_t m, size_t n, T val);
 
-    static basic_json_schema make_3d_array(size_t m, size_t n, size_t k);
+    static basic_jcr_validator make_3d_array(size_t m, size_t n, size_t k);
 
     template <typename T>
-    static basic_json_schema make_3d_array(size_t m, size_t n, size_t k, T val);
+    static basic_jcr_validator make_3d_array(size_t m, size_t n, size_t k, T val);
 
     object_range members()
     {
@@ -1958,23 +1815,23 @@ public:
         }
     }
 
-    bool validate(const basic_json<StringT,Alloc>& val) const
+    bool validate(const JsonT& val) const
     {
         return var_.validate(val);
     }
 
 private:
 
-    friend std::basic_ostream<typename StringT::value_type>& operator<<(std::basic_ostream<typename StringT::value_type>& os, const basic_json_schema<StringT, Alloc>& o)
+    friend std::basic_ostream<typename string_type::value_type>& operator<<(std::basic_ostream<typename string_type::value_type>& os, const basic_jcr_validator<JsonT>& o)
     {
         o.to_stream(os);
         return os;
     }
 
-    friend std::basic_istream<typename StringT::value_type>& operator<<(std::basic_istream<typename StringT::value_type>& is, basic_json_schema<StringT, Alloc>& o)
+    friend std::basic_istream<typename string_type::value_type>& operator<<(std::basic_istream<typename string_type::value_type>& is, basic_jcr_validator<JsonT>& o)
     {
-        basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
-        basic_json_reader<typename StringT::value_type> reader(is, handler);
+        basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
+        basic_json_reader<typename string_type::value_type> reader(is, handler);
         reader.read_next();
         reader.check_done();
         if (!handler.is_valid())
@@ -1992,74 +1849,10 @@ void swap(typename JsonT::member_type& a, typename JsonT::member_type& b)
     a.swap(b);
 }
 
-template<typename StringT, typename Alloc>
-bool basic_json_schema<StringT, Alloc>::operator!=(const basic_json_schema<StringT, Alloc>& rhs) const
+template<class JsonT>
+basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_stream(std::basic_istream<char_type>& is)
 {
-    return !(*this == rhs);
-}
-
-template<typename StringT, typename Alloc>
-bool basic_json_schema<StringT, Alloc>::operator==(const basic_json_schema<StringT, Alloc>& rhs) const
-{
-    return var_ == rhs.var_;
-}
-
-template<typename StringT, typename Alloc>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::make_2d_array(size_t m, size_t n)
-{
-    basic_json_schema<StringT, Alloc> a = basic_json_schema<StringT, Alloc>::array();
-    a.resize(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json_schema<StringT, Alloc>::make_array(n);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-template<typename T>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::make_2d_array(size_t m, size_t n, T val)
-{
-    basic_json_schema<StringT, Alloc> v;
-    v = val;
-    basic_json_schema<StringT, Alloc> a = make_array(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json_schema<StringT, Alloc>::make_array(n, v);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::make_3d_array(size_t m, size_t n, size_t k)
-{
-    basic_json_schema<StringT, Alloc> a = basic_json_schema<StringT, Alloc>::array();
-    a.resize(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json_schema<StringT, Alloc>::make_2d_array(n, k);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-template<typename T>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::make_3d_array(size_t m, size_t n, size_t k, T val)
-{
-    basic_json_schema<StringT, Alloc> v;
-    v = val;
-    basic_json_schema<StringT, Alloc> a = make_array(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json_schema<StringT, Alloc>::make_2d_array(n, k, v);
-    }
-    return a;
-}
-
-template<typename StringT, typename Alloc>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_stream(std::basic_istream<char_type>& is)
-{
-    basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
+    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
     basic_json_reader<char_type> reader(is, handler);
     reader.read_next();
     reader.check_done();
@@ -2070,11 +1863,11 @@ basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_strea
     return handler.get_result();
 }
 
-template<typename StringT, typename Alloc>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_stream(std::basic_istream<char_type>& is, 
+template<class JsonT>
+basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_stream(std::basic_istream<char_type>& is, 
                                                               basic_parse_error_handler<char_type>& err_handler)
 {
-    basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
+    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
     basic_json_reader<char_type> reader(is, handler, err_handler);
     reader.read_next();
     reader.check_done();
@@ -2085,8 +1878,8 @@ basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_strea
     return handler.get_result();
 }
 
-template<typename StringT, typename Alloc>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_file(const std::string& filename)
+template<class JsonT>
+basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::string& filename)
 {
     FILE* fp;
 
@@ -2103,7 +1896,7 @@ basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_file(
         JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Cannot open file %s", filename);
     }
 #endif
-    basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
+    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
     try
     {
         // obtain file size:
@@ -2143,8 +1936,8 @@ basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_file(
     return handler.get_result();
 }
 
-template<typename StringT, typename Alloc>
-basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_file(const std::string& filename, 
+template<class JsonT>
+basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::string& filename, 
                                                             basic_parse_error_handler<char_type>& err_handler)
 {
     FILE* fp;
@@ -2163,7 +1956,7 @@ basic_json_schema<StringT, Alloc> basic_json_schema<StringT, Alloc>::parse_file(
     }
 #endif
 
-    basic_json_deserializer<basic_json_schema<StringT, Alloc>> handler;
+    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
     try
     {
         // obtain file size:
@@ -2282,11 +2075,11 @@ json_printable<JsonT> pretty_print(const JsonT& val,
     return json_printable<JsonT>(val, true, format);
 }
 
-typedef basic_json_schema<std::string,std::allocator<char>> json_schema;
-typedef basic_json_schema<std::wstring,std::allocator<wchar_t>> wjson_schema;
+typedef basic_jcr_validator<json> jcr_validator;
+typedef basic_jcr_validator<wjson> wjcr_validator;
 
-typedef basic_jcr_deserializer<json_schema> jcr_deserializer;
-typedef basic_jcr_deserializer<wjson_schema> wjcr_deserializer;
+typedef basic_jcr_deserializer<jcr_validator> jcr_deserializer;
+typedef basic_jcr_deserializer<wjcr_validator> wjcr_deserializer;
 
 }}
 

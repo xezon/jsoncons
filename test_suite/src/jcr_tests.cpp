@@ -12,7 +12,7 @@
 #include <ctime>
 #include <new>
 #include "jsoncons/json.hpp"
-#include "jsoncons_ext/jcr/jcr.hpp"
+#include "jsoncons_ext/jcr/jcr_validator.hpp"
 
 using namespace jsoncons;
 using namespace jsoncons::jcr;
@@ -25,7 +25,7 @@ struct jcr_fixture
 
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
-    json_schema schema = json_schema::parse(R"(
+    jcr_validator schema = jcr_validator::parse(R"(
     {
         "line-count" : 3426,
         "word-count" : 27886
