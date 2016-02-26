@@ -227,6 +227,12 @@ bool name_le_string(const StringT& a, const CharT* b, size_t length)
     return a.length() <= length;
 }
 
+template <typename CharT>
+bool are_equal(const CharT* s1, size_t length1, const CharT* s2, size_t length2)
+{
+    return length1 == length2 && std::char_traits<CharT>::compare(s1,s2,length2) == 0;
+}
+
 template <class StringT,typename CharT>
 bool name_eq_string(const StringT& a, const CharT* b, size_t length)
 {

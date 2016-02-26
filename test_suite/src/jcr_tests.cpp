@@ -49,6 +49,25 @@ BOOST_AUTO_TEST_CASE(test_jcr)
     BOOST_CHECK(!schema.validate(val2));
 }
 
+BOOST_AUTO_TEST_CASE(test_jcr_integer)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        "line-count" : integer,
+        "word-count" : integer
+    }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "line-count" : 3426,
+        "word-count" : 27886
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 

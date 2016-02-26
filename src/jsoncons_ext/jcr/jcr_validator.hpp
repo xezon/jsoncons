@@ -18,6 +18,7 @@
 #include <typeinfo>
 #include "jsoncons/json.hpp"
 #include "jcr_deserializer.hpp"
+#include "jcr_parser.hpp"
 #include "jcr_structures.hpp"
 
 #if defined(__GNUC__)
@@ -36,9 +37,6 @@ void serialize(basic_json_output_handler<CharT>& os, const T&)
 template <typename JsonT>
 class basic_jcr_validator;
 
-template <typename CharT>
-class basic_parse_error_handler;
-
 enum class value_types : uint8_t 
 {
     // Simple types
@@ -48,6 +46,7 @@ enum class value_types : uint8_t
     uinteger_t,
     bool_t,
     null_t,
+    any_integer_t,
     // Non simple types
     string_t,
     object_t,
@@ -276,6 +275,11 @@ public:
 
         explicit variant(null_type)
             : type_(value_types::null_t)
+        {
+        }
+
+        explicit variant(value_types type)
+            : type_(type)
         {
         }
 
@@ -622,6 +626,8 @@ public:
 
             switch (type_)
             {
+            case value_types::any_integer_t:
+                return val.is_integer() || val.is_uinteger();
             case value_types::bool_t:
                 return value_.bool_val_ == val.as_bool();
             case value_types::null_t:
@@ -716,8 +722,8 @@ public:
 
     static basic_jcr_validator parse(const string_type& s)
     {
-        basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
-        basic_json_parser<char_type> parser(handler);
+        basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
+        basic_jcr_parser<char_type> parser(handler);
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
         parser.end_parse();
@@ -731,8 +737,8 @@ public:
 
     static basic_jcr_validator parse(const string_type& s, basic_parse_error_handler<char_type>& err_handler)
     {
-        basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
-        basic_json_parser<char_type> parser(handler,err_handler);
+        basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
+        basic_jcr_parser<char_type> parser(handler,err_handler);
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
         parser.end_parse();
@@ -848,15 +854,13 @@ public:
     {
     }
 
-    template <typename T>
-    basic_jcr_validator(T val)
-        : var_(null_type())
-    {
-        json_type_traits<value_type,T>::assign(*this,val);
-    }
-
     basic_jcr_validator(double val, uint8_t precision)
         : var_(val,precision)
+    {
+    }
+
+    basic_jcr_validator(value_types type)
+        : var_(type)
     {
     }
 
@@ -1830,7 +1834,7 @@ private:
 
     friend std::basic_istream<typename string_type::value_type>& operator<<(std::basic_istream<typename string_type::value_type>& is, basic_jcr_validator<JsonT>& o)
     {
-        basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
+        basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
         basic_json_reader<typename string_type::value_type> reader(is, handler);
         reader.read_next();
         reader.check_done();
@@ -1852,7 +1856,7 @@ void swap(typename JsonT::member_type& a, typename JsonT::member_type& b)
 template<class JsonT>
 basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_stream(std::basic_istream<char_type>& is)
 {
-    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
+    basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
     basic_json_reader<char_type> reader(is, handler);
     reader.read_next();
     reader.check_done();
@@ -1867,7 +1871,7 @@ template<class JsonT>
 basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_stream(std::basic_istream<char_type>& is, 
                                                               basic_parse_error_handler<char_type>& err_handler)
 {
-    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
+    basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
     basic_json_reader<char_type> reader(is, handler, err_handler);
     reader.read_next();
     reader.check_done();
@@ -1896,7 +1900,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
         JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Cannot open file %s", filename);
     }
 #endif
-    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
+    basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
     try
     {
         // obtain file size:
@@ -1915,7 +1919,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Error reading file %s", filename);
             }
 
-            basic_json_parser<char_type> parser(handler);
+            basic_jcr_parser<char_type> parser(handler);
             parser.begin_parse();
             parser.parse(buffer.data(),0,buffer.size());
             parser.end_parse();
@@ -1956,7 +1960,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
     }
 #endif
 
-    basic_json_deserializer<basic_jcr_validator<JsonT>> handler;
+    basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
     try
     {
         // obtain file size:
@@ -1975,7 +1979,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Error reading file %s", filename);
             }
 
-            basic_json_parser<char_type> parser(handler,err_handler);
+            basic_jcr_parser<char_type> parser(handler,err_handler);
             parser.begin_parse();
             parser.parse(buffer.data(),0,buffer.size());
             parser.end_parse();
@@ -1999,7 +2003,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
 template <typename JsonT>
 std::basic_istream<typename JsonT::char_type>& operator>>(std::basic_istream<typename JsonT::char_type>& is, JsonT& o)
 {
-    basic_json_deserializer<JsonT> handler;
+    basic_jcr_deserializer<JsonT> handler;
     basic_json_reader<typename JsonT::char_type> reader(is, handler);
     reader.read_next();
     reader.check_done();
