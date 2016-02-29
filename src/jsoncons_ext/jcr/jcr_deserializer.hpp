@@ -217,15 +217,15 @@ private:
         auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].value_ = ValT(new ValT::any_integer_rule());
+            stack_[top_].value_ = new ValT::any_integer_rule();
         }
         else if (are_equal(p,length,sliteral.first,sliteral.second))
         {
-            stack_[top_].value_ = ValT(new ValT::any_string_rule());
+            stack_[top_].value_ = new ValT::any_string_rule();
         }
         else
         {
-            stack_[top_].value_ = ValT(p,length,sa_);
+            stack_[top_].value_ = new ValT::string_rule(p,length,sa_);
         }
         if (++top_ >= stack_.size())
         {

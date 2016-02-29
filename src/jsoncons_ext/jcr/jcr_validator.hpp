@@ -64,6 +64,32 @@ class basic_jcr_validator
 {
 public:
 
+    typedef JsonT json_type;
+
+    typedef typename JsonT::allocator_type allocator_type;
+
+    typedef typename JsonT::char_type char_type;
+    typedef typename JsonT::char_traits_type char_traits_type;
+
+    typedef typename JsonT::string_allocator string_allocator;
+    typedef typename JsonT::string_type string_type;
+    typedef basic_jcr_validator<JsonT> value_type;
+    typedef name_value_pair<string_type,value_type> member_type;
+
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<JsonT> array_allocator;
+
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<member_type> object_allocator;
+
+    typedef jcr_array_validator<value_type,array_allocator> array;
+    typedef jcr_object_validator<string_type,value_type,object_allocator>  object;
+
+    typedef jsoncons::null_type null_type;
+
+    typedef typename object::iterator object_iterator;
+    typedef typename object::const_iterator const_object_iterator;
+    typedef typename array::iterator array_iterator;
+    typedef typename array::const_iterator const_array_iterator;
+
     class rule
     {
     public:
@@ -89,6 +115,30 @@ public:
         bool validate(const JsonT& val) const override
         {
             return val.is_integer() || val.as_uinteger();
+        }
+    };
+
+    class string_rule : public rule
+    {
+        string_type s_;
+    public:
+        string_rule(const char_type* p, size_t length, string_allocator sa)
+            : s_(p,length,sa)
+        {
+        }
+        string_rule(const string_type& s)
+            : s_(s)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new string_rule(s_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_string() && val.as_string() == s_;
         }
     };
 
@@ -256,32 +306,6 @@ public:
             return val.is_uinteger() && val.as_uinteger() >= from_ && val.as_uinteger() <= to_;
         }
     };
-
-    typedef JsonT json_type;
-
-    typedef typename JsonT::allocator_type allocator_type;
-
-    typedef typename JsonT::char_type char_type;
-    typedef typename JsonT::char_traits_type char_traits_type;
-
-    typedef typename JsonT::string_allocator string_allocator;
-    typedef typename JsonT::string_type string_type;
-    typedef basic_jcr_validator<JsonT> value_type;
-    typedef name_value_pair<string_type,value_type> member_type;
-
-    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<JsonT> array_allocator;
-
-    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<member_type> object_allocator;
-
-    typedef jcr_array_validator<value_type,array_allocator> array;
-    typedef jcr_object_validator<string_type,value_type,object_allocator>  object;
-
-    typedef jsoncons::null_type null_type;
-
-    typedef typename object::iterator object_iterator;
-    typedef typename object::const_iterator const_object_iterator;
-    typedef typename array::iterator array_iterator;
-    typedef typename array::const_iterator const_array_iterator;
 
     template <typename IteratorT>
     class range 
