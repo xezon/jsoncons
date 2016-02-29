@@ -189,7 +189,7 @@ private:
         else
         {
             size_t count = top_ - (stack2_.back() + 1);
-            stack_[stack2_.back()].value_.resize(count);
+            stack_[stack2_.back()].value_.array_value().resize(count);
 
             auto s = stack_.begin() + (stack2_.back()+1);
             auto dend = stack_[stack2_.back()].value_.elements().end();
