@@ -105,6 +105,7 @@ enum class states
     f,  
     any_integer,
     any_string,
+    rule_name,
     cr,
     lf,
     done
@@ -645,12 +646,31 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            state_ = states::rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
                         break;
                     }
                 }
                 ++p_;
                 ++column_;
+                break;
+            case states::rule_name:
+                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+                {
+                    string_buffer_.push_back(*p_);
+                    ++p_;
+                }
+                else
+                {
+                    handler_->rule_name(string_buffer_.data(),string_buffer_.length(),*this);
+                    state_ = states::expect_comma_or_end;
+                }
                 break;
             case states::expect_member_name: 
                 {

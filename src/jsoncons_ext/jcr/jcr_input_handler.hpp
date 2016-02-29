@@ -69,6 +69,11 @@ public:
         do_string_value(p, length, context);
     }
 
+    void rule_name(const CharT* p, size_t length, const basic_parsing_context<CharT>& context) 
+    {
+        do_rule_name(p, length, context);
+    }
+
     void value(const CharT* p, const basic_parsing_context<CharT>& context) 
     {
         do_string_value(p, std::char_traits<CharT>::length(p), context);
@@ -147,6 +152,8 @@ private:
     virtual void do_null_value(const basic_parsing_context<CharT>& context) = 0;
 
     virtual void do_string_value(const CharT* value, size_t length, const basic_parsing_context<CharT>& context) = 0;
+
+    virtual void do_rule_name(const CharT* value, size_t length, const basic_parsing_context<CharT>& context) = 0;
 
     virtual void do_double_value(double value, uint8_t precision, const basic_parsing_context<CharT>& context) = 0;
 

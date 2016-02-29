@@ -207,17 +207,21 @@ private:
         stack_[top_].name_ = string_type(p,length,sa_);
     }
 
+    void do_rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
+    {
+    }
+
     void do_string_value(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
         auto literal = jcr_char_traits<char_type>::integer_literal();
         auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].value_ = ValT(new ValT::integer_rule());
+            stack_[top_].value_ = ValT(new ValT::any_integer_rule());
         }
         else if (are_equal(p,length,sliteral.first,sliteral.second))
         {
-            stack_[top_].value_ = ValT(new ValT::string_rule());
+            stack_[top_].value_ = ValT(new ValT::any_string_rule());
         }
         else
         {
@@ -240,7 +244,7 @@ private:
 
     void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].value_ = ValT(from,to);
+        stack_[top_].value_ = ValT(new ValT::integer_range_rule(from,to));
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -249,7 +253,7 @@ private:
 
     void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].value_ = ValT(from,to);
+        stack_[top_].value_ = ValT(new ValT::uinteger_range_rule(from,to));
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);

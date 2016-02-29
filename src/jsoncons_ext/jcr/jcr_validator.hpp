@@ -74,16 +74,16 @@ public:
         }
     };
 
-    class integer_rule : public rule
+    class any_integer_rule : public rule
     {
     public:
-        integer_rule()
+        any_integer_rule()
         {
         }
 
         rule* clone() const override
         {
-            return new integer_rule();
+            return new any_integer_rule();
         }
 
         bool validate(const JsonT& val) const override
@@ -92,16 +92,16 @@ public:
         }
     };
 
-    class string_rule : public rule
+    class any_string_rule : public rule
     {
     public:
-        string_rule()
+        any_string_rule()
         {
         }
 
         rule* clone() const override
         {
-            return new string_rule();
+            return new any_string_rule();
         }
 
         bool validate(const JsonT& val) const override
@@ -307,18 +307,6 @@ public:
             : type_(value_types::rule_t)
         {
             value_.rule_val_ = rule;
-        }
-
-        explicit variant(int64_t from, int64_t to)
-            : type_(value_types::rule_t)
-        {
-            value_.rule_val_ = new integer_range_rule(from,to);
-        }
-
-        explicit variant(uint64_t from, uint64_t to)
-            : type_(value_types::rule_t)
-        {
-            value_.rule_val_ = new uinteger_range_rule(from,to);
         }
 
         explicit variant(bool val)
@@ -902,16 +890,6 @@ public:
 
     basic_jcr_validator(rule* rule)
         : var_(rule)
-    {
-    }
-
-    basic_jcr_validator(int64_t from, int64_t to)
-        : var_(from,to)
-    {
-    }
-
-    basic_jcr_validator(uint64_t from, uint64_t to)
-        : var_(from,to)
     {
     }
 
