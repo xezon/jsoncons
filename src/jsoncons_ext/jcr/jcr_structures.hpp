@@ -119,20 +119,9 @@ public:
         elements_.swap(val.elements_);
     }
 
-    size_t size() const {return elements_.size();}
-
     size_t capacity() const {return elements_.capacity();}
 
     void clear() {elements_.clear();}
-
-    void shrink_to_fit() 
-    {
-        for (size_t i = 0; i < elements_.size(); ++i)
-        {
-            elements_[i].shrink_to_fit();
-        }
-        elements_.shrink_to_fit();
-    }
 
     void reserve(size_t n) {elements_.reserve(n);}
 
@@ -336,20 +325,9 @@ public:
         members_.swap(val.members_);
     }
 
-    size_t size() const {return members_.size();}
-
     size_t capacity() const {return members_.capacity();}
 
     void clear() {members_.clear();}
-
-    void shrink_to_fit() 
-    {
-        for (size_t i = 0; i < members_.size(); ++i)
-        {
-            members_[i].shrink_to_fit();
-        }
-        members_.shrink_to_fit();
-    }
 
     void reserve(size_t n) {members_.reserve(n);}
 

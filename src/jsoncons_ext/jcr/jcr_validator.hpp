@@ -578,16 +578,10 @@ public:
             {
             case value_types::rule_t:
                 return value_.rule_val_->validate(val);
-            case value_types::null_t:
-                return val.is_null();
-            case value_types::empty_object_t:
-                return val.is_object() && val.size() == 0;
             case value_types::array_t:
                 return value_.array_val_->validate(val.array_value());
-                break;
             case value_types::object_t:
                 return value_.object_val_->validate(val.object_value());
-                break;
             default:
                 // throw
                 break;
@@ -817,21 +811,6 @@ public:
     bool operator==(const basic_jcr_validator& rhs) const
     {
         return var_ == rhs.var_;
-    }
-
-    size_t size() const JSONCONS_NOEXCEPT
-    {
-        switch (var_.type_)
-        {
-        case value_types::empty_object_t:
-            return 0;
-        case value_types::object_t:
-            return var_.value_.object_val_->size();
-        case value_types::array_t:
-            return var_.value_.array_val_->size();
-        default:
-            return 0;
-        }
     }
 
     string_type to_string(const string_allocator& allocator=string_allocator()) const JSONCONS_NOEXCEPT
@@ -1073,36 +1052,6 @@ public:
         }
     }
 
-    basic_jcr_validator<JsonT>& at(size_t i)
-    {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            if (i >= var_.value_.array_val_->size())
-            {
-                JSONCONS_THROW_EXCEPTION(std::out_of_range,"Invalid array subscript");
-            }
-            return var_.value_.array_val_->operator[](i);
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Index on non-array value not supported");
-        }
-    }
-
-    const basic_jcr_validator<JsonT>& at(size_t i) const
-    {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            if (i >= var_.value_.array_val_->size())
-            {
-                JSONCONS_THROW_EXCEPTION(std::out_of_range,"Invalid array subscript");
-            }
-            return var_.value_.array_val_->operator[](i);
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Index on non-array value not supported");
-        }
-    }
-
     object_iterator find(const string_type& name)
     {
         switch (var_.type_)
@@ -1188,23 +1137,6 @@ public:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to get %s from a value that is not an object", name);
             }
-        }
-    }
-
-    // Modifiers
-
-    void shrink_to_fit()
-    {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            var_.value_.array_val_->shrink_to_fit();
-            break;
-        case value_types::object_t:
-            var_.value_.object_val_->shrink_to_fit();
-            break;
-        default:
-            break;
         }
     }
 
@@ -1451,17 +1383,6 @@ public:
     void swap(basic_jcr_validator& b)
     {
         var_.swap(b.var_);
-    }
-
-    template <class T>
-    std::vector<T> as_vector() const
-    {
-        std::vector<T> v(size());
-        for (size_t i = 0; i < v.size(); ++i)
-        {
-            v[i] = json_type_traits<value_type,T>::as(at(i));
-        }
-        return v;
     }
 
     friend void swap(JsonT& a, JsonT& b)
