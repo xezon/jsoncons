@@ -26,11 +26,19 @@ template <class ValT>
 class rule
 {
 public:
+    typedef typename ValT::string_type string_type;
     typedef typename ValT::json_type json_type;
+
+    typedef typename std::vector<std::pair<string_type,ValT>>::iterator iterator;
+    typedef std::move_iterator<iterator> move_iterator;
 
     virtual bool validate(const json_type& val) const = 0;
     virtual rule* clone() const = 0;
     virtual ~rule()
+    {
+    }
+
+    virtual void insert(move_iterator first, move_iterator last)
     {
     }
 };
@@ -97,6 +105,18 @@ public:
                const Alloc& allocator = Alloc())
         : elements_(std::move(init),allocator)
     {
+    }
+
+    void insert(move_iterator first, move_iterator last) override
+    {
+        size_t count = std::distance(first,last);
+        size_t pos = elements_.size();
+        elements_.resize(pos+count);
+        auto d = elements_.begin()+pos;
+        for (auto s = first; s != last; ++s, ++d)
+        {
+            *d = s->second;
+        }
     }
 
     rule* clone() const override
@@ -222,6 +242,11 @@ public:
 
     typedef json_object_iterator<base_iterator,base_iterator> iterator;
     typedef json_object_iterator<const_base_iterator,base_iterator> const_iterator;
+
+    static value_type move_pair(std::pair<string_type,ValT>&& val)
+    {
+        return value_type(std::move(val.first),std::move(val.second));
+    }
 private:
     std::vector<value_type,allocator_type> members_;
 public:
@@ -248,6 +273,11 @@ public:
     jcr_object_validator(jcr_object_validator&& val,const allocator_type& allocator) :
         members_(std::move(val.members_),allocator)
     {
+    }
+
+    void insert(move_iterator first, move_iterator last) override
+    {
+        insert(first,last,move_pair);
     }
 
     rule* clone() const override
