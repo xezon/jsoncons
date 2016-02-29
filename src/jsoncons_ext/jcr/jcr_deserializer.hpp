@@ -177,13 +177,19 @@ private:
             auto send = s + count;
             stack_[stack2_.back()].second.object_value().insert(
                 std::make_move_iterator(s),
-                std::make_move_iterator(send),
-                move_pair);
+                std::make_move_iterator(send));
             top_ -= count;
         }
         else
         {
             size_t count = top_ - (stack2_.back() + 1);
+            auto s = stack_.begin() + (stack2_.back()+1);
+            auto send = s + count;
+            stack_[stack2_.back()].second.array_value().insert(
+                std::make_move_iterator(s),
+                std::make_move_iterator(send));
+            top_ -= count;
+            /*size_t count = top_ - (stack2_.back() + 1);
             stack_[stack2_.back()].second.array_value().resize(count);
 
             auto s = stack_.begin() + (stack2_.back()+1);
@@ -193,7 +199,7 @@ private:
             {
                 *it = std::move(s->second);
             }
-            top_ -= count;
+            top_ -= count;*/
         }
     }
 
