@@ -614,13 +614,8 @@ public:
         uint8_t length_or_precision_;
         union
         {
-            double double_val_;
-            int64_t integer_val_;
-            uint64_t uinteger_val_;
-            bool bool_val_;
             object* object_val_;
             array* array_val_;
-            string_type* string_val_;
             rule<JsonT>* rule_val_;
         } value_;
     };
