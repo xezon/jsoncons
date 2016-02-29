@@ -4,22 +4,20 @@
 
 // See https://github.com/danielaparker/jsoncons for latest version
 
-#ifndef JSONCONS_JSON_INPUT_HANDLER_HPP
-#define JSONCONS_JSON_INPUT_HANDLER_HPP
+#ifndef JSONCONS_JCR_JCR_INPUT_HANDLER_HPP
+#define JSONCONS_JCR_JCR_INPUT_HANDLER_HPP
 
 #include <string>
 #include "jsoncons/jsoncons.hpp"
+#include "jsoncons/parse_error_handler.hpp"
 
-namespace jsoncons {
-
-template <typename CharT>
-class basic_parsing_context;
+namespace jsoncons { namespace jcr {
 
 template <typename CharT>
-class basic_json_input_handler
+class basic_jcr_input_handler
 {
 public:
-    virtual ~basic_json_input_handler() {}
+    virtual ~basic_jcr_input_handler() {}
 
     void begin_json()
     {
@@ -91,9 +89,14 @@ public:
         do_integer_value(value,context);
     }
 
-    void value(unsigned int value, const basic_parsing_context<CharT>& context) 
+    void range_value(long long from, long long to, const basic_parsing_context<CharT>& context) 
     {
-        do_uinteger_value(value,context);
+        do_integer_range_value(from, to, context);
+    }
+
+    void range_value(unsigned long long from, unsigned long long to, const basic_parsing_context<CharT>& context) 
+    {
+        do_uinteger_range_value(from, to, context);
     }
 
     void value(unsigned long value, const basic_parsing_context<CharT>& context) 
@@ -151,83 +154,16 @@ private:
 
     virtual void do_uinteger_value(uint64_t value, const basic_parsing_context<CharT>& context) = 0;
 
+    virtual void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<CharT>& context) = 0;
+
+    virtual void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<CharT>& context) = 0;
+
     virtual void do_bool_value(bool value, const basic_parsing_context<CharT>& context) = 0;
 };
 
+typedef basic_jcr_input_handler<char> jcr_input_handler;
+typedef basic_jcr_input_handler<wchar_t> wjcr_input_handler;
 
-template <typename CharT>
-class basic_empty_json_input_handler : public basic_json_input_handler<CharT>
-{
-public:
-    static basic_json_input_handler<CharT>& instance()
-    {
-        static basic_empty_json_input_handler<CharT> instance;
-        return instance;
-    }
-private:
-    void do_begin_json() override
-    {
-    }
-
-    void do_end_json() override
-    {
-    }
-
-    void do_begin_object(const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_end_object(const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_begin_array(const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_end_array(const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_name(const CharT* p, size_t length, const basic_parsing_context<CharT>&) override
-    {
-        (void)p;
-        (void)length;
-    }
-
-    void do_null_value(const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_string_value(const CharT* p, size_t length, const basic_parsing_context<CharT>&) override
-    {
-        (void)p;
-        (void)length;
-    }
-
-    void do_double_value(double, uint8_t, const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_integer_value(int64_t, const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_uinteger_value(uint64_t, const basic_parsing_context<CharT>&) override
-    {
-    }
-
-    void do_bool_value(bool, const basic_parsing_context<CharT>&) override
-    {
-    }
-};
-
-typedef basic_json_input_handler<char> json_input_handler;
-typedef basic_json_input_handler<wchar_t> wjson_input_handler;
-
-typedef basic_empty_json_input_handler<char> empty_json_input_handler;
-typedef basic_empty_json_input_handler<wchar_t> wempty_json_input_handler;
-
-}
+}}
 
 #endif

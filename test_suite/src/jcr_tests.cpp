@@ -68,6 +68,54 @@ BOOST_AUTO_TEST_CASE(test_jcr_integer)
     BOOST_CHECK(schema.validate(val1));
 }
 
+BOOST_AUTO_TEST_CASE(test_jcr_integer_range)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        "line-count" : 0..,
+        "word-count" : 0..
+    }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "line-count" : 3426,
+        "word-count" : 27886
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+
+    jcr_validator schema2 = jcr_validator::parse(R"(
+    {
+        "line-count" : 3427..,
+        "word-count" : 0..
+    }
+    )");
+
+    BOOST_CHECK(!schema2.validate(val1));
+}
+
+BOOST_AUTO_TEST_CASE(test_jcr_string)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        "file-name"  : string,
+        "line-count" : 0..,
+        "word-count" : 0..
+    }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "file-name"  : "rfc7159.txt",
+        "line-count" : 3426,
+        "word-count" : 27886
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
 BOOST_AUTO_TEST_SUITE_END()
 
 

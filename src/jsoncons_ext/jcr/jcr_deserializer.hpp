@@ -14,12 +14,12 @@
 #include <cstdlib>
 #include <memory>
 #include "jsoncons/jsoncons.hpp"
-#include "jsoncons/json_input_handler.hpp"
+#include "jcr_input_handler.hpp"
 
 namespace jsoncons { namespace jcr {
 
 template <class ValT>
-class basic_jcr_deserializer : public basic_json_input_handler<typename ValT::char_type>
+class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::char_type>
 {
     static const int default_stack_size = 1000;
 
@@ -210,9 +210,14 @@ private:
     void do_string_value(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
         auto literal = jcr_char_traits<char_type>::integer_literal();
+        auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].value_ = ValT(value_types::any_integer_t);
+            stack_[top_].value_ = ValT(new ValT::integer_rule());
+        }
+        else if (are_equal(p,length,sliteral.first,sliteral.second))
+        {
+            stack_[top_].value_ = ValT(new ValT::string_rule());
         }
         else
         {
@@ -227,6 +232,24 @@ private:
     void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
     {
         stack_[top_].value_ = value;
+        if (++top_ >= stack_.size())
+        {
+            stack_.resize(top_*2);
+        }
+    }
+
+    void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
+    {
+        stack_[top_].value_ = ValT(from,to);
+        if (++top_ >= stack_.size())
+        {
+            stack_.resize(top_*2);
+        }
+    }
+
+    void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
+    {
+        stack_[top_].value_ = ValT(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);

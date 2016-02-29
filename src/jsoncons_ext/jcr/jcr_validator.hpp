@@ -46,11 +46,11 @@ enum class value_types : uint8_t
     uinteger_t,
     bool_t,
     null_t,
-    any_integer_t,
     // Non simple types
     string_t,
     object_t,
-    array_t
+    array_t,
+    rule_t
 };
 
 inline
@@ -63,6 +63,96 @@ template <class JsonT>
 class basic_jcr_validator
 {
 public:
+
+    class rule
+    {
+    public:
+        virtual bool validate(const JsonT& val) const = 0;
+        virtual rule* clone() const = 0;
+        virtual ~rule()
+        {
+        }
+    };
+
+    class integer_rule : public rule
+    {
+    public:
+        integer_rule()
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new integer_rule();
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_integer() || val.as_uinteger();
+        }
+    };
+
+    class string_rule : public rule
+    {
+    public:
+        string_rule()
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new string_rule();
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_string();
+        }
+    };
+
+    class integer_range_rule : public rule
+    {
+        int64_t from_;
+        int64_t to_;
+
+    public:
+        integer_range_rule(int64_t from, int64_t to)
+            : from_(from), to_(to)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new integer_range_rule(from_,to_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_integer() && val.as_integer() >= from_ && val.as_integer() <= to_;
+        }
+    };
+
+    class uinteger_range_rule : public rule
+    {
+        uint64_t from_;
+        uint64_t to_;
+    public:
+        uinteger_range_rule(uint64_t from, uint64_t to)
+            : from_(from), to_(to)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new uinteger_range_rule(from_,to_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_uinteger() && val.as_uinteger() >= from_ && val.as_uinteger() <= to_;
+        }
+    };
+
     typedef JsonT json_type;
 
     typedef typename JsonT::allocator_type allocator_type;
@@ -120,71 +210,6 @@ public:
 
     struct variant
     {
-        struct string_data : public string_allocator
-        {
-            const char_type* c_str() const { return p_; }
-            const char_type* data() const { return p_; }
-            size_t length() const { return length_; }
-            string_allocator get_allocator() const
-            {
-                return *this;
-            }
-
-            bool operator==(const string_data& rhs) const
-            {
-                return length() == rhs.length() ? std::char_traits<char_type>::compare(data(), rhs.data(), length()) == 0 : false;
-            }
-
-            string_data(const string_allocator& allocator)
-                : string_allocator(allocator), p_(nullptr), length_(0)
-            {
-            }
-
-            char_type* p_;
-            size_t length_;
-        private:
-            string_data(const string_data&);
-            string_data& operator=(const string_data&);
-        };
-
-        struct string_dataA
-        {
-            string_data data;
-            char_type c[1];
-        };
-        typedef typename std::aligned_storage<sizeof(string_dataA), JSONCONS_ALIGNOF(string_dataA)>::type storage_type;
-
-        static size_t aligned_size(size_t n)
-        {
-            return sizeof(storage_type) + n;
-        }
-
-        string_data* create_string_data(const char_type* s, size_t length, const string_allocator& allocator)
-        {
-            size_t mem_size = aligned_size(length*sizeof(char));
-
-            typename std::allocator_traits<string_allocator>:: template rebind_alloc<char> alloc(allocator);
-
-            char* storage = alloc.allocate(mem_size);
-            string_data* ps = new(storage)string_data(allocator);
-            auto psa = reinterpret_cast<string_dataA*>(storage); 
-
-            ps->p_ = new(&psa->c)char_type[length + 1];
-            memcpy(ps->p_, s, length*sizeof(char_type));
-            ps->p_[length] = 0;
-            ps->length_ = length;
-            return ps;
-        }
-
-        void destroy_string_data(const string_allocator& allocator, string_data* p)
-        {
-            size_t mem_size = aligned_size(p->length_*sizeof(char_type));
-            typename std::allocator_traits<string_allocator>:: template rebind_alloc<char> alloc(allocator);
-            alloc.deallocate(reinterpret_cast<char*>(p),mem_size);
-        }
-
-        static const size_t small_string_capacity = (sizeof(int64_t)/sizeof(char_type)) - 1;
-
         variant()
             : type_(value_types::empty_object_t)
         {
@@ -278,9 +303,22 @@ public:
         {
         }
 
-        explicit variant(value_types type)
-            : type_(type)
+        explicit variant(rule* rule)
+            : type_(value_types::rule_t)
         {
+            value_.rule_val_ = rule;
+        }
+
+        explicit variant(int64_t from, int64_t to)
+            : type_(value_types::rule_t)
+        {
+            value_.rule_val_ = new integer_range_rule(from,to);
+        }
+
+        explicit variant(uint64_t from, uint64_t to)
+            : type_(value_types::rule_t)
+        {
+            value_.rule_val_ = new uinteger_range_rule(from,to);
         }
 
         explicit variant(bool val)
@@ -359,13 +397,15 @@ public:
                 break;
             case value_types::string_t:
                 value_.string_val_ = create_impl<string_type>(var.value_.string_val_->get_allocator(), *(var.value_.string_val_), string_allocator(var.value_.string_val_->get_allocator()));
-                //value_.string_val_ = create_string_data(var.value_.string_val_->data(), var.value_.string_val_->length(), string_allocator(var.value_.string_val_->get_allocator()));
                 break;
             case value_types::array_t:
                 value_.array_val_ = create_impl<array>(var.value_.array_val_->get_allocator(), *(var.value_.array_val_), array_allocator(var.value_.array_val_->get_allocator()));
                 break;
             case value_types::object_t:
                 value_.object_val_ = create_impl<object>(var.value_.object_val_->get_allocator(), *(var.value_.object_val_), object_allocator(var.value_.object_val_->get_allocator()));
+                break;
+            case value_types::rule_t:
+                value_.rule_val_ = var.value_.rule_val_->clone();
                 break;
             default:
                 break;
@@ -383,13 +423,15 @@ public:
             {
             case value_types::string_t:
                 destroy_impl(value_.string_val_->get_allocator(), value_.string_val_);
-                //destroy_string_data(value_.string_val_->get_allocator(), value_.string_val_);
                 break;
             case value_types::array_t:
                 destroy_impl(value_.array_val_->get_allocator(), value_.array_val_);
                 break;
             case value_types::object_t:
                 destroy_impl(value_.object_val_->get_allocator(), value_.object_val_);
+                break;
+            case value_types::rule_t:
+                delete value_.rule_val_;
                 break;
             default:
                 break; 
@@ -626,8 +668,8 @@ public:
 
             switch (type_)
             {
-            case value_types::any_integer_t:
-                return val.is_integer() || val.is_uinteger();
+            case value_types::rule_t:
+                return value_.rule_val_->validate(val);
             case value_types::bool_t:
                 return value_.bool_val_ == val.as_bool();
             case value_types::null_t:
@@ -711,9 +753,8 @@ public:
             bool bool_val_;
             object* object_val_;
             array* array_val_;
-            //string_data* string_val_;
             string_type* string_val_;
-            //char_type small_string_val_[sizeof(int64_t)/sizeof(char_type)];
+            rule* rule_val_;
         } value_;
     };
 
@@ -859,8 +900,18 @@ public:
     {
     }
 
-    basic_jcr_validator(value_types type)
-        : var_(type)
+    basic_jcr_validator(rule* rule)
+        : var_(rule)
+    {
+    }
+
+    basic_jcr_validator(int64_t from, int64_t to)
+        : var_(from,to)
+    {
+    }
+
+    basic_jcr_validator(uint64_t from, uint64_t to)
+        : var_(from,to)
     {
     }
 

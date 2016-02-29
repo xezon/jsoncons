@@ -16,7 +16,7 @@
 #include <stdexcept>
 #include <system_error>
 #include "jsoncons/jsoncons.hpp"
-#include "jsoncons/json_input_handler.hpp"
+#include "jcr_input_handler.hpp"
 #include "jsoncons/parse_error_handler.hpp"
 #include "jcr_error_category.hpp"
 
@@ -35,6 +35,11 @@ struct jcr_char_traits<char>
         static const char* value = "integer";
         return std::pair<const char*,size_t>(value,7);
     }
+    static std::pair<const char*,size_t> string_literal() 
+    {
+        static const char* value = "string";
+        return std::pair<const char*,size_t>(value,6);
+    }
 };
 
 template <>
@@ -45,6 +50,11 @@ struct jcr_char_traits<wchar_t>
     {
         static const wchar_t* value = L"integer";
         return std::pair<const wchar_t*,size_t>(value,7);
+    }
+    static std::pair<const wchar_t*,size_t> string_literal() 
+    {
+        static const wchar_t* value = L"string";
+        return std::pair<const wchar_t*,size_t>(value,6);
     }
 };
 
@@ -85,6 +95,7 @@ enum class states
     minus, 
     zero,  
     integer,
+    dot,
     fraction,
     exp1,
     exp2,
@@ -93,6 +104,7 @@ enum class states
     t,  
     f,  
     any_integer,
+    any_string,
     cr,
     lf,
     done
@@ -106,7 +118,7 @@ class basic_jcr_parser : private basic_parsing_context<CharT>
     states state_;
     int top_;
     std::vector<modes> stack_;
-    basic_json_input_handler<CharT> *handler_;
+    basic_jcr_input_handler<CharT> *handler_;
     basic_parse_error_handler<CharT> *err_handler_;
     size_t column_;
     size_t line_;
@@ -129,7 +141,7 @@ class basic_jcr_parser : private basic_parsing_context<CharT>
     size_t literal_index_;
 
 public:
-    basic_jcr_parser(basic_json_input_handler<CharT>& handler)
+    basic_jcr_parser(basic_jcr_input_handler<CharT>& handler)
        : state_(states::start), 
          top_(-1),
          stack_(default_depth),
@@ -145,7 +157,7 @@ public:
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
     }
 
-    basic_jcr_parser(basic_json_input_handler<CharT>& handler,
+    basic_jcr_parser(basic_jcr_input_handler<CharT>& handler,
                       basic_parse_error_handler<CharT>& err_handler)
        : state_(states::start), 
          top_(-1),
@@ -434,6 +446,13 @@ public:
                         flip(modes::done, modes::start);
                         state_ = states::any_integer;
                         literal_ = jcr_char_traits<CharT>::integer_literal();
+                        literal_index_ = 1;
+                        break;
+                    case 's':
+                        handler_->begin_json();
+                        flip(modes::done, modes::start);
+                        state_ = states::any_string;
+                        literal_ = jcr_char_traits<CharT>::string_literal();
                         literal_index_ = 1;
                         break;
                     case 'n':
@@ -806,6 +825,11 @@ public:
                         literal_ = jcr_char_traits<CharT>::integer_literal();
                         literal_index_ = 1;
                         break;
+                    case 's':
+                        state_ = states::any_string;
+                        literal_ = jcr_char_traits<CharT>::string_literal();
+                        literal_index_ = 1;
+                        break;
                     case 'n':
                         state_ = states::n;
                         literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
@@ -926,6 +950,11 @@ public:
                     case 'i':
                         state_ = states::any_integer;
                         literal_ = jcr_char_traits<CharT>::integer_literal();
+                        literal_index_ = 1;
+                        break;
+                    case 's':
+                        state_ = states::any_string;
+                        literal_ = jcr_char_traits<CharT>::string_literal();
                         literal_index_ = 1;
                         break;
                     case 'n':
@@ -1150,9 +1179,10 @@ public:
                         }
                         break;
                     case '.':
-                        precision_ = static_cast<uint8_t>(number_buffer_.length());
-                        number_buffer_.push_back(static_cast<char>(*p_));
-                        state_ = states::fraction;
+                        state_ = states::dot;
+                        //precision_ = static_cast<uint8_t>(number_buffer_.length());
+                        //number_buffer_.push_back(static_cast<char>(*p_));
+                        //state_ = states::fraction;
                         break;
                     case ',':
                         end_integer_value();
@@ -1165,6 +1195,66 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
                         break;
                     }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::dot:
+                switch (*p_)
+                {
+                case '.':
+                    if (is_negative_)
+                    {
+                        try
+                        {
+                            int64_t d = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                            int64_t to = std::numeric_limits<int64_t>::max JSONCONS_NO_MACRO_EXP();
+                            handler_->range_value(d, to, *this);
+                        }
+                        catch (const std::exception&)
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
+                            handler_->value(null_type(), *this);
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            uint64_t d = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            uint64_t to = std::numeric_limits<uint64_t>::max JSONCONS_NO_MACRO_EXP();
+                            handler_->range_value(d, to, *this);
+                        }
+                        catch (const std::exception&)
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
+                            handler_->value(null_type(), *this);
+                        }
+                    }
+
+                    switch (stack_[top_])
+                    {
+                    case modes::array_element:
+                    case modes::object_member_value:
+                        state_ = states::expect_comma_or_end;
+                        break;
+                    case modes::start:
+                        flip(modes::start,modes::done);
+                        state_ = states::done;
+                        handler_->end_json();
+                        break;
+                    default:
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
+                        break;
+                    }
+                    number_buffer_.clear();
+                    is_negative_ = false;
+                    break;
+                default:
+                    precision_ = static_cast<uint8_t>(number_buffer_.length());
+                    number_buffer_.push_back(static_cast<char>(*p_));
+                    state_ = states::fraction;
+                    break;
                 }
                 ++p_;
                 ++column_;
@@ -1240,9 +1330,10 @@ public:
                         state_ = states::integer;
                         break;
                     case '.':
-                        precision_ = static_cast<uint8_t>(number_buffer_.length());
-                        number_buffer_.push_back(static_cast<char>(*p_));
-                        state_ = states::fraction;
+                        state_ = states::dot;
+                        //precision_ = static_cast<uint8_t>(number_buffer_.length());
+                        //number_buffer_.push_back(static_cast<char>(*p_));
+                        //state_ = states::fraction;
                         break;
                     case ',':
                         end_integer_value();
@@ -1523,6 +1614,7 @@ public:
                 }
                 break;
             case states::any_integer:  
+            case states::any_string:  
                 while (p_ < end_input_ && literal_index_ < literal_.second)
                 {
                     if (*p_ != literal_.first[literal_index_])
