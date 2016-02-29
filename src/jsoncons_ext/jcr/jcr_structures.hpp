@@ -22,11 +22,13 @@
 
 namespace jsoncons { namespace jcr {
 
-template <class JsonT>
+template <class ValT>
 class rule
 {
 public:
-    virtual bool validate(const JsonT& val) const = 0;
+    typedef typename ValT::json_type json_type;
+
+    virtual bool validate(const json_type& val) const = 0;
     virtual rule* clone() const = 0;
     virtual ~rule()
     {
@@ -34,7 +36,7 @@ public:
 };
 
 template <class ValT, class Alloc>
-class jcr_array_validator : public rule<typename ValT::json_type>
+class jcr_array_validator : public rule<ValT>
 {
 public:
     typedef Alloc allocator_type;
@@ -206,7 +208,7 @@ private:
 };
 
 template <class StringT,class ValT,class Alloc>
-class jcr_object_validator : public rule<typename ValT::json_type>
+class jcr_object_validator : public rule<ValT>
 {
 public:
     typedef typename ValT::json_type json_type;
