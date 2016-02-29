@@ -85,24 +85,14 @@ public:
     typedef typename array::iterator array_iterator;
     typedef typename array::const_iterator const_array_iterator;
 
-    class rule
-    {
-    public:
-        virtual bool validate(const JsonT& val) const = 0;
-        virtual rule* clone() const = 0;
-        virtual ~rule()
-        {
-        }
-    };
-
-    class any_object_rule : public rule
+    class any_object_rule : public rule<JsonT>
     {
     public:
         any_object_rule()
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new any_object_rule();
         }
@@ -113,14 +103,14 @@ public:
         }
     };
 
-    class any_integer_rule : public rule
+    class any_integer_rule : public rule<JsonT>
     {
     public:
         any_integer_rule()
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new any_integer_rule();
         }
@@ -131,7 +121,7 @@ public:
         }
     };
 
-    class string_rule : public rule
+    class string_rule : public rule<JsonT>
     {
         string_type s_;
     public:
@@ -144,7 +134,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new string_rule(s_);
         }
@@ -155,14 +145,14 @@ public:
         }
     };
 
-    class any_string_rule : public rule
+    class any_string_rule : public rule<JsonT>
     {
     public:
         any_string_rule()
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new any_string_rule();
         }
@@ -173,14 +163,14 @@ public:
         }
     };
 
-    class null_rule : public rule
+    class null_rule : public rule<JsonT>
     {
     public:
         null_rule()
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new null_rule();
         }
@@ -191,7 +181,7 @@ public:
         }
     };
 
-    class bool_rule : public rule
+    class bool_rule : public rule<JsonT>
     {
         bool val_;
 
@@ -201,7 +191,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new bool_rule(val_);
         }
@@ -212,7 +202,7 @@ public:
         }
     };
 
-    class double_rule : public rule
+    class double_rule : public rule<JsonT>
     {
         double val_;
         uint8_t precision_;
@@ -223,7 +213,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new double_rule(val_,precision_);
         }
@@ -234,7 +224,7 @@ public:
         }
     };
 
-    class integer_rule : public rule
+    class integer_rule : public rule<JsonT>
     {
         int64_t val_;
 
@@ -244,7 +234,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new integer_rule(val_);
         }
@@ -255,7 +245,7 @@ public:
         }
     };
 
-    class uinteger_rule : public rule
+    class uinteger_rule : public rule<JsonT>
     {
         uint64_t val_;
         uint64_t to_;
@@ -266,7 +256,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new uinteger_rule(val_);
         }
@@ -277,7 +267,7 @@ public:
         }
     };
 
-    class integer_range_rule : public rule
+    class integer_range_rule : public rule<JsonT>
     {
         int64_t from_;
         int64_t to_;
@@ -288,7 +278,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new integer_range_rule(from_,to_);
         }
@@ -299,7 +289,7 @@ public:
         }
     };
 
-    class uinteger_range_rule : public rule
+    class uinteger_range_rule : public rule<JsonT>
     {
         uint64_t from_;
         uint64_t to_;
@@ -309,7 +299,7 @@ public:
         {
         }
 
-        rule* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new uinteger_range_rule(from_,to_);
         }
@@ -444,7 +434,7 @@ public:
         {
         }
 
-        explicit variant(rule* rule)
+        explicit variant(rule<JsonT>* rule)
             : type_(value_types::rule_t)
         {
             value_.rule_val_ = rule;
@@ -530,7 +520,7 @@ public:
             return *this;
         }
 
-        void assign(rule* val)
+        void assign(rule<JsonT>* val)
         {
             destroy_variant();
             type_ = value_types::rule_t;
@@ -631,7 +621,7 @@ public:
             object* object_val_;
             array* array_val_;
             string_type* string_val_;
-            rule* rule_val_;
+            rule<JsonT>* rule_val_;
         } value_;
     };
 
@@ -777,7 +767,7 @@ public:
     {
     }
 
-    basic_jcr_validator(rule* rule)
+    basic_jcr_validator(rule<JsonT>* rule)
         : var_(rule)
     {
     }
@@ -818,7 +808,7 @@ public:
         return *this;
     }
 
-    basic_jcr_validator<JsonT>& operator=(rule* val)
+    basic_jcr_validator<JsonT>& operator=(rule<JsonT>* val)
     {
         var_.assign(val);
         return *this;

@@ -22,8 +22,19 @@
 
 namespace jsoncons { namespace jcr {
 
+template <class JsonT>
+class rule
+{
+public:
+    virtual bool validate(const JsonT& val) const = 0;
+    virtual rule* clone() const = 0;
+    virtual ~rule()
+    {
+    }
+};
+
 template <class JsonT, class Alloc>
-class jcr_array_validator
+class jcr_array_validator : public rule<typename JsonT::json_type>
 {
 public:
     typedef Alloc allocator_type;
@@ -86,8 +97,14 @@ public:
     {
     }
 
-    bool validate(const array& val) const
+    rule* clone() const override
     {
+        return new jcr_array_validator(*this);
+    }
+
+    bool validate(const json_type& j) const override
+    {
+        const array& val = j.array_value(); 
         bool result = false;
         return result;
     }
@@ -200,7 +217,7 @@ private:
 };
 
 template <class StringT,class JsonT,class Alloc>
-class jcr_object_validator
+class jcr_object_validator : public rule<typename JsonT::json_type>
 {
 public:
     typedef typename JsonT::json_type json_type;
@@ -242,13 +259,20 @@ public:
     {
     }
 
+    rule* clone() const override
+    {
+        return new jcr_object_validator(*this);
+    }
+
     Alloc get_allocator() const
     {
         return members_.get_allocator();
     }
 
-    bool validate(const object& val) const
+    bool validate(const json_type& j) const override
     {
+        const object& val = j.object_value(); 
+
         bool result = false;
         if (val.size() > 0)
         {
