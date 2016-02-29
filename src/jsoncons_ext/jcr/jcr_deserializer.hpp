@@ -235,7 +235,7 @@ private:
 
     void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = value;
+        stack_[top_].value_ = new ValT::integer_rule(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -244,7 +244,7 @@ private:
 
     void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].value_ = ValT(new ValT::integer_range_rule(from,to));
+        stack_[top_].value_ = new ValT::integer_range_rule(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -253,7 +253,7 @@ private:
 
     void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].value_ = ValT(new ValT::uinteger_range_rule(from,to));
+        stack_[top_].value_ = new ValT::uinteger_range_rule(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -262,7 +262,7 @@ private:
 
     void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = value;
+        stack_[top_].value_ = new ValT::uinteger_rule(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -271,7 +271,7 @@ private:
 
     void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = value_type(value,precision);
+        stack_[top_].value_ = new ValT::double_rule(value,precision);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -280,7 +280,7 @@ private:
 
     void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = value;
+        stack_[top_].value_ = new ValT::bool_rule(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -289,7 +289,7 @@ private:
 
     void do_null_value(const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = null_type();
+        stack_[top_].value_ = new ValT::null_rule();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);

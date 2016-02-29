@@ -110,6 +110,110 @@ public:
         }
     };
 
+    class null_rule : public rule
+    {
+    public:
+        null_rule()
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new null_rule();
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_null();
+        }
+    };
+
+    class bool_rule : public rule
+    {
+        bool val_;
+
+    public:
+        bool_rule(bool val)
+            : val_(val)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new bool_rule(val_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_bool() && val.as_bool() == val_;
+        }
+    };
+
+    class double_rule : public rule
+    {
+        double val_;
+        uint8_t precision_;
+
+    public:
+        double_rule(double val, uint8_t precision)
+            : val_(val), precision_(precision)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new double_rule(val_,precision_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_double() && val.as_double() == val_;
+        }
+    };
+
+    class integer_rule : public rule
+    {
+        int64_t val_;
+
+    public:
+        integer_rule(int64_t val)
+            : val_(val)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new integer_rule(val_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_integer() && val.as_integer() == val_;
+        }
+    };
+
+    class uinteger_rule : public rule
+    {
+        uint64_t val_;
+        uint64_t to_;
+
+    public:
+        uinteger_rule(uint64_t val)
+            : val_(val)
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new uinteger_rule(val_);
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_uinteger() && val.as_uinteger() == val_;
+        }
+    };
+
     class integer_range_rule : public rule
     {
         int64_t from_;
@@ -459,6 +563,13 @@ public:
                 val.swap(*this);
             }
             return *this;
+        }
+
+        void assign(rule* val)
+        {
+            destroy_variant();
+            type_ = value_types::rule_t;
+            value_.rule_val_ = val;
         }
 
         void assign(const object & val)
@@ -914,13 +1025,13 @@ public:
     {
     }
 
-    basic_jcr_validator& operator=(const JsonT& rhs)
+    basic_jcr_validator& operator=(const value_type& rhs)
     {
         var_ = rhs.var_;
         return *this;
     }
 
-    basic_jcr_validator& operator=(JsonT&& rhs)
+    basic_jcr_validator& operator=(value_type&& rhs)
     {
         if (this != &rhs)
         {
@@ -929,10 +1040,9 @@ public:
         return *this;
     }
 
-    template <class T>
-    basic_jcr_validator<JsonT>& operator=(T val)
+    basic_jcr_validator<JsonT>& operator=(rule* val)
     {
-        json_type_traits<value_type,T>::assign(*this,val);
+        var_.assign(val);
         return *this;
     }
 
