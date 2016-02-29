@@ -15,6 +15,7 @@
 #include <memory>
 #include "jsoncons/jsoncons.hpp"
 #include "jcr_input_handler.hpp"
+#include "jcr_structures.hpp"
 
 namespace jsoncons { namespace jcr {
 
@@ -40,13 +41,7 @@ class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::cha
 
     ValT result_;
     size_t top_;
-
-    struct stack_item
-    {
-        string_type name_;
-        value_type value_;
-    };
-    std::vector<stack_item> stack_;
+    std::vector<std::pair<string_type,value_type>> stack_;
     std::vector<size_t> stack2_;
     bool is_valid_;
 
@@ -97,14 +92,14 @@ private:
     void pop_initial()
     {
         JSONCONS_ASSERT(top_ == 1);
-        result_.swap(stack_[0].value_);
+        result_.swap(stack_[0].second);
         --top_;
     }
 
     void push_object()
     {
         stack2_.push_back(top_);
-        stack_[top_].value_ = object(oa_);
+        stack_[top_].second = object(oa_);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -120,7 +115,7 @@ private:
     void push_array()
     {
         stack2_.push_back(top_);
-        stack_[top_].value_ = array(aa_);
+        stack_[top_].second = array(aa_);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -167,20 +162,20 @@ private:
         pop_array();
     }
 
-    static member_type move_pair(stack_item&& val)
+    static member_type move_pair(std::pair<string_type,value_type>&& val)
     {
-        return member_type(std::move(val.name_),std::move(val.value_));
+        return member_type(std::move(val.first),std::move(val.second));
     }
 
     void end_structure() 
     {
         JSONCONS_ASSERT(stack2_.size() > 0);
-        if (stack_[stack2_.back()].value_.is_object())
+        if (stack_[stack2_.back()].second.is_object())
         {
             size_t count = top_ - (stack2_.back() + 1);
             auto s = stack_.begin() + (stack2_.back()+1);
             auto send = s + count;
-            stack_[stack2_.back()].value_.object_value().insert(
+            stack_[stack2_.back()].second.object_value().insert(
                 std::make_move_iterator(s),
                 std::make_move_iterator(send),
                 move_pair);
@@ -189,14 +184,14 @@ private:
         else
         {
             size_t count = top_ - (stack2_.back() + 1);
-            stack_[stack2_.back()].value_.array_value().resize(count);
+            stack_[stack2_.back()].second.array_value().resize(count);
 
             auto s = stack_.begin() + (stack2_.back()+1);
-            auto dend = stack_[stack2_.back()].value_.elements().end();
-            for (auto it = stack_[stack2_.back()].value_.elements().begin();
+            auto dend = stack_[stack2_.back()].second.elements().end();
+            for (auto it = stack_[stack2_.back()].second.elements().begin();
                  it != dend; ++it, ++s)
             {
-                *it = std::move(s->value_);
+                *it = std::move(s->second);
             }
             top_ -= count;
         }
@@ -204,7 +199,7 @@ private:
 
     void do_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].name_ = string_type(p,length,sa_);
+        stack_[top_].first = string_type(p,length,sa_);
     }
 
     void do_rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
@@ -217,15 +212,15 @@ private:
         auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].value_ = new ValT::any_integer_rule();
+            stack_[top_].second = new ValT::any_integer_rule();
         }
         else if (are_equal(p,length,sliteral.first,sliteral.second))
         {
-            stack_[top_].value_ = new ValT::any_string_rule();
+            stack_[top_].second = new ValT::any_string_rule();
         }
         else
         {
-            stack_[top_].value_ = new ValT::string_rule(p,length,sa_);
+            stack_[top_].second = new ValT::string_rule(p,length,sa_);
         }
         if (++top_ >= stack_.size())
         {
@@ -235,7 +230,7 @@ private:
 
     void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = new ValT::integer_rule(value);
+        stack_[top_].second = new ValT::integer_rule(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -244,7 +239,7 @@ private:
 
     void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].value_ = new ValT::integer_range_rule(from,to);
+        stack_[top_].second = new ValT::integer_range_rule(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -253,7 +248,7 @@ private:
 
     void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].value_ = new ValT::uinteger_range_rule(from,to);
+        stack_[top_].second = new ValT::uinteger_range_rule(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -262,7 +257,7 @@ private:
 
     void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = new ValT::uinteger_rule(value);
+        stack_[top_].second = new ValT::uinteger_rule(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -271,7 +266,7 @@ private:
 
     void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = new ValT::double_rule(value,precision);
+        stack_[top_].second = new ValT::double_rule(value,precision);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -280,7 +275,7 @@ private:
 
     void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = new ValT::bool_rule(value);
+        stack_[top_].second = new ValT::bool_rule(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -289,7 +284,7 @@ private:
 
     void do_null_value(const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = new ValT::null_rule();
+        stack_[top_].second = new ValT::null_rule();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
