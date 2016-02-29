@@ -342,7 +342,6 @@ public:
     struct variant
     {
         variant()
-            : type_(value_types::empty_object_t)
         {
         }
 
@@ -446,7 +445,6 @@ public:
             switch (type_)
             {
             case value_types::null_t:
-            case value_types::empty_object_t:
                 break;
             case value_types::array_t:
                 value_.array_val_ = create_impl<array>(var.value_.array_val_->get_allocator(), *(var.value_.array_val_), array_allocator(var.value_.array_val_->get_allocator()));
@@ -836,28 +834,6 @@ public:
         return os.str();
     }
 
-    bool is_null() const JSONCONS_NOEXCEPT
-    {
-        return var_.is_null();
-    }
-
-    template<typename T>
-    bool is() const
-    {
-        return json_type_traits<value_type,T>::is(*this);
-    }
-
-    bool is_string() const JSONCONS_NOEXCEPT
-    {
-        return var_.is_string();
-    }
-
-
-    bool is_bool() const JSONCONS_NOEXCEPT
-    {
-        return var_.is_bool();
-    }
-
     bool is_object() const JSONCONS_NOEXCEPT
     {
         return var_.type_ == value_types::object_t || var_.type_ == value_types::empty_object_t;
@@ -866,33 +842,6 @@ public:
     bool is_array() const JSONCONS_NOEXCEPT
     {
         return var_.type_ == value_types::array_t;
-    }
-
-    template<class U=allocator_type,
-         typename std::enable_if<std::is_default_constructible<U>::value
-            >::type* = nullptr>
-    void create_object_implicitly()
-    {
-        var_.type_ = value_types::object_t;
-        var_.value_.object_val_ = create_impl<object>(allocator_type(),object_allocator(allocator_type()));
-    }
-
-    template<class U=allocator_type,
-         typename std::enable_if<!std::is_default_constructible<U>::value
-            >::type* = nullptr>
-    void create_object_implicitly() const
-    {
-        JSONCONS_THROW_EXCEPTION(std::runtime_error,"Cannot create_impl object implicitly - allocator is not default constructible.");
-    }
-
-    value_types type() const
-    {
-        return var_.type_;
-    }
-
-    uint8_t length_or_precision() const
-    {
-        return var_.length_or_precision_;
     }
 
     void swap(basic_jcr_validator& b)
@@ -1036,8 +985,6 @@ public:
     {
         switch (var_.type_)
         {
-        case value_types::empty_object_t:
-            create_object_implicitly();
         case value_types::object_t:
             return *(var_.value_.object_val_);
         default:
@@ -1050,8 +997,6 @@ public:
     {
         switch (var_.type_)
         {
-        case value_types::empty_object_t:
-            const_cast<value_type*>(this)->create_object_implicitly(); // HERE
         case value_types::object_t:
             return *(var_.value_.object_val_);
         default:
@@ -1066,26 +1011,6 @@ public:
     }
 
 private:
-
-    friend std::basic_ostream<typename string_type::value_type>& operator<<(std::basic_ostream<typename string_type::value_type>& os, const basic_jcr_validator<JsonT>& o)
-    {
-        o.to_stream(os);
-        return os;
-    }
-
-    friend std::basic_istream<typename string_type::value_type>& operator<<(std::basic_istream<typename string_type::value_type>& is, basic_jcr_validator<JsonT>& o)
-    {
-        basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
-        basic_json_reader<typename string_type::value_type> reader(is, handler);
-        reader.read_next();
-        reader.check_done();
-        if (!handler.is_valid())
-        {
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Failed to parse json stream");
-        }
-        o = handler.get_result();
-        return is;
-    }
 };
 
 template <class JsonT>
@@ -1254,70 +1179,6 @@ std::basic_istream<typename JsonT::char_type>& operator>>(std::basic_istream<typ
     }
     o = handler.get_result();
     return is;
-}
-
-template<typename JsonT>
-class json_printable
-{
-public:
-    typedef typename JsonT::char_type char_type;
-
-    json_printable(const JsonT& o,
-                   bool is_pretty_print)
-       : o_(&o), is_pretty_print_(is_pretty_print)
-    {
-    }
-
-    json_printable(const JsonT& o,
-                   bool is_pretty_print,
-                   const basic_output_format<char_type>& format)
-       : o_(&o), is_pretty_print_(is_pretty_print), format_(format)
-    {
-        ;
-    }
-
-    void to_stream(std::basic_ostream<char_type>& os) const
-    {
-        o_->to_stream(os, format_, is_pretty_print_);
-    }
-
-    friend std::basic_ostream<char_type>& operator<<(std::basic_ostream<char_type>& os, const json_printable<JsonT>& o)
-    {
-        o.to_stream(os);
-        return os;
-    }
-
-    const JsonT *o_;
-    bool is_pretty_print_;
-    basic_output_format<char_type> format_;
-private:
-    json_printable();
-};
-
-template<typename JsonT>
-json_printable<JsonT> print(const JsonT& val)
-{
-    return json_printable<JsonT>(val,false);
-}
-
-template<class JsonT>
-json_printable<JsonT> print(const JsonT& val,
-                            const basic_output_format<typename JsonT::char_type>& format)
-{
-    return json_printable<JsonT>(val, false, format);
-}
-
-template<class JsonT>
-json_printable<JsonT> pretty_print(const JsonT& val)
-{
-    return json_printable<JsonT>(val,true);
-}
-
-template<typename JsonT>
-json_printable<JsonT> pretty_print(const JsonT& val,
-                                   const basic_output_format<typename JsonT::char_type>& format)
-{
-    return json_printable<JsonT>(val, true, format);
 }
 
 typedef basic_jcr_validator<json> jcr_validator;
