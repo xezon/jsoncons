@@ -41,22 +41,17 @@ enum class value_types : uint8_t
 {
     // Simple types
     empty_object_t,
-    double_t,
-    integer_t,
-    uinteger_t,
-    bool_t,
     null_t,
     // Non simple types
-    string_t,
+    rule_t,
     object_t,
-    array_t,
-    rule_t
+    array_t
 };
 
 inline
 bool is_simple(value_types type)
 {
-    return type < value_types::string_t;
+    return type < value_types::rule_t;
 }
 
 template <class JsonT>
@@ -97,6 +92,24 @@ public:
         virtual rule* clone() const = 0;
         virtual ~rule()
         {
+        }
+    };
+
+    class any_object_rule : public rule
+    {
+    public:
+        any_object_rule()
+        {
+        }
+
+        rule* clone() const override
+        {
+            return new any_object_rule();
+        }
+
+        bool validate(const JsonT& val) const override
+        {
+            return val.is_object();
         }
     };
 
@@ -437,59 +450,6 @@ public:
             value_.rule_val_ = rule;
         }
 
-        explicit variant(bool val)
-            : type_(value_types::bool_t)
-        {
-            value_.bool_val_ = val;
-        }
-
-        explicit variant(double val, uint8_t precision)
-            : type_(value_types::double_t), length_or_precision_(precision)
-        {
-            value_.double_val_ = val;
-        }
-
-        explicit variant(int64_t val)
-            : type_(value_types::integer_t)
-        {
-            value_.integer_val_ = val;
-        }
-
-        explicit variant(uint64_t val)
-            : type_(value_types::uinteger_t)
-        {
-            value_.uinteger_val_ = val;
-        }
-
-        explicit variant(const string_type& s, const allocator_type& a)
-        {
-            type_ = value_types::string_t;
-            value_.string_val_ = create_impl<string_type>(a, s, string_allocator(a));
-            //value_.string_val_ = create_string_data(s.data(), s.length(), string_allocator(a));
-        }
-
-        explicit variant(const char_type* s, const allocator_type& a)
-        {
-            size_t length = std::char_traits<char_type>::length(s);
-            type_ = value_types::string_t;
-            value_.string_val_ = create_impl<string_type>(a, s, string_allocator(a));
-            //value_.string_val_ = create_string_data(s, length, string_allocator(a));
-        }
-
-        explicit variant(const char_type* s, size_t length, const allocator_type& a)
-        {
-            type_ = value_types::string_t;
-            value_.string_val_ = create_impl<string_type>(a, s, length, string_allocator(a));
-            //value_.string_val_ = create_string_data(s, length, string_allocator(a));
-        }
-
-        template<class InputIterator>
-        variant(InputIterator first, InputIterator last, const allocator_type& a)
-            : type_(value_types::array_t)
-        {
-            value_.array_val_ = create_impl<array>(a, first, last, array_allocator(a));
-        }
-
         void init_variant(const variant& var)
         {
             type_ = var.type_;
@@ -497,22 +457,6 @@ public:
             {
             case value_types::null_t:
             case value_types::empty_object_t:
-                break;
-            case value_types::double_t:
-                length_or_precision_ = 0;
-                value_.double_val_ = var.value_.double_val_;
-                break;
-            case value_types::integer_t:
-                value_.integer_val_ = var.value_.integer_val_;
-                break;
-            case value_types::uinteger_t:
-                value_.uinteger_val_ = var.value_.uinteger_val_;
-                break;
-            case value_types::bool_t:
-                value_.bool_val_ = var.value_.bool_val_;
-                break;
-            case value_types::string_t:
-                value_.string_val_ = create_impl<string_type>(var.value_.string_val_->get_allocator(), *(var.value_.string_val_), string_allocator(var.value_.string_val_->get_allocator()));
                 break;
             case value_types::array_t:
                 value_.array_val_ = create_impl<array>(var.value_.array_val_->get_allocator(), *(var.value_.array_val_), array_allocator(var.value_.array_val_->get_allocator()));
@@ -537,9 +481,6 @@ public:
         {
             switch (type_)
             {
-            case value_types::string_t:
-                destroy_impl(value_.string_val_->get_allocator(), value_.string_val_);
-                break;
             case value_types::array_t:
                 destroy_impl(value_.array_val_->get_allocator(), value_.array_val_);
                 break;
@@ -640,167 +581,17 @@ public:
             }
         }
 
-        void assign(const string_type& s)
-        {
-            destroy_variant();
-            type_ = value_types::string_t;
-            value_.string_val_ = create_impl<string_type>(s.get_allocator(), s, string_allocator(s.get_allocator()));
-            //value_.string_val_ = create_string_data(s.data(), s.length(), string_allocator(s.get_allocator()));
-        }
-
-        void assign_string(const char_type* s, size_t length, const allocator_type& allocator = allocator_type())
-        {
-            destroy_variant();
-            type_ = value_types::string_t;
-            value_.string_val_ = create_impl<string_type>(allocator, s, length, string_allocator(allocator));
-            //value_.string_val_ = create_string_data(s, length, string_allocator(allocator));
-        }
-
-        void assign(int64_t val)
-        {
-            destroy_variant();
-            type_ = value_types::integer_t;
-            value_.integer_val_ = val;
-        }
-
-        void assign(uint64_t val)
-        {
-            destroy_variant();
-            type_ = value_types::uinteger_t;
-            value_.uinteger_val_ = val;
-        }
-
-        void assign(double val, uint8_t precision = 0)
-        {
-            destroy_variant();
-            type_ = value_types::double_t;
-            length_or_precision_ = precision;
-            value_.double_val_ = val;
-        }
-
-        void assign(bool val)
-        {
-            destroy_variant();
-            type_ = value_types::bool_t;
-            value_.bool_val_ = val;
-        }
-
-        void assign(null_type)
-        {
-            destroy_variant();
-            type_ = value_types::null_t;
-        }
-
-        bool operator!=(const variant& rhs) const
-        {
-            return !(*this == rhs);
-        }
-
-        bool operator==(const variant& rhs) const
-        {
-            if (is_number() & rhs.is_number())
-            {
-                switch (type_)
-                {
-                case value_types::integer_t:
-                    switch (rhs.type_)
-                    {
-                    case value_types::integer_t:
-                        return value_.integer_val_ == rhs.value_.integer_val_;
-                    case value_types::uinteger_t:
-                        return value_.integer_val_ == rhs.value_.uinteger_val_;
-                    case value_types::double_t:
-                        return value_.integer_val_ == rhs.value_.double_val_;
-                    default:
-                        break;
-                    }
-                    break;
-                case value_types::uinteger_t:
-                    switch (rhs.type_)
-                    {
-                    case value_types::integer_t:
-                        return value_.uinteger_val_ == rhs.value_.integer_val_;
-                    case value_types::uinteger_t:
-                        return value_.uinteger_val_ == rhs.value_.uinteger_val_;
-                    case value_types::double_t:
-                        return value_.uinteger_val_ == rhs.value_.double_val_;
-                    default:
-                        break;
-                    }
-                    break;
-                case value_types::double_t:
-                    switch (rhs.type_)
-                    {
-                    case value_types::integer_t:
-                        return value_.double_val_ == rhs.value_.integer_val_;
-                    case value_types::uinteger_t:
-                        return value_.double_val_ == rhs.value_.uinteger_val_;
-                    case value_types::double_t:
-                        return value_.double_val_ == rhs.value_.double_val_;
-                    default:
-                        break;
-                    }
-                    break;
-                default:
-                    break;
-                }
-            }
-
-            if (rhs.type_ != type_)
-            {
-                return false;
-            }
-            switch (type_)
-            {
-            case value_types::bool_t:
-                return value_.bool_val_ == rhs.value_.bool_val_;
-            case value_types::null_t:
-            case value_types::empty_object_t:
-                return true;
-            case value_types::string_t:
-                return *(value_.string_val_) == *(rhs.value_.string_val_);
-            case value_types::array_t:
-                return *(value_.array_val_) == *(rhs.value_.array_val_);
-                break;
-            case value_types::object_t:
-                return *(value_.object_val_) == *(rhs.value_.object_val_);
-                break;
-            default:
-                // throw
-                break;
-            }
-            return false;
-        }
-
         bool validate(const JsonT& val) const
         {
-            if (is_number() & val.is_number())
-            {
-                switch (type_)
-                {
-                case value_types::integer_t:
-                    return value_.integer_val_ == val.as_integer();
-                case value_types::uinteger_t:
-                    return value_.uinteger_val_ == val.as_uinteger();
-                case value_types::double_t:
-                    return value_.double_val_ == val.as_double();
-                default:
-                    break;
-                }
-            }
 
             switch (type_)
             {
             case value_types::rule_t:
                 return value_.rule_val_->validate(val);
-            case value_types::bool_t:
-                return value_.bool_val_ == val.as_bool();
             case value_types::null_t:
                 return val.is_null();
             case value_types::empty_object_t:
                 return val.is_object() && val.size() == 0;
-            case value_types::string_t:
-                return *(value_.string_val_) == val.as_string();
             case value_types::array_t:
                 return value_.array_val_->validate(val.array_value());
                 break;
@@ -812,43 +603,6 @@ public:
                 break;
             }
             return false;
-        }
-
-        bool is_null() const JSONCONS_NOEXCEPT
-        {
-            return type_ == value_types::null_t;
-        }
-
-        bool is_bool() const JSONCONS_NOEXCEPT
-        {
-            return type_ == value_types::bool_t;
-        }
-
-        bool empty() const JSONCONS_NOEXCEPT
-        {
-            switch (type_)
-            {
-            case value_types::string_t:
-                return value_.string_val_->length() == 0;
-            case value_types::array_t:
-                return value_.array_val_->size() == 0;
-            case value_types::empty_object_t:
-                return true;
-            case value_types::object_t:
-                return value_.object_val_->size() == 0;
-            default:
-                return false;
-            }
-        }
-
-        bool is_string() const JSONCONS_NOEXCEPT
-        {
-            return (type_ == value_types::string_t);
-        }
-
-        bool is_number() const JSONCONS_NOEXCEPT
-        {
-            return type_ == value_types::double_t || type_ == value_types::integer_t || type_ == value_types::uinteger_t;
         }
 
         void swap(variant& rhs)
@@ -1118,78 +872,6 @@ public:
         return os.str();
     }
 
-    void to_stream(basic_json_output_handler<char_type>& handler) const
-    {
-        switch (var_.type_)
-        {
-        case value_types::string_t:
-            handler.value(var_.value_.string_val_->data(),var_.value_.string_val_->length());
-            break;
-        case value_types::double_t:
-            handler.value(var_.value_.double_val_, var_.length_or_precision_);
-            break;
-        case value_types::integer_t:
-            handler.value(var_.value_.integer_val_);
-            break;
-        case value_types::uinteger_t:
-            handler.value(var_.value_.uinteger_val_);
-            break;
-        case value_types::bool_t:
-            handler.value(var_.value_.bool_val_);
-            break;
-        case value_types::null_t:
-            handler.value(null_type());
-            break;
-        case value_types::empty_object_t:
-            handler.begin_object();
-            handler.end_object();
-            break;
-        case value_types::object_t:
-            {
-                handler.begin_object();
-                object* o = var_.value_.object_val_;
-                for (const_object_iterator it = o->begin(); it != o->end(); ++it)
-                {
-                    handler.name((it->name()).data(),it->name().length());
-                    it->value().to_stream(handler);
-                }
-                handler.end_object();
-            }
-            break;
-        case value_types::array_t:
-            {
-                handler.begin_array();
-                array *o = var_.value_.array_val_;
-                for (const_array_iterator it = o->begin(); it != o->end(); ++it)
-                {
-                    it->to_stream(handler);
-                }
-                handler.end_array();
-            }
-            break;
-        default:
-            break;
-        }
-    }
-
-    void to_stream(std::basic_ostream<char_type>& os) const
-    {
-        basic_json_serializer<char_type> serializer(os);
-        to_stream(serializer);
-    }
-
-    void to_stream(std::basic_ostream<char_type>& os, const basic_output_format<char_type>& format) const
-    {
-        basic_json_serializer<char_type> serializer(os, format);
-        to_stream(serializer);
-    }
-
-    void to_stream(std::basic_ostream<char_type>& os, const basic_output_format<char_type>& format, bool indenting) const
-    {
-        basic_json_serializer<char_type> serializer(os, format, indenting);
-        to_stream(serializer);
-    }
-
     bool is_null() const JSONCONS_NOEXCEPT
     {
         return var_.is_null();
@@ -1245,31 +927,6 @@ public:
     bool is_array() const JSONCONS_NOEXCEPT
     {
         return var_.type_ == value_types::array_t;
-    }
-
-    bool is_integer() const JSONCONS_NOEXCEPT
-    {
-        return var_.type_ == value_types::integer_t || (var_.type_ == value_types::uinteger_t && (as_uinteger() <= static_cast<unsigned long long>(std::numeric_limits<long long>::max JSONCONS_NO_MACRO_EXP())));
-    }
-
-    bool is_uinteger() const JSONCONS_NOEXCEPT
-    {
-        return var_.type_ == value_types::uinteger_t || (var_.type_ == value_types::integer_t && as_integer() >= 0);
-    }
-
-    bool is_double() const JSONCONS_NOEXCEPT
-    {
-        return var_.type_ == value_types::double_t;
-    }
-
-    bool is_number() const JSONCONS_NOEXCEPT
-    {
-        return var_.is_number();
-    }
-
-    bool empty() const JSONCONS_NOEXCEPT
-    {
-        return var_.empty();
     }
 
     size_t capacity() const
