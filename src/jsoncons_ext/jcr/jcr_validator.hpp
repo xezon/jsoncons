@@ -58,7 +58,6 @@ template <class JsonT>
 class basic_jcr_validator
 {
 public:
-
     typedef JsonT json_type;
 
     typedef typename JsonT::allocator_type allocator_type;
@@ -69,14 +68,17 @@ public:
     typedef typename JsonT::string_allocator string_allocator;
     typedef typename JsonT::string_type string_type;
     typedef basic_jcr_validator<JsonT> value_type;
-    typedef name_value_pair<string_type,value_type> member_type;
+
+    typedef typename rule<JsonT> rule_type;
+
+    typedef name_value_pair<string_type,std::shared_ptr<rule_type>> member_type;
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<JsonT> array_allocator;
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<member_type> object_allocator;
 
-    typedef array_rule<value_type,array_allocator> array;
-    typedef object_rule<string_type,value_type,object_allocator>  object;
+    typedef array_rule<json_type,array_allocator> array;
+    typedef object_rule<string_type,json_type,object_allocator>  object;
 
     typedef jsoncons::null_type null_type;
 
@@ -85,14 +87,14 @@ public:
     typedef typename array::iterator array_iterator;
     typedef typename array::const_iterator const_array_iterator;
 
-    class any_object_rule : public rule<value_type>
+    class any_object_rule : public rule<JsonT>
     {
     public:
         any_object_rule()
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new any_object_rule();
         }
@@ -103,14 +105,14 @@ public:
         }
     };
 
-    class any_integer_rule : public rule<value_type>
+    class any_integer_rule : public rule<JsonT>
     {
     public:
         any_integer_rule()
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new any_integer_rule();
         }
@@ -121,7 +123,7 @@ public:
         }
     };
 
-    class string_rule : public rule<value_type>
+    class string_rule : public rule<JsonT>
     {
         string_type s_;
     public:
@@ -134,7 +136,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new string_rule(s_);
         }
@@ -145,14 +147,14 @@ public:
         }
     };
 
-    class any_string_rule : public rule<value_type>
+    class any_string_rule : public rule<JsonT>
     {
     public:
         any_string_rule()
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new any_string_rule();
         }
@@ -163,14 +165,14 @@ public:
         }
     };
 
-    class null_rule : public rule<value_type>
+    class null_rule : public rule<JsonT>
     {
     public:
         null_rule()
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new null_rule();
         }
@@ -181,7 +183,7 @@ public:
         }
     };
 
-    class bool_rule : public rule<value_type>
+    class bool_rule : public rule<JsonT>
     {
         bool val_;
 
@@ -191,7 +193,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new bool_rule(val_);
         }
@@ -202,7 +204,7 @@ public:
         }
     };
 
-    class double_rule : public rule<value_type>
+    class double_rule : public rule<JsonT>
     {
         double val_;
         uint8_t precision_;
@@ -213,7 +215,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new double_rule(val_,precision_);
         }
@@ -224,7 +226,7 @@ public:
         }
     };
 
-    class integer_rule : public rule<value_type>
+    class integer_rule : public rule<JsonT>
     {
         int64_t val_;
 
@@ -234,7 +236,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new integer_rule(val_);
         }
@@ -245,7 +247,7 @@ public:
         }
     };
 
-    class uinteger_rule : public rule<value_type>
+    class uinteger_rule : public rule<JsonT>
     {
         uint64_t val_;
         uint64_t to_;
@@ -256,7 +258,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new uinteger_rule(val_);
         }
@@ -267,7 +269,7 @@ public:
         }
     };
 
-    class integer_range_rule : public rule<value_type>
+    class integer_range_rule : public rule<JsonT>
     {
         int64_t from_;
         int64_t to_;
@@ -278,7 +280,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new integer_range_rule(from_,to_);
         }
@@ -289,7 +291,7 @@ public:
         }
     };
 
-    class uinteger_range_rule : public rule<value_type>
+    class uinteger_range_rule : public rule<JsonT>
     {
         uint64_t from_;
         uint64_t to_;
@@ -299,7 +301,7 @@ public:
         {
         }
 
-        rule<value_type>* clone() const override
+        rule<JsonT>* clone() const override
         {
             return new uinteger_range_rule(from_,to_);
         }
@@ -310,7 +312,7 @@ public:
         }
     };
 
-    std::shared_ptr<rule<value_type>> rule_val_;
+    std::shared_ptr<rule<JsonT>> rule_val_;
 
     static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is);
     static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);
@@ -358,7 +360,7 @@ public:
         rule_val_ = val.rule_val_;
     }
 
-    basic_jcr_validator(rule<value_type>* rule)
+    basic_jcr_validator(std::shared_ptr<rule<JsonT>>* rule)
         : rule_val_(rule)
     {
     }
@@ -373,7 +375,7 @@ public:
         return *this;
     }
 
-    basic_jcr_validator<JsonT>& operator=(std::shared_ptr<rule<value_type>> val)
+    basic_jcr_validator<JsonT>& operator=(std::shared_ptr<rule<JsonT>> val)
     {
         rule_val_ = val;
         return *this;
@@ -394,22 +396,22 @@ public:
         a.swap(b);
     }
 
-    rule<value_type>& array_value() 
+    rule<JsonT>& array_value() 
     {
         return *rule_val_;
     }
 
-    const rule<value_type>& array_value() const
+    const rule<JsonT>& array_value() const
     {
         return *rule_val_;
     }
 
-    rule<value_type>& object_value()
+    rule<JsonT>& object_value()
     {
         return *rule_val_;
     }
 
-    const rule<value_type>& object_value() const
+    const rule<JsonT>& object_value() const
     {
         return *rule_val_;
     }

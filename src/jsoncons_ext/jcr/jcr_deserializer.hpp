@@ -33,7 +33,7 @@ class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::cha
     typedef typename array::allocator_type array_allocator;
     typedef typename ValT::object object;
     typedef typename object::allocator_type object_allocator;
-    typedef typename ValT::value_type value_type;
+    typedef typename std::shared_ptr<typename ValT::rule_type> value_type;
 
     string_allocator sa_;
     object_allocator oa_;
@@ -92,14 +92,14 @@ private:
     void pop_initial()
     {
         JSONCONS_ASSERT(top_ == 1);
-        result_.swap(stack_[0].second);
+        result_ = stack_[0].second;
         --top_;
     }
 
     void push_object()
     {
         stack2_.push_back(top_);
-        stack_[top_].second = new object();
+        stack_[top_].second = std::make_shared<object>();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -115,7 +115,7 @@ private:
     void push_array()
     {
         stack2_.push_back(top_);
-        stack_[top_].second = new array();
+        stack_[top_].second = std::make_shared<array>();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -170,12 +170,12 @@ private:
     void end_structure() 
     {
         JSONCONS_ASSERT(stack2_.size() > 0);
-        if (stack_[stack2_.back()].second.is_object())
+        if (stack_[stack2_.back()].second->is_object())
         {
             size_t count = top_ - (stack2_.back() + 1);
             auto s = stack_.begin() + (stack2_.back()+1);
             auto send = s + count;
-            stack_[stack2_.back()].second.object_value().insert(
+            stack_[stack2_.back()].second->insert(
                 std::make_move_iterator(s),
                 std::make_move_iterator(send));
             top_ -= count;
@@ -185,7 +185,7 @@ private:
             size_t count = top_ - (stack2_.back() + 1);
             auto s = stack_.begin() + (stack2_.back()+1);
             auto send = s + count;
-            stack_[stack2_.back()].second.array_value().insert(
+            stack_[stack2_.back()].second->insert(
                 std::make_move_iterator(s),
                 std::make_move_iterator(send));
             top_ -= count;
@@ -207,15 +207,15 @@ private:
         auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].second = new ValT::any_integer_rule();
+            stack_[top_].second = std::make_shared<ValT::any_integer_rule>();
         }
         else if (are_equal(p,length,sliteral.first,sliteral.second))
         {
-            stack_[top_].second = new ValT::any_string_rule();
+            stack_[top_].second = std::make_shared<ValT::any_string_rule>();
         }
         else
         {
-            stack_[top_].second = new ValT::string_rule(p,length,sa_);
+            stack_[top_].second = std::make_shared<ValT::string_rule>(p,length,sa_);
         }
         if (++top_ >= stack_.size())
         {
@@ -225,7 +225,7 @@ private:
 
     void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = new ValT::integer_rule(value);
+        stack_[top_].second = std::make_shared<ValT::integer_rule>(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -234,7 +234,7 @@ private:
 
     void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = new ValT::integer_range_rule(from,to);
+        stack_[top_].second = std::make_shared<ValT::integer_range_rule>(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -243,7 +243,7 @@ private:
 
     void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = new ValT::uinteger_range_rule(from,to);
+        stack_[top_].second = std::make_shared<ValT::uinteger_range_rule>(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -252,7 +252,7 @@ private:
 
     void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = new ValT::uinteger_rule(value);
+        stack_[top_].second = std::make_shared<ValT::uinteger_rule>(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -261,7 +261,7 @@ private:
 
     void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = new ValT::double_rule(value,precision);
+        stack_[top_].second = std::make_shared<ValT::double_rule>(value,precision);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -270,7 +270,7 @@ private:
 
     void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = new ValT::bool_rule(value);
+        stack_[top_].second = std::make_shared<ValT::bool_rule>(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -279,7 +279,7 @@ private:
 
     void do_null_value(const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = new ValT::null_rule();
+        stack_[top_].second = std::make_shared<ValT::null_rule>();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
