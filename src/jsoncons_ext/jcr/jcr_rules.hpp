@@ -116,6 +116,42 @@ public:
 };
 
 template <class JsonT>
+class name_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+
+    string_type name_;
+    std::shared_ptr<rule<JsonT>> rule_;
+public:
+    name_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+        : name_(name),rule_(rule)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new name_rule(name_,rule_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        if (!val.is_object())
+        {
+            return false;
+        }
+        auto it = val.find(name_);
+        if (it == val.members().end())
+        {
+            return false;
+        }
+        
+        return rule_->validate(it->value());
+    }
+};
+
+template <class JsonT>
 class named_rule : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
@@ -515,29 +551,15 @@ public:
         return members_.get_allocator();
     }
 
-    bool validate(const json_type& j) const override
+    bool validate(const json_type& val) const override
     {
-        const object& val = j.object_value(); 
-
-        bool result = false;
-        if (val.size() > 0)
+        bool result = true;
+        for (auto element : members_)
         {
-            result = true;
-            for (auto member : val)
+            result = element.value()->validate(val);
+            if (!result)
             {
-                auto it = find(member.name());
-                if (it == end())
-                {
-                    result = false;
-                }
-                else
-                {
-                    result = it->value()->validate(member.value());
-                }
-                if (!result)
-                {
-                    break;
-                }
+                break;
             }
         }
         return result;

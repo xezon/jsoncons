@@ -209,19 +209,28 @@ private:
 
     void do_string_value(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
+        std::shared_ptr<rule<json_type>> rule;
         auto literal = jcr_char_traits<char_type>::integer_literal();
         auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].second = std::make_shared<any_integer_rule<json_type>>();
+            rule = std::make_shared<any_integer_rule<json_type>>();
         }
         else if (are_equal(p,length,sliteral.first,sliteral.second))
         {
-            stack_[top_].second = std::make_shared<any_string_rule<json_type>>();
+            rule = std::make_shared<any_string_rule<json_type>>();
         }
         else
         {
-            stack_[top_].second = std::make_shared<string_rule<json_type>>(p,length,sa_);
+            rule = std::make_shared<string_rule<json_type>>(p,length,sa_);
+        }
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
         }
         if (++top_ >= stack_.size())
         {
@@ -231,7 +240,15 @@ private:
 
     void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<integer_rule<json_type>>(value);
+        auto rule = std::make_shared<integer_rule<json_type>>(value);
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -240,7 +257,15 @@ private:
 
     void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = std::make_shared<integer_range_rule<json_type>>(from,to);
+        auto rule= std::make_shared<integer_range_rule<json_type>>(from,to);
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -249,7 +274,15 @@ private:
 
     void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = std::make_shared<uinteger_range_rule<json_type>>(from,to);
+        auto rule = std::make_shared<uinteger_range_rule<json_type>>(from,to);
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -258,7 +291,15 @@ private:
 
     void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<uinteger_rule<json_type>>(value);
+        auto rule = std::make_shared<uinteger_rule<json_type>>(value);
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -267,7 +308,15 @@ private:
 
     void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<double_rule<json_type>>(value,precision);
+        auto rule = std::make_shared<double_rule<json_type>>(value,precision);
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -276,7 +325,15 @@ private:
 
     void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<bool_rule<json_type>>(value);
+        auto rule = std::make_shared<bool_rule<json_type>>(value);
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -285,7 +342,15 @@ private:
 
     void do_null_value(const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<null_rule<json_type>>();
+        auto rule = std::make_shared<null_rule<json_type>>();
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
