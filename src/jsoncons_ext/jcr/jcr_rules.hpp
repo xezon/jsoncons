@@ -4,8 +4,8 @@
 
 // See https://github.com/danielaparker/jsoncons for latest version
 
-#ifndef JSONCONS_JCR_JCR_STRUCTURES_HPP
-#define JSONCONS_JCR_JCR_STRUCTURES_HPP
+#ifndef JSONCONS_JCR_JCR_RULES_HPP
+#define JSONCONS_JCR_JCR_RULES_HPP
 
 #include <string>
 #include <vector>
@@ -45,6 +45,246 @@ public:
 
     virtual void insert(move_iterator first, move_iterator last)
     {
+    }
+};
+
+template <class JsonT>
+class any_object_rule : public rule<JsonT>
+{
+public:
+    any_object_rule()
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new any_object_rule();
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_object();
+    }
+};
+
+template <class JsonT>
+class any_integer_rule : public rule<JsonT>
+{
+public:
+    any_integer_rule()
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new any_integer_rule();
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_integer() || val.as_uinteger();
+    }
+};
+
+template <class JsonT>
+class string_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+
+    string_type s_;
+public:
+    string_rule(const char_type* p, size_t length, string_allocator sa)
+        : s_(p,length,sa)
+    {
+    }
+    string_rule(const string_type& s)
+        : s_(s)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new string_rule(s_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_string() && val.as_string() == s_;
+    }
+};
+
+template <class JsonT>
+class any_string_rule : public rule<JsonT>
+{
+public:
+    any_string_rule()
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new any_string_rule();
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_string();
+    }
+};
+
+template <class JsonT>
+class null_rule : public rule<JsonT>
+{
+public:
+    null_rule()
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new null_rule();
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_null();
+    }
+};
+
+template <class JsonT>
+class bool_rule : public rule<JsonT>
+{
+    bool val_;
+
+public:
+    bool_rule(bool val)
+        : val_(val)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new bool_rule(val_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_bool() && val.as_bool() == val_;
+    }
+};
+
+template <class JsonT>
+class double_rule : public rule<JsonT>
+{
+    double val_;
+    uint8_t precision_;
+
+public:
+    double_rule(double val, uint8_t precision)
+        : val_(val), precision_(precision)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new double_rule(val_,precision_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_double() && val.as_double() == val_;
+    }
+};
+
+template <class JsonT>
+class integer_rule : public rule<JsonT>
+{
+    int64_t val_;
+
+public:
+    integer_rule(int64_t val)
+        : val_(val)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new integer_rule(val_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_integer() && val.as_integer() == val_;
+    }
+};
+
+template <class JsonT>
+class uinteger_rule : public rule<JsonT>
+{
+    uint64_t val_;
+    uint64_t to_;
+
+public:
+    uinteger_rule(uint64_t val)
+        : val_(val)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new uinteger_rule(val_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_uinteger() && val.as_uinteger() == val_;
+    }
+};
+
+template <class JsonT>
+class integer_range_rule : public rule<JsonT>
+{
+    int64_t from_;
+    int64_t to_;
+
+public:
+    integer_range_rule(int64_t from, int64_t to)
+        : from_(from), to_(to)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new integer_range_rule(from_,to_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_integer() && val.as_integer() >= from_ && val.as_integer() <= to_;
+    }
+};
+
+template <class JsonT>
+class uinteger_range_rule : public rule<JsonT>
+{
+    uint64_t from_;
+    uint64_t to_;
+public:
+    uinteger_range_rule(uint64_t from, uint64_t to)
+        : from_(from), to_(to)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new uinteger_range_rule(from_,to_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return val.is_uinteger() && val.as_uinteger() >= from_ && val.as_uinteger() <= to_;
     }
 };
 

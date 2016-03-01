@@ -15,7 +15,7 @@
 #include <memory>
 #include "jsoncons/jsoncons.hpp"
 #include "jcr_input_handler.hpp"
-#include "jcr_structures.hpp"
+#include "jcr_rules.hpp"
 
 namespace jsoncons { namespace jcr {
 
@@ -32,6 +32,7 @@ class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::cha
     typedef typename ValT::array array;
     typedef typename array::allocator_type array_allocator;
     typedef typename ValT::object object;
+    typedef typename ValT::json_type json_type;
     typedef typename object::allocator_type object_allocator;
     typedef typename std::shared_ptr<typename ValT::rule_type> value_type;
 
@@ -207,15 +208,15 @@ private:
         auto sliteral = jcr_char_traits<char_type>::string_literal();
         if (are_equal(p,length,literal.first,literal.second))
         {
-            stack_[top_].second = std::make_shared<ValT::any_integer_rule>();
+            stack_[top_].second = std::make_shared<any_integer_rule<json_type>>();
         }
         else if (are_equal(p,length,sliteral.first,sliteral.second))
         {
-            stack_[top_].second = std::make_shared<ValT::any_string_rule>();
+            stack_[top_].second = std::make_shared<any_string_rule<json_type>>();
         }
         else
         {
-            stack_[top_].second = std::make_shared<ValT::string_rule>(p,length,sa_);
+            stack_[top_].second = std::make_shared<string_rule<json_type>>(p,length,sa_);
         }
         if (++top_ >= stack_.size())
         {
@@ -225,7 +226,7 @@ private:
 
     void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<ValT::integer_rule>(value);
+        stack_[top_].second = std::make_shared<integer_rule<json_type>>(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -234,7 +235,7 @@ private:
 
     void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = std::make_shared<ValT::integer_range_rule>(from,to);
+        stack_[top_].second = std::make_shared<integer_range_rule<json_type>>(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -243,7 +244,7 @@ private:
 
     void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = std::make_shared<ValT::uinteger_range_rule>(from,to);
+        stack_[top_].second = std::make_shared<uinteger_range_rule<json_type>>(from,to);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -252,7 +253,7 @@ private:
 
     void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<ValT::uinteger_rule>(value);
+        stack_[top_].second = std::make_shared<uinteger_rule<json_type>>(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -261,7 +262,7 @@ private:
 
     void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<ValT::double_rule>(value,precision);
+        stack_[top_].second = std::make_shared<double_rule<json_type>>(value,precision);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -270,7 +271,7 @@ private:
 
     void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<ValT::bool_rule>(value);
+        stack_[top_].second = std::make_shared<bool_rule<json_type>>(value);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -279,7 +280,7 @@ private:
 
     void do_null_value(const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<ValT::null_rule>();
+        stack_[top_].second = std::make_shared<null_rule<json_type>>();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
