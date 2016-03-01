@@ -383,30 +383,13 @@ public:
         variant(const array& val)
             : type_(value_types::array_t)
         {
-            value_.array_val_ = create_impl<array>(val.get_allocator(), val);
-        }
-
-        variant(const array& val, const allocator_type& a)
-            : type_(value_types::array_t)
-        {
-            value_.array_val_ = create_impl<array>(a, val, array_allocator(a));
+            value_.array_val_ = new array(val);
         }
 
         variant(array&& val)
             : type_(value_types::array_t)
         {
-            value_.array_val_ = create_impl<array>(val.get_allocator(), std::move(val));
-        }
-
-        variant(array&& val, const allocator_type& a)
-            : type_(value_types::array_t)
-        {
-            value_.array_val_ = create_impl<array>(a, std::move(val), array_allocator(a));
-        }
-
-        explicit variant(null_type)
-            : type_(value_types::null_t)
-        {
+            value_.array_val_ = new array(std::move(val));
         }
 
         explicit variant(rule<value_type>* rule)
@@ -446,7 +429,7 @@ public:
             switch (type_)
             {
             case value_types::array_t:
-                destroy_impl(value_.array_val_->get_allocator(), value_.array_val_);
+                delete value_.array_val_;
                 break;
             case value_types::object_t:
                 delete value_.object_val_;
@@ -499,28 +482,6 @@ public:
             destroy_variant();
             type_ = value_types::rule_t;
             value_.rule_val_ = val;
-        }
-
-        void assign(const array& val)
-        {
-            destroy_variant();
-            type_ = value_types::array_t;
-            value_.array_val_ = create_impl<array>(val.get_allocator(), val, array_allocator(val.get_allocator())) ;
-        }
-
-        void assign(array&& val)
-        {
-            switch (type_)
-            {
-            case value_types::array_t:
-                value_.array_val_->swap(val);
-                break;
-            default:
-                destroy_variant();
-                type_ = value_types::array_t;
-                value_.array_val_ = create_impl<array>(val.get_allocator(), std::move(val), array_allocator(val.get_allocator()));
-                break;
-            }
         }
 
         bool validate(const JsonT& val) const
