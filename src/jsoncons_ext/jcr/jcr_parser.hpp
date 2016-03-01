@@ -650,6 +650,8 @@ public:
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
+                            flip(modes::object_member_name, modes::object_member_value);
+                            string_buffer_.push_back(*p_);
                             state_ = states::rule_name;
                         }
                         else
@@ -718,7 +720,16 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            flip(modes::object_member_name, modes::object_member_value);
+                            string_buffer_.push_back(*p_);
+                            state_ = states::rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
                         break;
                     }
                 }

@@ -200,6 +200,11 @@ private:
 
     void do_rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
+        stack_[top_].second = std::make_shared<named_rule<json_type>>(p,length,sa_);
+        if (++top_ >= stack_.size())
+        {
+            stack_.resize(top_*2);
+        }
     }
 
     void do_string_value(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override

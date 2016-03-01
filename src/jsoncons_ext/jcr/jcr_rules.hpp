@@ -116,6 +116,35 @@ public:
 };
 
 template <class JsonT>
+class named_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+
+    string_type s_;
+public:
+    named_rule(const char_type* p, size_t length, string_allocator sa)
+        : s_(p,length,sa)
+    {
+    }
+    named_rule(const string_type& s)
+        : s_(s)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new named_rule(s_);
+    }
+
+    bool validate(const JsonT& val) const override
+    {
+        return true;
+    }
+};
+
+template <class JsonT>
 class any_string_rule : public rule<JsonT>
 {
 public:
