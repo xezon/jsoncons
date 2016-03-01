@@ -88,7 +88,7 @@ public:
     static basic_jcr_validator parse(const string_type& s)
     {
         basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
-        basic_jcr_parser<char_type> parser(handler);
+        basic_jcr_parser<JsonT> parser(handler);
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
         parser.end_parse();
@@ -103,7 +103,7 @@ public:
     static basic_jcr_validator parse(const string_type& s, basic_parse_error_handler<char_type>& err_handler)
     {
         basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
-        basic_jcr_parser<char_type> parser(handler,err_handler);
+        basic_jcr_parser<JsonT> parser(handler,err_handler);
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
         parser.end_parse();
@@ -264,7 +264,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Error reading file %s", filename);
             }
 
-            basic_jcr_parser<char_type> parser(handler);
+            basic_jcr_parser<JsonT> parser(handler);
             parser.begin_parse();
             parser.parse(buffer.data(),0,buffer.size());
             parser.end_parse();
@@ -324,7 +324,7 @@ basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_file(const std::str
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Error reading file %s", filename);
             }
 
-            basic_jcr_parser<char_type> parser(handler,err_handler);
+            basic_jcr_parser<JsonT> parser(handler,err_handler);
             parser.begin_parse();
             parser.parse(buffer.data(),0,buffer.size());
             parser.end_parse();

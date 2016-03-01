@@ -15,10 +15,11 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <system_error>
-#include "jsoncons/jsoncons.hpp"
-#include "jcr_input_handler.hpp"
+#include "jsoncons/json.hpp"
 #include "jsoncons/parse_error_handler.hpp"
+#include "jcr_input_handler.hpp"
 #include "jcr_error_category.hpp"
+#include "jcr_rules.hpp"
 
 namespace jsoncons { namespace jcr {
 
@@ -111,21 +112,22 @@ enum class states
     done
 };
 
-template<typename CharT>
-class basic_jcr_parser : private basic_parsing_context<CharT>
+template<typename JsonT>
+class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type>
 {
+    typedef typename JsonT::char_type char_type;
     static const int default_depth = 100;
 
     states state_;
     int top_;
     std::vector<modes> stack_;
-    basic_jcr_input_handler<CharT> *handler_;
-    basic_parse_error_handler<CharT> *err_handler_;
+    basic_jcr_input_handler<char_type> *handler_;
+    basic_parse_error_handler<char_type> *err_handler_;
     size_t column_;
     size_t line_;
     uint32_t cp_;
     uint32_t cp2_;
-    std::basic_string<CharT> string_buffer_;
+    std::basic_string<char_type> string_buffer_;
     std::basic_string<char> number_buffer_;
     bool is_negative_;
     states saved_state_;
@@ -134,20 +136,20 @@ class basic_jcr_parser : private basic_parsing_context<CharT>
     int depth_;
     int max_depth_;
     float_reader float_reader_;
-    const CharT* begin_input_;
-    const CharT* end_input_;
-    const CharT* p_;
+    const char_type* begin_input_;
+    const char_type* end_input_;
+    const char_type* p_;
     uint8_t precision_;
-    std::pair<const CharT*,size_t> literal_;
+    std::pair<const char_type*,size_t> literal_;
     size_t literal_index_;
 
 public:
-    basic_jcr_parser(basic_jcr_input_handler<CharT>& handler)
+    basic_jcr_parser(basic_jcr_input_handler<char_type>& handler)
        : state_(states::start), 
          top_(-1),
          stack_(default_depth),
          handler_(std::addressof(handler)),
-         err_handler_(std::addressof(basic_default_parse_error_handler<CharT>::instance())),
+         err_handler_(std::addressof(basic_default_parse_error_handler<char_type>::instance())),
          column_(0),
          line_(0),
          cp_(0),
@@ -158,8 +160,8 @@ public:
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
     }
 
-    basic_jcr_parser(basic_jcr_input_handler<CharT>& handler,
-                      basic_parse_error_handler<CharT>& err_handler)
+    basic_jcr_parser(basic_jcr_input_handler<char_type>& handler,
+                      basic_parse_error_handler<char_type>& err_handler)
        : state_(states::start), 
          top_(-1),
          stack_(default_depth),
@@ -176,7 +178,7 @@ public:
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
     }
 
-    const basic_parsing_context<CharT>& parsing_context() const
+    const basic_parsing_context<char_type>& parsing_context() const
     {
         return *this;
     }
@@ -216,12 +218,12 @@ public:
         column_ = 1;
     }
 
-    void check_done(const CharT* input, size_t start, size_t length)
+    void check_done(const char_type* input, size_t start, size_t length)
     {
         index_ = start;
         for (; index_ < length; ++index_)
         {
-            CharT curr_char_ = input[index_];
+            char_type curr_char_ = input[index_];
             switch (curr_char_)
             {
             case '\n':
@@ -238,7 +240,7 @@ public:
 
     void parse_string()
     {
-        const CharT* sb = p_;
+        const char_type* sb = p_;
         bool done = false;
         while (!done && p_ < end_input_)
         {
@@ -323,7 +325,7 @@ public:
         }
     }
 
-    void parse(const CharT* const input, size_t start, size_t length)
+    void parse(const char_type* const input, size_t start, size_t length)
     {
         begin_input_ = input + start;
         end_input_ = input + length;
@@ -439,35 +441,35 @@ public:
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::f;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::false_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::any_integer;
-                        literal_ = jcr_char_traits<CharT>::integer_literal();
+                        literal_ = jcr_char_traits<char_type>::integer_literal();
                         literal_index_ = 1;
                         break;
                     case 's':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::any_string;
-                        literal_ = jcr_char_traits<CharT>::string_literal();
+                        literal_ = jcr_char_traits<char_type>::string_literal();
                         literal_index_ = 1;
                         break;
                     case 'n':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::n;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::t;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::true_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::true_literal();
                         literal_index_ = 1;
                         break;
                     case '/':
@@ -837,27 +839,27 @@ public:
                         break;
                     case 'f':
                         state_ = states::f;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::false_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
                         state_ = states::any_integer;
-                        literal_ = jcr_char_traits<CharT>::integer_literal();
+                        literal_ = jcr_char_traits<char_type>::integer_literal();
                         literal_index_ = 1;
                         break;
                     case 's':
                         state_ = states::any_string;
-                        literal_ = jcr_char_traits<CharT>::string_literal();
+                        literal_ = jcr_char_traits<char_type>::string_literal();
                         literal_index_ = 1;
                         break;
                     case 'n':
                         state_ = states::n;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         state_ = states::t;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::true_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::true_literal();
                         literal_index_ = 1;
                         break;
                     case ']':
@@ -964,27 +966,27 @@ public:
                         break;
                     case 'f':
                         state_ = states::f;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::false_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
                         state_ = states::any_integer;
-                        literal_ = jcr_char_traits<CharT>::integer_literal();
+                        literal_ = jcr_char_traits<char_type>::integer_literal();
                         literal_index_ = 1;
                         break;
                     case 's':
                         state_ = states::any_string;
-                        literal_ = jcr_char_traits<CharT>::string_literal();
+                        literal_ = jcr_char_traits<char_type>::string_literal();
                         literal_index_ = 1;
                         break;
                     case 'n':
                         state_ = states::n;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::null_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         state_ = states::t;
-                        literal_ = json_char_traits<CharT, sizeof(CharT)>::true_literal();
+                        literal_ = json_char_traits<char_type, sizeof(char_type)>::true_literal();
                         literal_index_ = 1;
                         break;
                     case '\'':
@@ -1041,7 +1043,7 @@ public:
                     }
                     else
                     {
-                        json_char_traits<CharT, sizeof(CharT)>::append_codepoint_to_string(cp_, string_buffer_);
+                        json_char_traits<char_type, sizeof(char_type)>::append_codepoint_to_string(cp_, string_buffer_);
                         state_ = states::string;
                     }
                 }
@@ -1107,7 +1109,7 @@ public:
                 {
                     append_second_codepoint(*p_);
                     uint32_t cp = 0x10000 + ((cp_ & 0x3FF) << 10) + (cp2_ & 0x3FF);
-                    json_char_traits<CharT, sizeof(CharT)>::append_codepoint_to_string(cp, string_buffer_);
+                    json_char_traits<char_type, sizeof(char_type)>::append_codepoint_to_string(cp, string_buffer_);
                     state_ = states::string;
                 }
                 ++p_;
@@ -1972,7 +1974,7 @@ private:
         }
     }
 
-    void end_string_value(const CharT* s, size_t length) 
+    void end_string_value(const char_type* s, size_t length) 
     {
         switch (stack_[top_])
         {
@@ -2055,7 +2057,7 @@ private:
         return column_;
     }
 
-    CharT do_current_char() const override
+    char_type do_current_char() const override
     {
         return p_ < end_input_? *p_ : 0;
     }
@@ -2103,8 +2105,8 @@ private:
     }
 };
 
-typedef basic_jcr_parser<char> jcr_parser;
-typedef basic_jcr_parser<wchar_t> wjcr_parser;
+typedef basic_jcr_parser<json> jcr_parser;
+typedef basic_jcr_parser<wjson> wjcr_parser;
 
 }}
 
