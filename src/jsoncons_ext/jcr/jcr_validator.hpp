@@ -496,6 +496,8 @@ public:
         } value_;
     };
 
+    std::shared_ptr<rule<value_type>> rule_val_;
+
     static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is);
     static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);
 
@@ -533,130 +535,17 @@ public:
 
     static basic_jcr_validator parse_file(const std::string& s, basic_parse_error_handler<char_type>& err_handler);
 
-    static basic_jcr_validator make_array()
-    {
-        return basic_jcr_validator::array();
-    }
-
-    static basic_jcr_validator make_array(size_t n, const array_allocator& allocator = array_allocator())
-    {
-        return basic_jcr_validator::array(n,allocator);
-    }
-
-    template <class T>
-    static basic_jcr_validator make_array(size_t n, const T& val, const array_allocator& allocator = array_allocator())
-    {
-        return basic_jcr_validator::array(n, val,allocator);
-    }
-
-    template <size_t dim>
-    static typename std::enable_if<dim==1,basic_jcr_validator>::type make_array(size_t n)
-    {
-        return array(n);
-    }
-
-    template <size_t dim, class T>
-    static typename std::enable_if<dim==1,basic_jcr_validator>::type make_array(size_t n, const T& val, const allocator_type& allocator = allocator_type())
-    {
-        return array(n,val,allocator);
-    }
-
-    template <size_t dim, typename... Args>
-    static typename std::enable_if<(dim>1),basic_jcr_validator>::type make_array(size_t n, Args... args)
-    {
-        const size_t dim1 = dim - 1;
-
-        basic_jcr_validator val = make_array<dim1>(args...);
-        val.resize(n);
-        for (size_t i = 0; i < n; ++i)
-        {
-            val[i] = make_array<dim1>(args...);
-        }
-        return val;
-    }
-
-    variant var_;
-
     basic_jcr_validator() 
-        : var_()
-    {
-    }
-
-    basic_jcr_validator(const allocator_type& allocator) 
-        : var_(allocator)
-    {
-    }
-
-    basic_jcr_validator(std::initializer_list<value_type> init,
-               const allocator_type& allocator = allocator_type()) 
-        : var_(std::move(init), allocator)
     {
     }
 
     basic_jcr_validator(const basic_jcr_validator<JsonT>& val)
-        : var_(val.var_)
     {
-    }
-
-    basic_jcr_validator(const basic_jcr_validator<JsonT>& val, const allocator_type& allocator)
-        : var_(val.var_,allocator)
-    {
-    }
-
-    basic_jcr_validator(JsonT&& other)
-        : var_(std::move(other.var_))
-    {
-    }
-
-    basic_jcr_validator(JsonT&& other, const allocator_type& allocator)
-        : var_(std::move(other.var_),allocator)
-    {
-    }
-
-    basic_jcr_validator(const array& val)
-        : var_(val)
-    {
-    }
-
-    basic_jcr_validator(array&& other)
-        : var_(std::move(other))
-    {
-    }
-
-    basic_jcr_validator(const object& other)
-        : var_(other)
-    {
-    }
-
-    basic_jcr_validator(object&& other)
-        : var_(std::move(other))
-    {
-    }
-
-    basic_jcr_validator(double val, uint8_t precision)
-        : var_(val,precision)
-    {
+        rule_val_ = val.rule_val_;
     }
 
     basic_jcr_validator(rule<value_type>* rule)
-        : var_(rule)
-    {
-    }
-
-    template <typename T>
-    basic_jcr_validator(T val, const allocator_type& allocator)
-        : var_(allocator)
-    {
-        json_type_traits<value_type,T>::assign(*this,val);
-    }
-
-    basic_jcr_validator(const char_type *s, size_t length, const allocator_type& allocator = allocator_type())
-        : var_(s, length, allocator)
-    {
-    }
-    template<class InputIterator>
-    basic_jcr_validator(InputIterator first, InputIterator last, const allocator_type& allocator = allocator_type())
-        : var_(first,last,allocator)
+        : rule_val_(rule)
     {
     }
 
@@ -666,33 +555,24 @@ public:
 
     basic_jcr_validator& operator=(const value_type& rhs)
     {
-        var_ = rhs.var_;
+        rule_val_ = rhs.rule_val_;
         return *this;
     }
 
-    basic_jcr_validator& operator=(value_type&& rhs)
+    basic_jcr_validator<JsonT>& operator=(std::shared_ptr<rule<value_type>> val)
     {
-        if (this != &rhs)
-        {
-            var_ = std::move(rhs.var_);
-        }
-        return *this;
-    }
-
-    basic_jcr_validator<JsonT>& operator=(rule<value_type>* val)
-    {
-        var_.assign(val);
+        rule_val_ = val;
         return *this;
     }
 
     bool is_object() const JSONCONS_NOEXCEPT
     {
-        return var_.type_ == value_types::object_t || var_.type_ == value_types::empty_object_t;
+        return rule_val_->is_object();
     }
 
     void swap(basic_jcr_validator& b)
     {
-        var_.swap(b.var_);
+        rule_val_.swap(b.rule_val_);
     }
 
     friend void swap(JsonT& a, JsonT& b)
@@ -702,55 +582,27 @@ public:
 
     rule<value_type>& array_value() 
     {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            return *(var_.value_.rule_val_);
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad array cast");
-            break;
-        }
+        return *rule_val_;
     }
 
     const rule<value_type>& array_value() const
     {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            return *(var_.value_.rule_val_);
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad array cast");
-            break;
-        }
+        return *rule_val_;
     }
 
     rule<value_type>& object_value()
     {
-        switch (var_.type_)
-        {
-        case value_types::object_t:
-            return *(var_.value_.rule_val_);
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad object cast");
-            break;
-        }
+        return *rule_val_;
     }
 
     const rule<value_type>& object_value() const
     {
-        switch (var_.type_)
-        {
-        case value_types::object_t:
-            return *(var_.value_.rule_val_);
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad object cast");
-            break;
-        }
+        return *rule_val_;
     }
 
     bool validate(const JsonT& val) const
     {
-        return var_.validate(val);
+        return rule_val_->validate(val);
     }
 
 private:

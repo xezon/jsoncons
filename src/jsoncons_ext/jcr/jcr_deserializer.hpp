@@ -99,7 +99,7 @@ private:
     void push_object()
     {
         stack2_.push_back(top_);
-        stack_[top_].second = object(oa_);
+        stack_[top_].second = new object();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -115,7 +115,7 @@ private:
     void push_array()
     {
         stack2_.push_back(top_);
-        stack_[top_].second = array(aa_);
+        stack_[top_].second = new array();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
