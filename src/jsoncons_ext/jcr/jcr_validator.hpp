@@ -348,14 +348,7 @@ public:
         variant(const allocator_type& a)
             : type_(value_types::object_t)
         {
-            value_.object_val_ = create_impl<object>(a, object_allocator(a));
-        }
-
-        variant(std::initializer_list<value_type> init,
-                const allocator_type& a)
-            : type_(value_types::array_t)
-        {
-            value_.array_val_ = create_impl<array>(a, std::move(init), array_allocator(a));
+            value_.object_val_ = new object();
         }
 
         explicit variant(variant&& var)
@@ -374,34 +367,17 @@ public:
         {
             init_variant(var);
         }
-        explicit variant(const variant& var, const allocator_type& a)
-            : type_(var.type_)
-        {
-            init_variant(var);
-        }
 
         variant(const object & val)
             : type_(value_types::object_t)
         {
-            value_.object_val_ = create_impl<object>(val.get_allocator(), val) ;
-        }
-
-        variant(const object & val, const allocator_type& a)
-            : type_(value_types::object_t)
-        {
-            value_.object_val_ = create_impl<object>(a, val, object_allocator(a)) ;
+            value_.object_val_ = new object(val);
         }
 
         variant(object&& val)
             : type_(value_types::object_t)
         {
-            value_.object_val_ = create_impl<object>(val.get_allocator(), std::move(val));
-        }
-
-        variant(object&& val, const allocator_type& a)
-            : type_(value_types::object_t)
-        {
-            value_.object_val_ = create_impl<object>(a, std::move(val), object_allocator(a));
+            value_.object_val_ = new object(std::move(val));
         }
 
         variant(const array& val)
@@ -450,7 +426,7 @@ public:
                 value_.array_val_ = create_impl<array>(var.value_.array_val_->get_allocator(), *(var.value_.array_val_), array_allocator(var.value_.array_val_->get_allocator()));
                 break;
             case value_types::object_t:
-                value_.object_val_ = create_impl<object>(var.value_.object_val_->get_allocator(), *(var.value_.object_val_), object_allocator(var.value_.object_val_->get_allocator()));
+                value_.object_val_ = new object(*(var.value_.object_val_));
                 break;
             case value_types::rule_t:
                 value_.rule_val_ = var.value_.rule_val_->clone();
@@ -473,7 +449,7 @@ public:
                 destroy_impl(value_.array_val_->get_allocator(), value_.array_val_);
                 break;
             case value_types::object_t:
-                destroy_impl(value_.object_val_->get_allocator(), value_.object_val_);
+                delete value_.object_val_;
                 break;
             case value_types::rule_t:
                 delete value_.rule_val_;
@@ -523,28 +499,6 @@ public:
             destroy_variant();
             type_ = value_types::rule_t;
             value_.rule_val_ = val;
-        }
-
-        void assign(const object & val)
-        {
-            destroy_variant();
-            type_ = value_types::object_t;
-            value_.object_val_ = create_impl<object>(val.get_allocator(), val, object_allocator(val.get_allocator()));
-        }
-
-        void assign(object && val)
-        {
-            switch (type_)
-            {
-            case value_types::object_t:
-                value_.object_val_->swap(val);
-                break;
-            default:
-                destroy_variant();
-                type_ = value_types::object_t;
-                value_.object_val_ = create_impl<object>(val.get_allocator(), std::move(val), object_allocator(val.get_allocator()));
-                break;
-            }
         }
 
         void assign(const array& val)
