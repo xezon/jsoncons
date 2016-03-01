@@ -577,9 +577,9 @@ public:
             case value_types::rule_t:
                 return value_.rule_val_->validate(val);
             case value_types::array_t:
-                return value_.array_val_->validate(val.array_value());
+                return value_.array_val_->validate(val);
             case value_types::object_t:
-                return value_.object_val_->validate(val.object_value());
+                return value_.object_val_->validate(val);
             default:
                 // throw
                 break;
@@ -897,64 +897,6 @@ public:
     void assign_double(double rhs, uint8_t precision = 0)
     {
         var_.assign(rhs,precision);
-    }
-
-    static basic_jcr_validator make_2d_array(size_t m, size_t n);
-
-    template <typename T>
-    static basic_jcr_validator make_2d_array(size_t m, size_t n, T val);
-
-    static basic_jcr_validator make_3d_array(size_t m, size_t n, size_t k);
-
-    template <typename T>
-    static basic_jcr_validator make_3d_array(size_t m, size_t n, size_t k, T val);
-
-    object_range members()
-    {
-        switch (var_.type_)
-        {
-        case value_types::empty_object_t:
-            return object_range(object_iterator(true),object_iterator(true));
-        case value_types::object_t:
-            return object_range(object_value().begin(),object_value().end());
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an object");
-        }
-    }
-
-    const_object_range members() const
-    {
-        switch (var_.type_)
-        {
-        case value_types::empty_object_t:
-            return const_object_range(const_object_iterator(true),const_object_iterator(true));
-        case value_types::object_t:
-            return const_object_range(object_value().begin(),object_value().end());
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an object");
-        }
-    }
-
-    array_range elements()
-    {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            return array_range(array_value().begin(),array_value().end());
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an array");
-        }
-    }
-
-    const_array_range elements() const
-    {
-        switch (var_.type_)
-        {
-        case value_types::array_t:
-            return const_array_range(array_value().begin(),array_value().end());
-        default:
-            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an array");
-        }
     }
 
     array& array_value() 

@@ -189,17 +189,6 @@ private:
                 std::make_move_iterator(s),
                 std::make_move_iterator(send));
             top_ -= count;
-            /*size_t count = top_ - (stack2_.back() + 1);
-            stack_[stack2_.back()].second.array_value().resize(count);
-
-            auto s = stack_.begin() + (stack2_.back()+1);
-            auto dend = stack_[stack2_.back()].second.elements().end();
-            for (auto it = stack_[stack2_.back()].second.elements().begin();
-                 it != dend; ++it, ++s)
-            {
-                *it = std::move(s->second);
-            }
-            top_ -= count;*/
         }
     }
 
