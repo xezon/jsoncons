@@ -899,7 +899,7 @@ public:
         var_.assign(rhs,precision);
     }
 
-    array& array_value() 
+    rule<value_type>& array_value() 
     {
         switch (var_.type_)
         {
@@ -911,7 +911,7 @@ public:
         }
     }
 
-    const array& array_value() const
+    const rule<value_type>& array_value() const
     {
         switch (var_.type_)
         {
@@ -923,7 +923,7 @@ public:
         }
     }
 
-    object& object_value()
+    rule<value_type>& object_value()
     {
         switch (var_.type_)
         {
@@ -935,7 +935,7 @@ public:
         }
     }
 
-    const object& object_value() const
+    const rule<value_type>& object_value() const
     {
         switch (var_.type_)
         {
