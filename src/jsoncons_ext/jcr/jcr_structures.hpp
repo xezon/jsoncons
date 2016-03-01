@@ -38,6 +38,11 @@ public:
     {
     }
 
+    virtual bool is_object() const
+    {
+        return false;
+    }
+
     virtual void insert(move_iterator first, move_iterator last)
     {
     }
@@ -273,6 +278,11 @@ public:
     jcr_object_validator(jcr_object_validator&& val,const allocator_type& allocator) :
         members_(std::move(val.members_),allocator)
     {
+    }
+
+    bool is_object() const override
+    {
+        return true;
     }
 
     void insert(move_iterator first, move_iterator last) override
