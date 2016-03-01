@@ -25,7 +25,6 @@ class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::cha
     static const int default_stack_size = 1000;
 
     typedef typename ValT::char_type char_type;
-    typedef typename ValT::member_type member_type;
     typedef typename ValT::string_type string_type;
     typedef typename string_type::allocator_type string_allocator;
     typedef typename ValT::allocator_type allocator_type;
@@ -161,11 +160,6 @@ private:
     {
         end_structure();
         pop_array();
-    }
-
-    static member_type move_pair(std::pair<string_type,value_type>&& val)
-    {
-        return member_type(std::move(val.first),std::move(val.second));
     }
 
     void end_structure() 

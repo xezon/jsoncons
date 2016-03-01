@@ -488,20 +488,13 @@ class object_rule : public rule<JsonT>
 {
 public:
     typedef typename JsonT json_type;
-    typedef typename JsonT::object object;
     typedef Alloc allocator_type;
-    typedef typename StringT::value_type char_type;
     typedef StringT string_type;
-    typedef name_value_pair<StringT,std::shared_ptr<rule<JsonT>>> value_type;
-    typedef typename std::vector<value_type, allocator_type>::iterator base_iterator;
-    typedef typename std::vector<value_type, allocator_type>::const_iterator const_base_iterator;
-
-    typedef json_object_iterator<base_iterator,base_iterator> iterator;
-    typedef json_object_iterator<const_base_iterator,base_iterator> const_iterator;
+    typedef std::shared_ptr<rule<JsonT>> value_type;
 
     static value_type move_pair(std::pair<string_type,std::shared_ptr<rule<JsonT>>>&& val)
     {
-        return value_type(std::move(val.first),std::move(val.second));
+        return std::move(val.second);
     }
 private:
     std::vector<value_type,allocator_type> members_;
@@ -556,68 +549,13 @@ public:
         bool result = true;
         for (auto element : members_)
         {
-            result = element.value()->validate(val);
+            result = element->validate(val);
             if (!result)
             {
                 break;
             }
         }
         return result;
-    }
-
-    iterator begin()
-    {
-        //return members_.begin();
-        return iterator(members_.begin());
-    }
-
-    iterator end()
-    {
-        //return members_.end();
-        return iterator(members_.end());
-    }
-
-    const_iterator begin() const
-    {
-        //return iterator(members.data());
-        return const_iterator(members_.begin());
-    }
-
-    const_iterator end() const
-    {
-        //return members_.end();
-        return const_iterator(members_.end());
-    }
-
-    void swap(object_rule& val)
-    {
-        members_.swap(val.members_);
-    }
-
-    iterator find(const char_type* name, size_t length)
-    {
-        member_lt_string<value_type,char_type> comp(length);
-        auto it = std::lower_bound(members_.begin(),members_.end(), name, comp);
-        auto result = (it != members_.end() && name_eq_string(it->name(),name,length)) ? it : members_.end();
-        return iterator(result);
-    }
-
-    const_iterator find(const char_type* name, size_t length) const
-    {
-        member_lt_string<value_type,char_type> comp(length);
-        auto it = std::lower_bound(members_.begin(),members_.end(), name, comp);
-        auto result = (it != members_.end() && name_eq_string(it->name(),name,length)) ? it : members_.end();
-        return const_iterator(result);
-    }
-
-    iterator find(const string_type& name)
-    {
-        return find(name.data(), name.length());
-    }
- 
-    const_iterator find(const string_type& name) const
-    {
-        return const_iterator(find(name.data(), name.length()));
     }
 
     template<class InputIt, class UnaryPredicate>
@@ -631,26 +569,6 @@ public:
         {
             *d = pred(*s);
         }
-        std::sort(members_.begin(),members_.end(),member_lt_member<value_type>());
-    }
-
-    bool operator==(const object_rule<StringT,JsonT,Alloc>& rhs) const
-    {
-        if (size() != rhs.size())
-        {
-            return false;
-        }
-        for (auto it = members_.begin(); it != members_.end(); ++it)
-        {
-
-            auto rhs_it = std::lower_bound(rhs.members_.begin(), rhs.members_.end(), *it, member_lt_member<value_type>());
-            // member_lt_member actually only compares keys, so we need to check the value separately
-            if (rhs_it == rhs.members_.end() || rhs_it->name() != it->name() || rhs_it->value() != it->value())
-            {
-                return false;
-            }
-        }
-        return true;
     }
 private:
     object_rule<StringT,JsonT,Alloc>& operator=(const object_rule<StringT,JsonT,Alloc>&);
