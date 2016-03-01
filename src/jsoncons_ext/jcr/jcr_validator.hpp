@@ -348,7 +348,7 @@ public:
         variant(const allocator_type& a)
             : type_(value_types::object_t)
         {
-            value_.object_val_ = new object();
+            value_.rule_val_ = new object();
         }
 
         explicit variant(variant&& var)
@@ -371,25 +371,25 @@ public:
         variant(const object & val)
             : type_(value_types::object_t)
         {
-            value_.object_val_ = new object(val);
+            value_.rule_val_ = new object(val);
         }
 
         variant(object&& val)
             : type_(value_types::object_t)
         {
-            value_.object_val_ = new object(std::move(val));
+            value_.rule_val_ = new object(std::move(val));
         }
 
         variant(const array& val)
             : type_(value_types::array_t)
         {
-            value_.array_val_ = new array(val);
+            value_.rule_val_ = new array(val);
         }
 
         variant(array&& val)
             : type_(value_types::array_t)
         {
-            value_.array_val_ = new array(std::move(val));
+            value_.rule_val_ = new array(std::move(val));
         }
 
         explicit variant(rule<value_type>* rule)
@@ -406,10 +406,10 @@ public:
             case value_types::null_t:
                 break;
             case value_types::array_t:
-                value_.array_val_ = var.value_.array_val_->clone();
+                value_.rule_val_ = var.value_.rule_val_->clone();
                 break;
             case value_types::object_t:
-                value_.object_val_ = var.value_.object_val_->clone();
+                value_.rule_val_ = var.value_.rule_val_->clone();
                 break;
             case value_types::rule_t:
                 value_.rule_val_ = var.value_.rule_val_->clone();
@@ -429,10 +429,10 @@ public:
             switch (type_)
             {
             case value_types::array_t:
-                delete value_.array_val_;
+                delete value_.rule_val_;
                 break;
             case value_types::object_t:
-                delete value_.object_val_;
+                delete value_.rule_val_;
                 break;
             case value_types::rule_t:
                 delete value_.rule_val_;
@@ -492,9 +492,9 @@ public:
             case value_types::rule_t:
                 return value_.rule_val_->validate(val);
             case value_types::array_t:
-                return value_.array_val_->validate(val);
+                return value_.rule_val_->validate(val);
             case value_types::object_t:
-                return value_.object_val_->validate(val);
+                return value_.rule_val_->validate(val);
             default:
                 // throw
                 break;
@@ -521,8 +521,6 @@ public:
         uint8_t length_or_precision_;
         union
         {
-            rule<value_type>* object_val_;
-            rule<value_type>* array_val_;
             rule<value_type>* rule_val_;
         } value_;
     };
@@ -736,7 +734,7 @@ public:
         switch (var_.type_)
         {
         case value_types::array_t:
-            return *(var_.value_.array_val_);
+            return *(var_.value_.rule_val_);
         default:
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad array cast");
             break;
@@ -748,7 +746,7 @@ public:
         switch (var_.type_)
         {
         case value_types::array_t:
-            return *(var_.value_.array_val_);
+            return *(var_.value_.rule_val_);
         default:
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad array cast");
             break;
@@ -760,7 +758,7 @@ public:
         switch (var_.type_)
         {
         case value_types::object_t:
-            return *(var_.value_.object_val_);
+            return *(var_.value_.rule_val_);
         default:
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad object cast");
             break;
@@ -772,7 +770,7 @@ public:
         switch (var_.type_)
         {
         case value_types::object_t:
-            return *(var_.value_.object_val_);
+            return *(var_.value_.rule_val_);
         default:
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad object cast");
             break;
