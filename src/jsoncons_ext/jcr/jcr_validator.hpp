@@ -75,8 +75,8 @@ public:
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<member_type> object_allocator;
 
-    typedef jcr_array_validator<value_type,array_allocator> array;
-    typedef jcr_object_validator<string_type,value_type,object_allocator>  object;
+    typedef array_rule<value_type,array_allocator> array;
+    typedef object_rule<string_type,value_type,object_allocator>  object;
 
     typedef jsoncons::null_type null_type;
 

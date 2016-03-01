@@ -49,7 +49,7 @@ public:
 };
 
 template <class ValT, class Alloc>
-class jcr_array_validator : public rule<ValT>
+class array_rule : public rule<ValT>
 {
 public:
     typedef Alloc allocator_type;
@@ -62,51 +62,51 @@ public:
     typedef typename std::vector<ValT,Alloc>::iterator iterator;
     typedef typename std::vector<ValT,Alloc>::const_iterator const_iterator;
 
-    jcr_array_validator()
+    array_rule()
         : elements_()
     {
     }
 
-    explicit jcr_array_validator(const Alloc& allocator)
+    explicit array_rule(const Alloc& allocator)
         : elements_(allocator)
     {
     }
 
-    explicit jcr_array_validator(size_t n, const Alloc& allocator = Alloc())
+    explicit array_rule(size_t n, const Alloc& allocator = Alloc())
         : elements_(n,ValT(),allocator)
     {
     }
 
-    explicit jcr_array_validator(size_t n, const ValT& value, const Alloc& allocator = Alloc())
+    explicit array_rule(size_t n, const ValT& value, const Alloc& allocator = Alloc())
         : elements_(n,value,allocator)
     {
     }
 
     template <class InputIterator>
-    jcr_array_validator(InputIterator begin, InputIterator end, const Alloc& allocator = Alloc())
+    array_rule(InputIterator begin, InputIterator end, const Alloc& allocator = Alloc())
         : elements_(begin,end,allocator)
     {
     }
 
-    jcr_array_validator(const jcr_array_validator& val)
+    array_rule(const array_rule& val)
         : elements_(val.elements_)
     {
     }
 
-    jcr_array_validator(const jcr_array_validator& val, const Alloc& allocator)
+    array_rule(const array_rule& val, const Alloc& allocator)
         : elements_(val.elements_,allocator)
     {
     }
-    jcr_array_validator(jcr_array_validator&& val)
+    array_rule(array_rule&& val)
         : elements_(std::move(val.elements_))
     {
     }
-    jcr_array_validator(jcr_array_validator&& val, const Alloc& allocator)
+    array_rule(array_rule&& val, const Alloc& allocator)
         : elements_(std::move(val.elements_),allocator)
     {
     }
 
-    jcr_array_validator(std::initializer_list<ValT> init, 
+    array_rule(std::initializer_list<ValT> init, 
                const Alloc& allocator = Alloc())
         : elements_(std::move(init),allocator)
     {
@@ -126,7 +126,7 @@ public:
 
     rule* clone() const override
     {
-        return new jcr_array_validator(*this);
+        return new array_rule(*this);
     }
 
     bool validate(const json_type& j) const override
@@ -141,7 +141,7 @@ public:
         return elements_.get_allocator();
     }
 
-    void swap(jcr_array_validator<ValT,Alloc>& val)
+    void swap(array_rule<ValT,Alloc>& val)
     {
         elements_.swap(val.elements_);
     }
@@ -212,7 +212,7 @@ public:
 
     const_iterator end() const {return elements_.end();}
 
-    bool operator==(const jcr_array_validator<ValT,Alloc>& rhs) const
+    bool operator==(const array_rule<ValT,Alloc>& rhs) const
     {
         if (size() != rhs.size())
         {
@@ -228,12 +228,12 @@ public:
         return true;
     }
 private:
-    jcr_array_validator& operator=(const jcr_array_validator<ValT,Alloc>&);
+    array_rule& operator=(const array_rule<ValT,Alloc>&);
     std::vector<ValT,Alloc> elements_;
 };
 
 template <class StringT,class ValT,class Alloc>
-class jcr_object_validator : public rule<ValT>
+class object_rule : public rule<ValT>
 {
 public:
     typedef typename ValT::json_type json_type;
@@ -255,27 +255,27 @@ public:
 private:
     std::vector<value_type,allocator_type> members_;
 public:
-    jcr_object_validator(const allocator_type& allocator = allocator_type())
+    object_rule(const allocator_type& allocator = allocator_type())
         : members_(allocator)
     {
     }
 
-    jcr_object_validator(const jcr_object_validator<StringT,ValT,Alloc>& val)
+    object_rule(const object_rule<StringT,ValT,Alloc>& val)
         : members_(val.members_)
     {
     }
 
-    jcr_object_validator(jcr_object_validator&& val)
+    object_rule(object_rule&& val)
         : members_(std::move(val.members_))
     {
     }
 
-    jcr_object_validator(const jcr_object_validator<StringT,ValT,Alloc>& val, const allocator_type& allocator) :
+    object_rule(const object_rule<StringT,ValT,Alloc>& val, const allocator_type& allocator) :
         members_(val.members_,allocator)
     {
     }
 
-    jcr_object_validator(jcr_object_validator&& val,const allocator_type& allocator) :
+    object_rule(object_rule&& val,const allocator_type& allocator) :
         members_(std::move(val.members_),allocator)
     {
     }
@@ -292,7 +292,7 @@ public:
 
     rule* clone() const override
     {
-        return new jcr_object_validator(*this);
+        return new object_rule(*this);
     }
 
     Alloc get_allocator() const
@@ -362,7 +362,7 @@ public:
         return members_.end();
     }
 */
-    void swap(jcr_object_validator& val)
+    void swap(object_rule& val)
     {
         members_.swap(val.members_);
     }
@@ -678,7 +678,7 @@ public:
         return iterator(it);
     }
 
-    bool operator==(const jcr_object_validator<StringT,ValT,Alloc>& rhs) const
+    bool operator==(const object_rule<StringT,ValT,Alloc>& rhs) const
     {
         if (size() != rhs.size())
         {
@@ -697,7 +697,7 @@ public:
         return true;
     }
 private:
-    jcr_object_validator<StringT,ValT,Alloc>& operator=(const jcr_object_validator<StringT,ValT,Alloc>&);
+    object_rule<StringT,ValT,Alloc>& operator=(const object_rule<StringT,ValT,Alloc>&);
 };
 
 
