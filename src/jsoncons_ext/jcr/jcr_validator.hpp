@@ -406,10 +406,10 @@ public:
             case value_types::null_t:
                 break;
             case value_types::array_t:
-                value_.array_val_ = create_impl<array>(var.value_.array_val_->get_allocator(), *(var.value_.array_val_), array_allocator(var.value_.array_val_->get_allocator()));
+                value_.array_val_ = var.value_.array_val_->clone();
                 break;
             case value_types::object_t:
-                value_.object_val_ = new object(*(var.value_.object_val_));
+                value_.object_val_ = var.value_.object_val_->clone();
                 break;
             case value_types::rule_t:
                 value_.rule_val_ = var.value_.rule_val_->clone();
@@ -521,8 +521,8 @@ public:
         uint8_t length_or_precision_;
         union
         {
-            object* object_val_;
-            array* array_val_;
+            rule<value_type>* object_val_;
+            rule<value_type>* array_val_;
             rule<value_type>* rule_val_;
         } value_;
     };
