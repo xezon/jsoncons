@@ -716,47 +716,9 @@ public:
         return *this;
     }
 
-    bool operator!=(const basic_jcr_validator& rhs) const
-    {
-        return !(*this == rhs);
-    }
-
-    bool operator==(const basic_jcr_validator& rhs) const
-    {
-        return var_ == rhs.var_;
-    }
-
-    string_type to_string(const string_allocator& allocator=string_allocator()) const JSONCONS_NOEXCEPT
-    {
-        string_type s(allocator);
-        std::basic_ostringstream<char_type,char_traits_type,string_allocator> os(s);
-        {
-            basic_json_serializer<char_type> serializer(os);
-            to_stream(serializer);
-        }
-        return os.str();
-    }
-
-    string_type to_string(const basic_output_format<char_type>& format,
-                          const string_allocator& allocator=string_allocator()) const
-    {
-        string_type s(allocator);
-        std::basic_ostringstream<char_type> os(s);
-        {
-            basic_json_serializer<char_type> serializer(os, format);
-            to_stream(serializer);
-        }
-        return os.str();
-    }
-
     bool is_object() const JSONCONS_NOEXCEPT
     {
         return var_.type_ == value_types::object_t || var_.type_ == value_types::empty_object_t;
-    }
-
-    bool is_array() const JSONCONS_NOEXCEPT
-    {
-        return var_.type_ == value_types::array_t;
     }
 
     void swap(basic_jcr_validator& b)
@@ -767,51 +729,6 @@ public:
     friend void swap(JsonT& a, JsonT& b)
     {
         a.swap(b);
-    }
-
-    void assign_string(const string_type& rhs)
-    {
-        var_.assign(rhs);
-    }
-
-    void assign_string(const char_type* rhs, size_t length)
-    {
-        var_.assign_string(rhs,length);
-    }
-
-    void assign_bool(bool rhs)
-    {
-        var_.assign(rhs);
-    }
-
-    void assign_object(const object & rhs)
-    {
-        var_.assign(rhs);
-    }
-
-    void assign_array(const array& rhs)
-    {
-        var_.assign(rhs);
-    }
-
-    void assign_null()
-    {
-        var_.assign(null_type());
-    }
-
-    void assign_integer(int64_t rhs)
-    {
-        var_.assign(rhs);
-    }
-
-    void assign_uinteger(uint64_t rhs)
-    {
-        var_.assign(rhs);
-    }
-
-    void assign_double(double rhs, uint8_t precision = 0)
-    {
-        var_.assign(rhs,precision);
     }
 
     rule<value_type>& array_value() 
