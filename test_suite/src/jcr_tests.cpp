@@ -125,6 +125,9 @@ BOOST_AUTO_TEST_CASE(test_named_rules)
         lc,
         wc
     }
+    fn "file-name"  : string
+    lc "line-count" : 0..
+    wc "word-count" : 0..    
     )");
 
     json val1 = json::parse(R"(
