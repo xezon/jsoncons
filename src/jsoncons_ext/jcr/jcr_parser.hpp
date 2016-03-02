@@ -115,13 +115,14 @@ enum class states
 template<typename JsonT>
 class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type>
 {
+    typedef typename rule<JsonT> rule_type;
     typedef typename JsonT::char_type char_type;
     static const int default_depth = 100;
 
     states state_;
     int top_;
     std::vector<modes> stack_;
-    basic_jcr_input_handler<char_type> *handler_;
+    basic_jcr_input_handler<rule_type> *handler_;
     basic_parse_error_handler<char_type> *err_handler_;
     size_t column_;
     size_t line_;
@@ -144,7 +145,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     size_t literal_index_;
 
 public:
-    basic_jcr_parser(basic_jcr_input_handler<char_type>& handler)
+    basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
        : state_(states::start), 
          top_(-1),
          stack_(default_depth),
@@ -160,7 +161,7 @@ public:
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
     }
 
-    basic_jcr_parser(basic_jcr_input_handler<char_type>& handler,
+    basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler,
                       basic_parse_error_handler<char_type>& err_handler)
        : state_(states::start), 
          top_(-1),
@@ -441,7 +442,7 @@ public:
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::f;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::false_literal();
+                        literal_ = json_literals<char_type>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
@@ -462,14 +463,14 @@ public:
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::n;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::null_literal();
+                        literal_ = json_literals<char_type>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         handler_->begin_json();
                         flip(modes::done, modes::start);
                         state_ = states::t;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::true_literal();
+                        literal_ = json_literals<char_type>::true_literal();
                         literal_index_ = 1;
                         break;
                     case '/':
@@ -850,7 +851,7 @@ public:
                         break;
                     case 'f':
                         state_ = states::f;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::false_literal();
+                        literal_ = json_literals<char_type>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
@@ -865,12 +866,12 @@ public:
                         break;
                     case 'n':
                         state_ = states::n;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::null_literal();
+                        literal_ = json_literals<char_type>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         state_ = states::t;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::true_literal();
+                        literal_ = json_literals<char_type>::true_literal();
                         literal_index_ = 1;
                         break;
                     case ']':
@@ -977,7 +978,7 @@ public:
                         break;
                     case 'f':
                         state_ = states::f;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::false_literal();
+                        literal_ = json_literals<char_type>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
@@ -992,12 +993,12 @@ public:
                         break;
                     case 'n':
                         state_ = states::n;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::null_literal();
+                        literal_ = json_literals<char_type>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         state_ = states::t;
-                        literal_ = json_char_traits<char_type, sizeof(char_type)>::true_literal();
+                        literal_ = json_literals<char_type>::true_literal();
                         literal_index_ = 1;
                         break;
                     case '\'':

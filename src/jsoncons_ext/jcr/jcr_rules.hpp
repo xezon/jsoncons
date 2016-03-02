@@ -27,6 +27,7 @@ class rule
 {
 public:
     typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
     typedef typename JsonT json_type;
 
     typedef typename std::vector<std::pair<string_type,std::shared_ptr<rule<JsonT>>>>::iterator iterator;
@@ -116,7 +117,7 @@ public:
 };
 
 template <class JsonT>
-class name_rule : public rule<JsonT>
+class member_rule : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
@@ -125,14 +126,14 @@ class name_rule : public rule<JsonT>
     string_type name_;
     std::shared_ptr<rule<JsonT>> rule_;
 public:
-    name_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+    member_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
         : name_(name),rule_(rule)
     {
     }
 
     rule<JsonT>* clone() const override
     {
-        return new name_rule(name_,rule_);
+        return new member_rule(name_,rule_);
     }
 
     bool validate(const JsonT& val) const override
@@ -152,7 +153,7 @@ public:
 };
 
 template <class JsonT>
-class named_rule : public rule<JsonT>
+class jcr_rule_name : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
@@ -160,18 +161,18 @@ class named_rule : public rule<JsonT>
 
     string_type s_;
 public:
-    named_rule(const char_type* p, size_t length, string_allocator sa)
+    jcr_rule_name(const char_type* p, size_t length, string_allocator sa)
         : s_(p,length,sa)
     {
     }
-    named_rule(const string_type& s)
+    jcr_rule_name(const string_type& s)
         : s_(s)
     {
     }
 
     rule<JsonT>* clone() const override
     {
-        return new named_rule(s_);
+        return new jcr_rule_name(s_);
     }
 
     bool validate(const JsonT& val) const override

@@ -16,6 +16,7 @@
 #include <ostream>
 #include <memory>
 #include <typeinfo>
+#include <map>
 #include "jsoncons/json.hpp"
 #include "jcr_deserializer.hpp"
 #include "jcr_parser.hpp"
@@ -28,35 +29,10 @@
 
 namespace jsoncons { namespace jcr {
 
-template <typename CharT,class T> inline
-void serialize(basic_json_output_handler<CharT>& os, const T&)
-{
-    os.value(null_type());
-}
-
-template <typename JsonT>
-class basic_jcr_validator;
-
-enum class value_types : uint8_t 
-{
-    // Simple types
-    empty_object_t,
-    null_t,
-    // Non simple types
-    rule_t,
-    object_t,
-    array_t
-};
-
-inline
-bool is_simple(value_types type)
-{
-    return type < value_types::rule_t;
-}
-
 template <class JsonT>
 class basic_jcr_validator
 {
+    std::shared_ptr<rule<JsonT>> rule_val_;
 public:
     typedef JsonT json_type;
 
@@ -70,6 +46,7 @@ public:
     typedef basic_jcr_validator<JsonT> value_type;
 
     typedef typename rule<JsonT> rule_type;
+    std::map<string_type,std::shared_ptr<rule_type>> rule_definitions_;
 
     //typedef name_value_pair<string_type,std::shared_ptr<rule_type>> member_type;
 
@@ -80,7 +57,15 @@ public:
     typedef array_rule<json_type,array_allocator> array;
     typedef object_rule<string_type,json_type,object_allocator>  object;
 
-    std::shared_ptr<rule<JsonT>> rule_val_;
+    void set_rule(std::shared_ptr<rule<JsonT>> rule)
+    {
+        rule_val_ = rule;
+    }
+
+    void add_rule_definition(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+    {
+        rule_definitions_[name] = rule;
+    }
 
     static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is);
     static basic_jcr_validator parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);

@@ -20,7 +20,7 @@
 namespace jsoncons { namespace jcr {
 
 template <class ValT>
-class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::char_type>
+class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::rule_type>
 {
     static const int default_stack_size = 1000;
 
@@ -92,7 +92,7 @@ private:
     void pop_initial()
     {
         JSONCONS_ASSERT(top_ == 1);
-        result_ = stack_[0].second;
+        result_.set_rule(stack_[0].second);
         --top_;
     }
 
@@ -194,7 +194,7 @@ private:
 
     void do_rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<named_rule<json_type>>(p,length,sa_);
+        stack_[top_].second = std::make_shared<jcr_rule_name<json_type>>(p,length,sa_);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -220,7 +220,7 @@ private:
         }
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -237,7 +237,7 @@ private:
         auto rule = std::make_shared<integer_rule<json_type>>(value);
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -254,7 +254,7 @@ private:
         auto rule= std::make_shared<integer_range_rule<json_type>>(from,to);
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -271,7 +271,7 @@ private:
         auto rule = std::make_shared<uinteger_range_rule<json_type>>(from,to);
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -288,7 +288,7 @@ private:
         auto rule = std::make_shared<uinteger_rule<json_type>>(value);
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -305,7 +305,7 @@ private:
         auto rule = std::make_shared<double_rule<json_type>>(value,precision);
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -322,7 +322,7 @@ private:
         auto rule = std::make_shared<bool_rule<json_type>>(value);
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -339,7 +339,7 @@ private:
         auto rule = std::make_shared<null_rule<json_type>>();
         if (stack_[stack2_.back()].second->is_object())
         {
-            stack_[top_].second = std::make_shared<name_rule<json_type>>(stack_[top_].first,rule);
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
         }
         else
         {
@@ -349,6 +349,27 @@ private:
         {
             stack_.resize(top_*2);
         }
+    }
+
+    void do_rule_definition(value_type rule, const basic_parsing_context<char_type>& context) override
+    {
+        if (stack_[stack2_.back()].second->is_object())
+        {
+            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
+        }
+        else
+        {
+            stack_[top_].second = rule;
+        }
+        if (++top_ >= stack_.size())
+        {
+            stack_.resize(top_*2);
+        }
+    }
+
+    void do_named_rule(const string_type& name, value_type rule, const basic_parsing_context<char_type>& context) override
+    {
+        result_.add_rule_definition(name,rule);
     }
 };
 
