@@ -171,7 +171,7 @@ public:
 
     bool validate(const JsonT& val) const
     {
-        return rule_val_->validate(val);
+        return rule_val_->validate(val, rule_definitions_);
     }
 
 private:
