@@ -61,11 +61,12 @@ struct jcr_char_traits<wchar_t>
 
 enum class modes 
 {
-    done,
-    start,
+    initial,
+    scalar,
     array_element,
     object_member_name,
-    object_member_value
+    object_member_value,
+    named_rule
 };
 
 enum class states 
@@ -107,9 +108,10 @@ enum class states
     any_integer,
     any_string,
     rule_name,
+    expect_rule,
     cr,
     lf,
-    done
+    expect_named_rule
 };
 
 template<typename JsonT>
@@ -117,6 +119,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
 {
     typedef typename rule<JsonT> rule_type;
     typedef typename JsonT::char_type char_type;
+    typedef typename JsonT::string_type string_type;
     static const int default_depth = 100;
 
     states state_;
@@ -205,12 +208,12 @@ public:
 
     bool done() const
     {
-        return state_ == states::done;
+        return state_ == states::expect_named_rule;
     }
 
     void begin_parse()
     {
-        if (!push(modes::done))
+        if (!push(modes::initial))
         {
             err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, jcr_error_category()), *this);
         }
@@ -221,23 +224,159 @@ public:
 
     void check_done(const char_type* input, size_t start, size_t length)
     {
+/*        begin_input_ = input + start;
+        end_input_ = input + length;
+        p_ = begin_input_;
+
         index_ = start;
-        for (; index_ < length; ++index_)
+        state_ = states::start;
+        string_buffer_.clear();
+        while (p_ < end_input_)
         {
-            char_type curr_char_ = input[index_];
-            switch (curr_char_)
+            switch (state_)
             {
-            case '\n':
-            case '\r':
-            case '\t':
-            case ' ':
+            case states::cr:
+                ++line_;
+                column_ = 1;
+                switch (*p_)
+                {
+                case '\n':
+                    state_ = pre_line_break_state_;
+                    ++p_;
+                    break;
+                default:
+                    state_ = pre_line_break_state_;
+                    break;
+                }
+                break;
+            case states::lf:
+                ++line_;
+                column_ = 1;
+                state_ = pre_line_break_state_;
+                break;
+            case states::start: 
+                {
+                    switch (*p_)
+                    {
+                        case '\r':
+                            pre_line_break_state_ = state_;
+                            state_ = states::cr;
+                            break;
+                        case '\n':
+                            pre_line_break_state_ = state_;
+                            state_ = states::lf;
+                            break;
+                        case ' ':case '\t':
+                            {
+                                bool done = false;
+                                while (!done && (p_ + 1) < end_input_)
+                                {
+                                    switch (*(p_ + 1))
+                                    {
+                                    case ' ':case '\t':
+                                        ++p_;
+                                        ++column_;
+                                        break;
+                                    default:
+                                        done = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            break; 
+                        default:
+                            if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                            {
+                                string_buffer_.push_back(*p_);
+                                state_ = states::rule_name;
+                            }
+                            else
+                            {
+                                err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
+                            }
+                            break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::rule_name:
+                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+                {
+                    string_buffer_.push_back(*p_);
+                    ++p_;
+                }
+                else
+                {
+                    rule_name_ = string_type(string_buffer_.data(),string_buffer_.length());
+                    state_ = states::expect_rule;
+                }
+                break;
+            case states::expect_rule:
+                {
+                    switch (*p_)
+                    {
+                    case '\r':
+                        pre_line_break_state_ = state_;
+                        state_ = states::cr;
+                        break;
+                    case '\n':
+                        pre_line_break_state_ = state_;
+                        state_ = states::lf;
+                        break;
+                    case ' ':case '\t':
+                        {
+                            bool done = false;
+                            while (!done && (p_ + 1) < end_input_)
+                            {
+                                switch (*(p_ + 1))
+                                {
+                                case ' ':case '\t':
+                                    ++p_;
+                                    ++column_;
+                                    break;
+                                default:
+                                    done = true;
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    case '\"':
+                        state_ = states::string;
+                        break;
+                    case '/':
+                        saved_state_ = state_;
+                        state_ = states::slash;
+                        break;
+                    case '}':
+                        err_handler_->error(std::error_code(jcr_parser_errc::extra_comma, jcr_error_category()), *this);
+                        break;
+                    case '\'':
+                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
+                        break;
+                    default:
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::string: 
+                parse_string();
                 break;
             default:
-                err_handler_->error(std::error_code(jcr_parser_errc::extra_character, jcr_error_category()), *this);
+                ++p_;
+                ++column_;
                 break;
             }
-        }
+        } // while
+        index_ += (p_-begin_input_);
+        */
     }
+
+    string_type rule_name_;
 
     void parse_string()
     {
@@ -333,7 +472,7 @@ public:
         p_ = begin_input_;
 
         index_ = start;
-        while ((p_ < end_input_) && (state_ != states::done))
+        while ((p_ < end_input_))
         {
             switch (*p_)
             {
@@ -417,58 +556,58 @@ public:
                         break;
                     case '\"':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         state_ = states::string;
                         break;
                     case '-':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         is_negative_ = true;
                         state_ = states::minus;
                         break;
                     case '0': 
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         number_buffer_.push_back(static_cast<char>(*p_));
                         state_ = states::zero;
                         break;
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         number_buffer_.push_back(static_cast<char>(*p_));
                         state_ = states::integer;
                         break;
                     case 'f':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         state_ = states::f;
                         literal_ = json_literals<char_type>::false_literal();
                         literal_index_ = 1;
                         break;
                     case 'i':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         state_ = states::any_integer;
                         literal_ = jcr_char_traits<char_type>::integer_literal();
                         literal_index_ = 1;
                         break;
                     case 's':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         state_ = states::any_string;
                         literal_ = jcr_char_traits<char_type>::string_literal();
                         literal_index_ = 1;
                         break;
                     case 'n':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         state_ = states::n;
                         literal_ = json_literals<char_type>::null_literal();
                         literal_index_ = 1;
                         break;
                     case 't':
                         handler_->begin_json();
-                        flip(modes::done, modes::start);
+                        flip(modes::initial, modes::scalar);
                         state_ = states::t;
                         literal_ = json_literals<char_type>::true_literal();
                         literal_index_ = 1;
@@ -527,9 +666,10 @@ public:
                         {
                             pop(modes::object_member_value);                        
                             handler_->end_object(*this);
-                            if (peek() == modes::done)
+                            if (peek() == modes::initial)
                             {
-                                state_ = states::done;
+                                flip(modes::initial, modes::named_rule);
+                                state_ = states::expect_named_rule;
                                 handler_->end_json();
                             }
                             else
@@ -551,9 +691,10 @@ public:
                         {
                             pop(modes::array_element);                        
                             handler_->end_array(*this);
-                            if (peek() == modes::done)
+                            if (peek() == modes::initial)
                             {
-                                state_ = states::done;
+                                flip(modes::initial, modes::named_rule);
+                                state_ = states::expect_named_rule;
                                 handler_->end_json();
                             }
                             else
@@ -628,9 +769,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_object(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -669,6 +811,11 @@ public:
                 if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
                 {
                     string_buffer_.push_back(*p_);
+                    ++p_;
+                }
+                else if (stack_[top_] == modes::named_rule)
+                {
+                    rule_name_ = string_buffer_;
                     ++p_;
                 }
                 else
@@ -947,9 +1094,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_array(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1185,9 +1333,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_object(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1202,9 +1351,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_array(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1272,9 +1422,9 @@ public:
                     case modes::object_member_value:
                         state_ = states::expect_comma_or_end;
                         break;
-                    case modes::start:
-                        flip(modes::start,modes::done);
-                        state_ = states::done;
+                    case modes::scalar:
+                        flip(modes::scalar,modes::named_rule);
+                        state_ = states::expect_named_rule;
                         handler_->end_json();
                         break;
                     default:
@@ -1331,9 +1481,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_object(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1348,9 +1499,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_array(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1423,9 +1575,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_object(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1440,9 +1593,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_array(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1551,9 +1705,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_object(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1568,9 +1723,10 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         }
                         handler_->end_array(*this);
-                        if (peek() == modes::done)
+                        if (peek() == modes::initial)
                         {
-                            state_ = states::done;
+                            flip(modes::initial, modes::named_rule);
+                            state_ = states::expect_named_rule;
                             handler_->end_json();
                         }
                         else
@@ -1609,10 +1765,10 @@ public:
                 if (literal_index_ == literal_.second)
                 {
                     handler_->value(true, *this);
-                    if (peek() == modes::start)
+                    if (peek() == modes::scalar)
                     {
-                        flip(modes::start,modes::done);
-                        state_ = states::done;
+                        flip(modes::scalar,modes::named_rule);
+                        state_ = states::expect_named_rule;
                         handler_->end_json();
                     }
                     else
@@ -1635,10 +1791,10 @@ public:
                 if (literal_index_ == literal_.second)
                 {
                     handler_->value(false, *this);
-                    if (peek() == modes::start)
+                    if (peek() == modes::scalar)
                     {
-                        flip(modes::start,modes::done);
-                        state_ = states::done;
+                        flip(modes::scalar,modes::named_rule);
+                        state_ = states::expect_named_rule;
                         handler_->end_json();
                     }
                     else
@@ -1662,10 +1818,10 @@ public:
                 if (literal_index_ == literal_.second)
                 {
                     handler_->value(literal_.first,literal_.second, *this);
-                    if (peek() == modes::start)
+                    if (peek() == modes::scalar)
                     {
-                        flip(modes::start,modes::done);
-                        state_ = states::done;
+                        flip(modes::scalar,modes::named_rule);
+                        state_ = states::expect_named_rule;
                         handler_->end_json();
                     }
                     else
@@ -1688,10 +1844,10 @@ public:
                 if (literal_index_ == literal_.second)
                 {
                     handler_->value(null_type(), *this);
-                    if (peek() == modes::start)
+                    if (peek() == modes::scalar)
                     {
-                        flip(modes::start,modes::done);
-                        state_ = states::done;
+                        flip(modes::scalar,modes::named_rule);
+                        state_ = states::expect_named_rule;
                         handler_->end_json();
                     }
                     else
@@ -1770,6 +1926,51 @@ public:
                 ++p_;
                 ++column_;
                 break;
+            case states::expect_named_rule:
+                switch (*p_)
+                {
+                case '\r':
+                    pre_line_break_state_ = state_;
+                    state_ = states::cr;
+                    break;
+                case '\n':
+                    pre_line_break_state_ = state_;
+                    state_ = states::lf;
+                    break;
+                case ' ':case '\t':
+                    {
+                        bool done = false;
+                        while (!done && (p_ + 1) < end_input_)
+                        {
+                            switch (*(p_ + 1))
+                            {
+                            case ' ':case '\t':
+                                ++p_;
+                                ++column_;
+                                break;
+                            default:
+                                done = true;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                    {
+                        //flip(modes::object_member_name, modes::object_member_value);
+                        string_buffer_.push_back(*p_);
+                        state_ = states::rule_name;
+                    }
+                    else
+                    {
+                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                    }
+                    break;
+                }
+                ++p_;
+                ++column_;
+                break;
             default:
                 JSONCONS_THROW_EXCEPTION(std::runtime_error,"Bad parser state");
                 break;
@@ -1780,7 +1981,7 @@ public:
 
     void end_parse()
     {
-        if (peek() == modes::start)
+        if (peek() == modes::scalar)
         {
             switch (state_)
             {
@@ -1796,7 +1997,7 @@ public:
                 break;
             }
         }
-        if (!pop(modes::done))
+        if (!pop(modes::named_rule))
         {
             err_handler_->error(std::error_code(jcr_parser_errc::unexpected_eof, jcr_error_category()), *this);
         }
@@ -1834,9 +2035,9 @@ private:
         case modes::object_member_value:
             state_ = states::expect_comma_or_end;
             break;
-        case modes::start:
-            flip(modes::start,modes::done);
-            state_ = states::done;
+        case modes::scalar:
+            flip(modes::scalar,modes::named_rule);
+            state_ = states::expect_named_rule;
             handler_->end_json();
             break;
         default:
@@ -1896,9 +2097,9 @@ private:
         case modes::object_member_value:
             state_ = states::expect_comma_or_end;
             break;
-        case modes::start:
-            flip(modes::start,modes::done);
-            state_ = states::done;
+        case modes::scalar:
+            flip(modes::scalar,modes::named_rule);
+            state_ = states::expect_named_rule;
             handler_->end_json();
             break;
         default:
@@ -1999,10 +2200,10 @@ private:
             handler_->value(s, length, *this);
             state_ = states::expect_comma_or_end;
             break;
-        case modes::start:
+        case modes::scalar:
             handler_->value(s, length, *this);
-            flip(modes::start,modes::done);
-            state_ = states::done;
+            flip(modes::scalar,modes::named_rule);
+            state_ = states::expect_named_rule;
             handler_->end_json();
             break;
         default:
@@ -2023,7 +2224,7 @@ private:
         case modes::array_element:
             state_ = states::expect_value;
             break;
-        case modes::done:
+        case modes::initial:
             break;
         default:
             err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
