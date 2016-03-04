@@ -1380,9 +1380,6 @@ public:
                         break;
                     case '.':
                         state_ = states::dot;
-                        //precision_ = static_cast<uint8_t>(number_buffer_.length());
-                        //number_buffer_.push_back(static_cast<char>(*p_));
-                        //state_ = states::fraction;
                         break;
                     case ',':
                         end_integer_value();
@@ -1403,32 +1400,32 @@ public:
                 switch (*p_)
                 {
                 case '.':
+                {
+                    std::shared_ptr<rule<JsonT>> rule;
                     if (is_negative_)
                     {
                         try
                         {
-                            int64_t d = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                            int64_t from = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
                             int64_t to = std::numeric_limits<int64_t>::max JSONCONS_NO_MACRO_EXP();
-                            handler_->range_value(d, to, *this);
+                            rule = std::make_shared<integer_range_rule<JsonT>>(from, to);
                         }
                         catch (const std::exception&)
                         {
-                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
-                            handler_->value(null_type(), *this);
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
                         }
                     }
                     else
                     {
                         try
                         {
-                            uint64_t d = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            uint64_t from = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
                             uint64_t to = std::numeric_limits<uint64_t>::max JSONCONS_NO_MACRO_EXP();
-                            handler_->range_value(d, to, *this);
+                            rule = std::make_shared<uinteger_range_rule<JsonT>>(from, to);
                         }
                         catch (const std::exception&)
                         {
-                            err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
-                            handler_->value(null_type(), *this);
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
                         }
                     }
 
@@ -1436,10 +1433,19 @@ public:
                     {
                     case modes::array_element:
                     case modes::object_member_value:
+                        handler_->rule_definition(rule, *this);
                         state_ = states::expect_comma_or_end;
                         break;
+                    case modes::rule_member_value:
+                        handler_->named_rule(rule_name_,
+                            std::make_shared<member_rule<JsonT>>(rule_member_name_, rule),
+                            *this);
+                        flip(modes::rule_member_value, modes::named_rule);
+                        state_ = states::expect_named_rule;
+                        break;
                     case modes::scalar:
-                        flip(modes::scalar,modes::named_rule);
+                        handler_->rule_definition(rule, *this);
+                        flip(modes::scalar, modes::named_rule);
                         state_ = states::expect_named_rule;
                         handler_->end_json();
                         break;
@@ -1449,6 +1455,7 @@ public:
                     }
                     number_buffer_.clear();
                     is_negative_ = false;
+                }
                     break;
                 default:
                     precision_ = static_cast<uint8_t>(number_buffer_.length());
