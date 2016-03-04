@@ -2174,46 +2174,29 @@ private:
 
     void end_integer_value()
     {
+        std::shared_ptr<rule<JsonT>> rule;
         if (is_negative_)
         {
             try
             {
-                int64_t d = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
-                handler_->value(d, *this);
+                int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                rule = std::make_shared<integer_rule<JsonT>>(val);
             }
             catch (const std::exception&)
             {
-                try
-                {
-                    double d = float_reader_.read(number_buffer_.data(), number_buffer_.length());
-                    handler_->value(-d, static_cast<uint8_t>(number_buffer_.length()), *this);
-                }
-                catch (...)
-                {
-                    err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
-                    handler_->value(null_type(), *this);
-                }
+                err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
             }
         }
         else
         {
             try
             {
-                uint64_t d = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                handler_->value(d, *this);
+                uint64_t val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                rule = std::make_shared<uinteger_rule<JsonT>>(val);
             }
             catch (const std::exception&)
             {
-                try
-                {
-                    double d = float_reader_.read(number_buffer_.data(),number_buffer_.length());
-                    handler_->value(d, static_cast<uint8_t>(number_buffer_.length()), *this);
-                }
-                catch (...)
-                {
-                    err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
-                    handler_->value(null_type(), *this);
-                }
+                err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
             }
         }
 
@@ -2221,10 +2204,19 @@ private:
         {
         case modes::array_element:
         case modes::object_member_value:
+            handler_->rule_definition(rule, *this);
             state_ = states::expect_comma_or_end;
             break;
+        case modes::rule_member_value:
+            handler_->named_rule(rule_name_,
+                std::make_shared<member_rule<JsonT>>(rule_member_name_, rule),
+                *this);
+            flip(modes::rule_member_value, modes::named_rule);
+            state_ = states::expect_named_rule;
+            break;
         case modes::scalar:
-            flip(modes::scalar,modes::named_rule);
+            handler_->rule_definition(rule, *this);
+            flip(modes::scalar, modes::named_rule);
             state_ = states::expect_named_rule;
             handler_->end_json();
             break;
