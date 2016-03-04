@@ -77,7 +77,7 @@ public:
         parser.begin_parse();
         parser.parse(s.data(),0,s.length());
         parser.end_parse();
-        parser.check_done(s.data(),parser.index(),s.length());
+        //parser.check_done(s.data(),parser.index(),s.length());
         if (!handler.is_valid())
         {
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Failed to parse json string");

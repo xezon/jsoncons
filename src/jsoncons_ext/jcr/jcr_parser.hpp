@@ -59,6 +59,13 @@ struct jcr_char_traits<wchar_t>
     }
 };
 
+enum class value_types
+{
+    integer_t,
+    uinteger_t,
+    double_t
+};
+
 enum class modes 
 {
     initial,
@@ -68,7 +75,8 @@ enum class modes
     object_member_value,
     named_rule,
     rule_member_name,
-    rule_member_value
+    rule_member_value,
+    rule_member_value_second
 };
 
 enum class states 
@@ -100,6 +108,7 @@ enum class states
     zero,  
     integer,
     dot,
+    dot_dot,
     fraction,
     exp1,
     exp2,
@@ -225,162 +234,11 @@ public:
         column_ = 1;
     }
 
-    void check_done(const char_type* input, size_t start, size_t length)
-    {
-/*        begin_input_ = input + start;
-        end_input_ = input + length;
-        p_ = begin_input_;
-
-        index_ = start;
-        state_ = states::start;
-        string_buffer_.clear();
-        while (p_ < end_input_)
-        {
-            switch (state_)
-            {
-            case states::cr:
-                ++line_;
-                column_ = 1;
-                switch (*p_)
-                {
-                case '\n':
-                    state_ = pre_line_break_state_;
-                    ++p_;
-                    break;
-                default:
-                    state_ = pre_line_break_state_;
-                    break;
-                }
-                break;
-            case states::lf:
-                ++line_;
-                column_ = 1;
-                state_ = pre_line_break_state_;
-                break;
-            case states::start: 
-                {
-                    switch (*p_)
-                    {
-                        case '\r':
-                            pre_line_break_state_ = state_;
-                            state_ = states::cr;
-                            break;
-                        case '\n':
-                            pre_line_break_state_ = state_;
-                            state_ = states::lf;
-                            break;
-                        case ' ':case '\t':
-                            {
-                                bool done = false;
-                                while (!done && (p_ + 1) < end_input_)
-                                {
-                                    switch (*(p_ + 1))
-                                    {
-                                    case ' ':case '\t':
-                                        ++p_;
-                                        ++column_;
-                                        break;
-                                    default:
-                                        done = true;
-                                        break;
-                                    }
-                                }
-                            }
-                            break; 
-                        default:
-                            if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
-                            {
-                                string_buffer_.push_back(*p_);
-                                state_ = states::rule_name;
-                            }
-                            else
-                            {
-                                err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
-                            }
-                            break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::rule_name:
-                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
-                {
-                    string_buffer_.push_back(*p_);
-                    ++p_;
-                }
-                else
-                {
-                    rule_name_ = string_type(string_buffer_.data(),string_buffer_.length());
-                    state_ = states::expect_rule;
-                }
-                break;
-            case states::expect_rule:
-                {
-                    switch (*p_)
-                    {
-                    case '\r':
-                        pre_line_break_state_ = state_;
-                        state_ = states::cr;
-                        break;
-                    case '\n':
-                        pre_line_break_state_ = state_;
-                        state_ = states::lf;
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
-                    case '\"':
-                        state_ = states::string;
-                        break;
-                    case '/':
-                        saved_state_ = state_;
-                        state_ = states::slash;
-                        break;
-                    case '}':
-                        err_handler_->error(std::error_code(jcr_parser_errc::extra_comma, jcr_error_category()), *this);
-                        break;
-                    case '\'':
-                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::string: 
-                parse_string();
-                break;
-            default:
-                ++p_;
-                ++column_;
-                break;
-            }
-        } // while
-        index_ += (p_-begin_input_);
-        */
-    }
-
     string_type rule_name_;
     string_type rule_member_name_;
+    value_types from_value_type_;
+    int64_t from_integer_val_;
+    uint64_t from_uinteger_val_;
 
     void parse_string()
     {
@@ -1396,19 +1254,29 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::dot:
+            case states::dot_dot:
                 switch (*p_)
                 {
-                case '.':
-                {
+                case '-':
+                    is_negative_ = true;
+                    state_ = states::minus;
+                    break;
+                case '0': 
+                    number_buffer_.push_back(static_cast<char>(*p_));
+                    state_ = states::zero;
+                    break;
+                case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                    number_buffer_.push_back(static_cast<char>(*p_));
+                    state_ = states::integer;
+                    break;
+                default:
                     std::shared_ptr<rule<JsonT>> rule;
                     if (is_negative_)
                     {
                         try
                         {
-                            int64_t from = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
                             int64_t to = std::numeric_limits<int64_t>::max JSONCONS_NO_MACRO_EXP();
-                            rule = std::make_shared<integer_range_rule<JsonT>>(from, to);
+                            rule = std::make_shared<integer_range_rule<JsonT>>(from_integer_val_, to);
                         }
                         catch (const std::exception&)
                         {
@@ -1419,16 +1287,14 @@ public:
                     {
                         try
                         {
-                            uint64_t from = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
                             uint64_t to = std::numeric_limits<uint64_t>::max JSONCONS_NO_MACRO_EXP();
-                            rule = std::make_shared<uinteger_range_rule<JsonT>>(from, to);
+                            rule = std::make_shared<uinteger_range_rule<JsonT>>(from_uinteger_val_, to);
                         }
                         catch (const std::exception&)
                         {
                             err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
                         }
                     }
-
                     switch (stack_[top_])
                     {
                     case modes::array_element:
@@ -1453,6 +1319,38 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         break;
                     }
+                    break;
+                }
+                break;
+            case states::dot:
+                switch (*p_)
+                {
+                case '.':
+                {
+                    if (is_negative_)
+                    {
+                        try
+                        {
+                            from_integer_val_ = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                        }
+                        catch (const std::exception&)
+                        {
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            from_uinteger_val_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                        }
+                        catch (const std::exception&)
+                        {
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
+                        }
+                    }
+
+                    state_ = states::dot_dot;
                     number_buffer_.clear();
                     is_negative_ = false;
                 }
