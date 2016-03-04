@@ -89,6 +89,25 @@ public:
 };
 
 template <class JsonT>
+class true_rule : public rule<JsonT>
+{
+public:
+    true_rule()
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new true_rule();
+    }
+
+    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return true;
+    }
+};
+
+template <class JsonT>
 class string_rule : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
@@ -160,25 +179,30 @@ class jcr_rule_name : public rule<JsonT>
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
 
-    string_type s_;
+    string_type name_;
 public:
     jcr_rule_name(const char_type* p, size_t length, string_allocator sa)
-        : s_(p,length,sa)
+        : name_(p,length,sa)
     {
     }
-    jcr_rule_name(const string_type& s)
-        : s_(s)
+    jcr_rule_name(const string_type& name)
+        : name_(name)
     {
     }
 
     rule<JsonT>* clone() const override
     {
-        return new jcr_rule_name(s_);
+        return new jcr_rule_name(name_);
     }
 
     bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return true;
+        auto it = rules.find(name_);
+        if (it == rules.end())
+        {
+            return false;
+        }
+        return it->second->validate(val,rules);
     }
 };
 

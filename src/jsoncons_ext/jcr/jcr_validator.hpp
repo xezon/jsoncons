@@ -111,6 +111,7 @@ public:
     basic_jcr_validator(const basic_jcr_validator<JsonT>& val)
     {
         rule_val_ = val.rule_val_;
+        rule_definitions_ = val.rule_definitions_;
     }
 
     basic_jcr_validator(std::shared_ptr<rule<JsonT>>* rule)
@@ -125,12 +126,7 @@ public:
     basic_jcr_validator& operator=(const value_type& rhs)
     {
         rule_val_ = rhs.rule_val_;
-        return *this;
-    }
-
-    basic_jcr_validator<JsonT>& operator=(std::shared_ptr<rule<JsonT>> val)
-    {
-        rule_val_ = val;
+        rule_definitions_ = rhs.rule_definitions_;
         return *this;
     }
 
@@ -142,6 +138,7 @@ public:
     void swap(basic_jcr_validator& b)
     {
         rule_val_.swap(b.rule_val_);
+        rule_definitions_.swap(b.rule_definitions_);
     }
 
     friend void swap(JsonT& a, JsonT& b)
@@ -177,19 +174,12 @@ public:
 private:
 };
 
-template <class JsonT>
-void swap(typename JsonT::member_type& a, typename JsonT::member_type& b)
-{
-    a.swap(b);
-}
-
 template<class JsonT>
 basic_jcr_validator<JsonT> basic_jcr_validator<JsonT>::parse_stream(std::basic_istream<char_type>& is)
 {
     basic_jcr_deserializer<basic_jcr_validator<JsonT>> handler;
     basic_json_reader<char_type> reader(is, handler);
     reader.read_next();
-    reader.check_done();
     if (!handler.is_valid())
     {
         JSONCONS_THROW_EXCEPTION(std::runtime_error,"Failed to parse json stream");
