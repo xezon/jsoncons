@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_SUITE(jcr_test_suite)
 struct jcr_fixture
 {
 };
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -126,6 +126,30 @@ BOOST_AUTO_TEST_CASE(test_named_rules)
         wc
     }
     fn "file-name"  : string
+    lc "line-count" : 0..
+    wc "word-count" : 0..    
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "file-name"  : "rfc7159.txt",
+        "line-count" : 3426,
+        "word-count" : 27886
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
+*/
+BOOST_AUTO_TEST_CASE(test_named_rules2)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        fn,
+        lc,
+        wc
+    }
+    fn "file-name"  : "rfc7159.txt"
     lc "line-count" : 0..
     wc "word-count" : 0..    
     )");

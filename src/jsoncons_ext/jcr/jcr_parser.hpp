@@ -2330,12 +2330,14 @@ private:
             {
                 auto rule = std::make_shared<string_rule<JsonT>>(s,length);
                 handler_->rule_definition(rule, *this);
+                state_ = states::expect_comma_or_end;
             }
             break;
         case modes::rule_member_value:
             {
                 auto rule = std::make_shared<string_rule<JsonT>>(s,length);
-                handler_->rule_definition(rule, *this);
+                handler_->named_rule(rule_name_,
+                                     std::make_shared<member_rule<JsonT>>(rule_member_name_,rule),*this);
                 flip(modes::rule_member_value,modes::named_rule);
                 state_ = states::expect_named_rule;
             }
