@@ -2327,11 +2327,24 @@ private:
             break;
         case modes::array_element:
         case modes::object_member_value:
-            handler_->value(s, length, *this);
-            state_ = states::expect_comma_or_end;
+            {
+                auto rule = std::make_shared<string_rule<JsonT>>(s,length);
+                handler_->rule_definition(rule, *this);
+            }
+            break;
+        case modes::rule_member_value:
+            {
+                auto rule = std::make_shared<string_rule<JsonT>>(s,length);
+                handler_->rule_definition(rule, *this);
+                flip(modes::rule_member_value,modes::named_rule);
+                state_ = states::expect_named_rule;
+            }
             break;
         case modes::scalar:
-            handler_->value(s, length, *this);
+            {
+                auto rule = std::make_shared<string_rule<JsonT>>(s,length);
+                handler_->rule_definition(rule, *this);
+            }
             flip(modes::scalar,modes::named_rule);
             state_ = states::expect_named_rule;
             handler_->end_json();

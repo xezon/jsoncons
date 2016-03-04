@@ -120,6 +120,10 @@ public:
         : s_(p,length,sa)
     {
     }
+    string_rule(const char_type* p, size_t length)
+        : s_(p,length)
+    {
+    }
     string_rule(const string_type& s)
         : s_(s)
     {
