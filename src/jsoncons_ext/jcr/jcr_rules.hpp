@@ -70,6 +70,29 @@ public:
 };
 
 template <class JsonT>
+class composite_rule : public rule<JsonT>
+{
+    std::shared_ptr<rule<JsonT>> rule1_;
+    std::shared_ptr<rule<JsonT>> rule2_;
+public:
+    composite_rule(std::shared_ptr<rule<JsonT>> rule1, 
+                   std::shared_ptr<rule<JsonT>> rule2)
+        : rule1_(rule1), rule2_(rule2)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new composite_rule(rule1_,rule2_);
+    }
+
+    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return rule1_->validate(val,rules) && rule2_->validate(val,rules);
+    }
+};
+
+template <class JsonT>
 class any_integer_rule : public rule<JsonT>
 {
 public:

@@ -2055,14 +2055,8 @@ private:
         {
             try
             {
-                if (from_rule_)
-                {
-                }
-                else
-                {
-                    int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
-                    rule = std::make_shared<integer_rule<JsonT>>(val);
-                }
+                int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                rule = std::make_shared<integer_rule<JsonT>>(val);
             }
             catch (const std::exception&)
             {
@@ -2073,19 +2067,18 @@ private:
         {
             try
             {
-                if (from_rule_)
-                {
-                }
-                else
-                {
-                    uint64_t val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                    rule = std::make_shared<uinteger_rule<JsonT>>(val);
-                }
+                uint64_t val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                rule = std::make_shared<uinteger_rule<JsonT>>(val);
             }
             catch (const std::exception&)
             {
                 err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
             }
+        }
+        if (from_rule_)
+        {
+            rule = std::make_shared<composite_rule<JsonT>>(from_rule_,rule);
+            from_rule_ = nullptr;
         }
 
         switch (stack_[top_])
