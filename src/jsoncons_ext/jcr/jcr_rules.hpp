@@ -338,6 +338,50 @@ public:
     }
 };
 
+template <class JsonT, typename T>
+class from_rule : public rule<JsonT>
+{
+    T from_;
+
+public:
+    from_rule(T from)
+        : from_(from)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new from_rule(from_);
+    }
+
+    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return val.is<T>() && val.as<T>() >= from_;
+    }
+};
+
+template <class JsonT, typename T>
+class to_rule : public rule<JsonT>
+{
+    T to_;
+
+public:
+    to_rule(T to)
+        : to_(to)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new to_rule(to);
+    }
+
+    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return val.is<T>() && val.as<T>() <= to_;
+    }
+};
+
 template <class JsonT>
 class integer_range_rule : public rule<JsonT>
 {

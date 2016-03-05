@@ -61,6 +61,7 @@ struct jcr_char_traits<wchar_t>
 
 enum class value_types
 {
+    none_t,
     integer_t,
     uinteger_t,
     double_t
@@ -75,8 +76,7 @@ enum class modes
     object_member_value,
     named_rule,
     rule_member_name,
-    rule_member_value,
-    rule_member_value_second
+    rule_member_value
 };
 
 enum class states 
@@ -236,9 +236,8 @@ public:
 
     string_type rule_name_;
     string_type rule_member_name_;
-    value_types from_value_type_;
-    int64_t from_integer_val_;
-    uint64_t from_uinteger_val_;
+
+    std::shared_ptr<rule<JsonT>> from_rule_;
 
     void parse_string()
     {
@@ -1270,47 +1269,22 @@ public:
                     state_ = states::integer;
                     break;
                 default:
-                    std::shared_ptr<rule<JsonT>> rule;
-                    if (is_negative_)
-                    {
-                        try
-                        {
-                            int64_t to = std::numeric_limits<int64_t>::max JSONCONS_NO_MACRO_EXP();
-                            rule = std::make_shared<integer_range_rule<JsonT>>(from_integer_val_, to);
-                        }
-                        catch (const std::exception&)
-                        {
-                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
-                        }
-                    }
-                    else
-                    {
-                        try
-                        {
-                            uint64_t to = std::numeric_limits<uint64_t>::max JSONCONS_NO_MACRO_EXP();
-                            rule = std::make_shared<uinteger_range_rule<JsonT>>(from_uinteger_val_, to);
-                        }
-                        catch (const std::exception&)
-                        {
-                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
-                        }
-                    }
                     switch (stack_[top_])
                     {
                     case modes::array_element:
                     case modes::object_member_value:
-                        handler_->rule_definition(rule, *this);
+                        handler_->rule_definition(from_rule_, *this);
                         state_ = states::expect_comma_or_end;
                         break;
                     case modes::rule_member_value:
                         handler_->named_rule(rule_name_,
-                            std::make_shared<member_rule<JsonT>>(rule_member_name_, rule),
+                            std::make_shared<member_rule<JsonT>>(rule_member_name_, from_rule_),
                             *this);
                         flip(modes::rule_member_value, modes::named_rule);
                         state_ = states::expect_named_rule;
                         break;
                     case modes::scalar:
-                        handler_->rule_definition(rule, *this);
+                        handler_->rule_definition(from_rule_, *this);
                         flip(modes::scalar, modes::named_rule);
                         state_ = states::expect_named_rule;
                         handler_->end_json();
@@ -1319,6 +1293,7 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         break;
                     }
+                    from_rule_ = nullptr;
                     break;
                 }
                 break;
@@ -1331,7 +1306,8 @@ public:
                     {
                         try
                         {
-                            from_integer_val_ = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                            auto val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                            from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
                         }
                         catch (const std::exception&)
                         {
@@ -1342,7 +1318,8 @@ public:
                     {
                         try
                         {
-                            from_uinteger_val_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            auto val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
                         }
                         catch (const std::exception&)
                         {
@@ -1364,6 +1341,7 @@ public:
                 ++p_;
                 ++column_;
                 break;
+                
             case states::integer: 
                 {
                     switch (*p_)
@@ -2077,8 +2055,14 @@ private:
         {
             try
             {
-                int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
-                rule = std::make_shared<integer_rule<JsonT>>(val);
+                if (from_rule_)
+                {
+                }
+                else
+                {
+                    int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                    rule = std::make_shared<integer_rule<JsonT>>(val);
+                }
             }
             catch (const std::exception&)
             {
@@ -2089,8 +2073,14 @@ private:
         {
             try
             {
-                uint64_t val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                rule = std::make_shared<uinteger_rule<JsonT>>(val);
+                if (from_rule_)
+                {
+                }
+                else
+                {
+                    uint64_t val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                    rule = std::make_shared<uinteger_rule<JsonT>>(val);
+                }
             }
             catch (const std::exception&)
             {
