@@ -94,6 +94,7 @@ BOOST_AUTO_TEST_CASE(test_jcr_integer_range)
     )");
 
     BOOST_CHECK(!schema2.validate(val1));
+    
 }
 
 BOOST_AUTO_TEST_CASE(test_jcr_string)
@@ -163,6 +164,38 @@ BOOST_AUTO_TEST_CASE(test_named_rules2)
     )");
 
     BOOST_CHECK(schema.validate(val1));
+}
+
+BOOST_AUTO_TEST_CASE(test_value_rule)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        v1
+    }
+    v1 "value"  : 0..3
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "value"  : 1
+    }
+    )");
+
+    json val2 = json::parse(R"(
+    {
+        "value"  : -1
+    }
+    )");
+
+    json val3 = json::parse(R"(
+    {
+        "value"  : 4
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+    BOOST_CHECK(!schema.validate(val2));
+    BOOST_CHECK(!schema.validate(val3));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

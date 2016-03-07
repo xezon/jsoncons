@@ -396,7 +396,7 @@ public:
 
     rule<JsonT>* clone() const override
     {
-        return new to_rule(to);
+        return new to_rule(to_);
     }
 
     bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override

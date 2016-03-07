@@ -1259,14 +1259,20 @@ public:
                 case '-':
                     is_negative_ = true;
                     state_ = states::minus;
+                    ++p_;
+                    ++column_;
                     break;
                 case '0': 
                     number_buffer_.push_back(static_cast<char>(*p_));
                     state_ = states::zero;
+                    ++p_;
+                    ++column_;
                     break;
                 case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                     number_buffer_.push_back(static_cast<char>(*p_));
                     state_ = states::integer;
+                    ++p_;
+                    ++column_;
                     break;
                 default:
                     switch (stack_[top_])
@@ -2056,7 +2062,16 @@ private:
             try
             {
                 int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
-                rule = std::make_shared<integer_rule<JsonT>>(val);
+                if (from_rule_)
+                {
+                    rule = std::make_shared<to_rule<JsonT,int64_t>>(val);
+                    rule = std::make_shared<composite_rule<JsonT>>(from_rule_,rule);
+                    from_rule_ = nullptr;
+                }
+                else
+                {
+                    rule = std::make_shared<integer_rule<JsonT>>(val);
+                }
             }
             catch (const std::exception&)
             {
@@ -2068,17 +2083,21 @@ private:
             try
             {
                 uint64_t val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                rule = std::make_shared<uinteger_rule<JsonT>>(val);
+                if (from_rule_)
+                {
+                    rule = std::make_shared<to_rule<JsonT,uint64_t>>(val);
+                    rule = std::make_shared<composite_rule<JsonT>>(from_rule_,rule);
+                    from_rule_ = nullptr;
+                }
+                else
+                {
+                    rule = std::make_shared<uinteger_rule<JsonT>>(val);
+                }
             }
             catch (const std::exception&)
             {
                 err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
             }
-        }
-        if (from_rule_)
-        {
-            rule = std::make_shared<composite_rule<JsonT>>(from_rule_,rule);
-            from_rule_ = nullptr;
         }
 
         switch (stack_[top_])
