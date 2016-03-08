@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(test_jcr)
     BOOST_CHECK(schema.validate(val1));
     BOOST_CHECK(!schema.validate(val2));
 }
-/*
+
 BOOST_AUTO_TEST_CASE(test_jcr_integer)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(test_jcr_integer)
 
     BOOST_CHECK(schema.validate(val1));
 }
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr_integer_range)
 {
     jcr_validator schema = jcr_validator::parse(R"(

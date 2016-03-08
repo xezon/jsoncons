@@ -353,11 +353,11 @@ private:
 
     void do_rule_definition(value_type rule, const basic_parsing_context<char_type>& context) override
     {
-        if (stack_[stack2_.back()].second->is_object())
-        {
-            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
-        }
-        else
+        //if (stack_[stack2_.back()].second->is_object())
+        //{
+        //    stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
+        //}
+        //else
         {
             stack_[top_].second = rule;
         }
