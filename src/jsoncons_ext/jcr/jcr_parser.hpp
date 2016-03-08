@@ -81,6 +81,7 @@ enum class modes
 
 enum class states 
 {
+    root,
     start, 
     slash,  
     slash_slash, 
@@ -217,7 +218,7 @@ public:
     {
         stack_.clear();
         stack_.reserve(initial_stack_capacity_);
-        stack_.push_back(states::start);
+        stack_.push_back(states::root);
         stack_.push_back(states::start);
         line_ = 1;
         column_ = 1;
@@ -521,7 +522,7 @@ public:
                         }
 
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -548,7 +549,7 @@ public:
                             err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_bracket, json_error_category()), *this);
                         }
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -618,7 +619,7 @@ public:
                         }
                         handler_->end_object(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -897,7 +898,7 @@ public:
                         }
                         handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1126,7 +1127,7 @@ public:
                         }
                         handler_->end_object(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1147,7 +1148,7 @@ public:
                         }
                         handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1217,7 +1218,7 @@ public:
                         }
                         handler_->end_object(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1238,7 +1239,7 @@ public:
                         }
                         handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1314,7 +1315,7 @@ public:
                         }
                         handler_->end_object(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1335,7 +1336,7 @@ public:
                         }
                         handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1448,7 +1449,7 @@ public:
                         }
                         handler_->end_object(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1469,7 +1470,7 @@ public:
                         }
                         handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::start)
+                        if (stack_[stack_.size()-2] == states::root)
                         {
                             stack_.back() = states::done;
                             handler_->end_json();
@@ -1511,7 +1512,7 @@ public:
                 {
                     handler_->value(true, *this);
                     JSONCONS_ASSERT(stack_.size() >= 2);
-                    if (stack_[stack_.size()-2] == states::start)
+                    if (stack_[stack_.size()-2] == states::root)
                     {
                         stack_.back() = states::done;
                         handler_->end_json();
@@ -1537,7 +1538,7 @@ public:
                 {
                     handler_->value(false, *this);
                     JSONCONS_ASSERT(stack_.size() >= 2);
-                    if (stack_[stack_.size()-2] == states::start)
+                    if (stack_[stack_.size()-2] == states::root)
                     {
                         stack_.back() = states::done;
                         handler_->end_json();
@@ -1563,7 +1564,7 @@ public:
                 {
                     handler_->value(null_type(), *this);
                     JSONCONS_ASSERT(stack_.size() >= 2);
-                    if (stack_[stack_.size()-2] == states::start)
+                    if (stack_[stack_.size()-2] == states::root)
                     {
                         stack_.back() = states::done;
                         handler_->end_json();
@@ -1652,7 +1653,7 @@ public:
     void end_parse()
     {
         JSONCONS_ASSERT(stack_.size() >= 2);
-        if (stack_[stack_.size()-2] == states::start)
+        if (stack_[stack_.size()-2] == states::root)
         {
             switch (stack_.back())
             {
