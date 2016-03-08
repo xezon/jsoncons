@@ -53,16 +53,6 @@ public:
         do_end_array(context);
     }
 
-    void name(const std::basic_string<char_type>& name, const basic_parsing_context<char_type>& context)
-    {
-        do_name(name.data(), name.length(), context);
-    }
-
-    void name(const char_type* p, size_t length, const basic_parsing_context<char_type>& context) 
-    {
-        do_name(p, length, context);
-    }
-
     void value(const std::basic_string<char_type>& value, const basic_parsing_context<char_type>& context) 
     {
         do_string_value(value.data(), value.length(), context);
@@ -160,8 +150,6 @@ private:
     virtual void do_begin_array(const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_end_array(const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_name(const char_type* name, size_t length, const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_null_value(const basic_parsing_context<char_type>& context) = 0;
 

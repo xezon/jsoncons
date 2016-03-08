@@ -187,11 +187,6 @@ private:
         }
     }
 
-    void do_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
-    {
-        stack_[top_].first = string_type(p,length,sa_);
-    }
-
     void do_rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
         stack_[top_].second = std::make_shared<jcr_rule_name<json_type>>(p,length,sa_);

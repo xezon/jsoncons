@@ -1885,7 +1885,6 @@ private:
         {
         case states::member_name:
             member_name_ = string_type(s,length);
-            //handler_->name(s, length, *this);
             stack_.pop_back();
             stack_.back() = states::expect_colon;
             break;
