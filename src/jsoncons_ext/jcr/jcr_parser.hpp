@@ -115,7 +115,7 @@ enum class states
     expect_rule_value,
     member_name,
     quoted_string_value,
-    target_rule_name
+    target_rule_name,
     done
 };
 
@@ -414,7 +414,8 @@ public:
                         break;
                     case '\"':
                         handler_->begin_json();
-                        stack_.back() = states::string;
+                        stack_.back() = states::quoted_string_value;
+                        stack_.push_back(states::string);
                         break;
                     case '-':
                         handler_->begin_json();
@@ -782,7 +783,8 @@ public:
                         break;
 
                     case '\"':
-                        stack_.back() = states::string;
+                        stack_.back() = states::quoted_string_value;
+                        stack_.push_back(states::string);
                         break;
                     case '-':
                         is_negative_ = true;
@@ -900,7 +902,8 @@ public:
                         }
                         break;
                     case '\"':
-                        stack_.back() = states::string;
+                        stack_.back() = states::quoted_string_value;
+                        stack_.push_back(states::string);
                         break;
                     case '/':
                         stack_.push_back(states::slash);
@@ -1862,19 +1865,19 @@ private:
             stack_.pop_back();
             stack_.back() = states::expect_colon;
             break;
-        case states::object:
-        case states::array:
+        case states::quoted_string_value:
             handler_->value(s, length, *this);
+            stack_.pop_back();
             stack_.back() = states::expect_comma_or_end;
-            break;
-        case states::root:
-            handler_->value(s, length, *this);
-            stack_.back() = states::done;
-            handler_->end_json();
             break;
         default:
             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
+        }
+        if (stack_[stack_.size()-2] == states::root)
+        {
+            stack_.back() = states::done;
+            handler_->end_json();
         }
     }
 
