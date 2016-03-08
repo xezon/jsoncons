@@ -67,18 +67,6 @@ enum class value_types
     double_t
 };
 
-enum class modes 
-{
-    initial,
-    scalar,
-    array_element,
-    object_member_name,
-    object_member_value,
-    named_rule,
-    rule_member_name,
-    rule_member_value
-};
-
 enum class states 
 {
     root,
@@ -126,6 +114,8 @@ enum class states
     expect_named_rule,
     expect_rule_value,
     member_name,
+    quoted_string_value,
+    target_rule_name
     done
 };
 
@@ -139,7 +129,6 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     static const int default_initial_stack_capacity = 100;
 
     std::vector<states> stack_;
-    std::vector<modes> mode_stack_;
     basic_jcr_input_handler<rule_type> *handler_;
     basic_parse_error_handler<char_type> *err_handler_;
     size_t column_;
@@ -160,6 +149,8 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     uint8_t precision_;
     std::pair<const char_type*,size_t> literal_;
     size_t literal_index_;
+
+    string_type member_name_;
 
 public:
     basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
@@ -1709,7 +1700,7 @@ private:
         case states::object:
             stack_.back() = states::expect_comma_or_end;
             break;
-        case states::start:
+        case states::root:
             stack_.back() = states::done;
             handler_->end_json();
             break;
@@ -1771,7 +1762,7 @@ private:
         case states::object:
             stack_.back() = states::expect_comma_or_end;
             break;
-        case states::start:
+        case states::root:
             stack_.back() = states::done;
             handler_->end_json();
             break;
@@ -1866,6 +1857,7 @@ private:
         switch (stack_[stack_.size()-2])
         {
         case states::member_name:
+            member_name_ = string_type(s,length);
             handler_->name(s, length, *this);
             stack_.pop_back();
             stack_.back() = states::expect_colon;
@@ -1875,7 +1867,7 @@ private:
             handler_->value(s, length, *this);
             stack_.back() = states::expect_comma_or_end;
             break;
-        case states::start:
+        case states::root:
             handler_->value(s, length, *this);
             stack_.back() = states::done;
             handler_->end_json();
@@ -1897,7 +1889,7 @@ private:
         case states::array:
             stack_.back() = states::expect_value;
             break;
-        case states::start:
+        case states::root:
             break;
         default:
             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
