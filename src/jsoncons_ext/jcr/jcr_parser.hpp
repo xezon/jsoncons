@@ -59,14 +59,6 @@ struct jcr_char_traits<wchar_t>
     }
 };
 
-enum class value_types
-{
-    none_t,
-    integer_t,
-    uinteger_t,
-    double_t
-};
-
 enum class states 
 {
     root,
