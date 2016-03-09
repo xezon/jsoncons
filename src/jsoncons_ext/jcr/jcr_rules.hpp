@@ -362,6 +362,28 @@ public:
 };
 
 template <class JsonT, typename T>
+class value_rule : public rule<JsonT>
+{
+    T value_;
+
+public:
+    value_rule(T value)
+        : value_(value)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new value_rule(value_);
+    }
+
+    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return val.is<T>() && val.as<T>() == value_;
+    }
+};
+
+template <class JsonT, typename T>
 class from_rule : public rule<JsonT>
 {
     T from_;

@@ -1611,7 +1611,10 @@ private:
             double d = float_reader_.read(number_buffer_.data(), precision_);
             if (is_negative_)
                 d = -d;
-            handler_->value(d, static_cast<uint8_t>(precision_), *this);
+
+            auto r = std::make_shared<value_rule<JsonT,double>>(d);
+            auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+            handler_->rule_definition(mr, *this);
         }
         catch (...)
         {
@@ -1648,7 +1651,6 @@ private:
                 auto r = std::make_shared<integer_rule<JsonT>>(d);
                 auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
                 handler_->rule_definition(mr, *this);
-                //handler_->value(d, *this);
             }
             catch (const std::exception&)
             {
@@ -1660,7 +1662,6 @@ private:
             try
             {
                 uint64_t d = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                //handler_->value(d, *this);
                 auto r = std::make_shared<uinteger_rule<JsonT>>(d);
                 auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
                 handler_->rule_definition(mr, *this);

@@ -53,16 +53,6 @@ public:
         do_end_array(context);
     }
 
-    void value(const std::basic_string<char_type>& value, const basic_parsing_context<char_type>& context) 
-    {
-        do_string_value(value.data(), value.length(), context);
-    }
-
-    void value(const char_type* p, size_t length, const basic_parsing_context<char_type>& context) 
-    {
-        do_string_value(p, length, context);
-    }
-
     void rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>& context) 
     {
         do_rule_name(p, length, context);
@@ -78,56 +68,6 @@ public:
         do_named_rule(name, rule, context);
     }
 
-    void value(const char_type* p, const basic_parsing_context<char_type>& context) 
-    {
-        do_string_value(p, std::char_traits<char_type>::length(p), context);
-    }
-
-    void value(int value, const basic_parsing_context<char_type>& context) 
-    {
-        do_integer_value(value,context);
-    }
-
-    void value(long value, const basic_parsing_context<char_type>& context) 
-    {
-        do_integer_value(value,context);
-    }
-
-    void value(long long value, const basic_parsing_context<char_type>& context) 
-    {
-        do_integer_value(value,context);
-    }
-
-    void range_value(long long from, long long to, const basic_parsing_context<char_type>& context) 
-    {
-        do_integer_range_value(from, to, context);
-    }
-
-    void range_value(unsigned long long from, unsigned long long to, const basic_parsing_context<char_type>& context) 
-    {
-        do_uinteger_range_value(from, to, context);
-    }
-
-    void value(unsigned long value, const basic_parsing_context<char_type>& context) 
-    {
-        do_uinteger_value(value,context);
-    }
-
-    void value(unsigned long long value, const basic_parsing_context<char_type>& context) 
-    {
-        do_uinteger_value(value,context);
-    }
-
-    void value(float value, uint8_t precision, const basic_parsing_context<char_type>& context)
-    {
-        do_double_value(value, precision, context);
-    }
-
-    void value(double value, uint8_t precision, const basic_parsing_context<char_type>& context)
-    {
-        do_double_value(value, precision, context);
-    }
-
 private:
     virtual void do_begin_json() = 0;
 
@@ -141,23 +81,11 @@ private:
 
     virtual void do_end_array(const basic_parsing_context<char_type>& context) = 0;
 
-    virtual void do_string_value(const char_type* value, size_t length, const basic_parsing_context<char_type>& context) = 0;
-
     virtual void do_rule_name(const char_type* value, size_t length, const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_rule_definition(std::shared_ptr<rule_type> rule, const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_named_rule(const string_type& name, std::shared_ptr<rule_type> rule, const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_integer_value(int64_t value, const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) = 0;
 };
 
 }}
