@@ -41,7 +41,7 @@ class basic_jcr_deserializer : public basic_jcr_input_handler<typename ValT::rul
 
     ValT result_;
     size_t top_;
-    std::vector<std::pair<string_type,value_type>> stack_;
+    std::vector<value_type> stack_;
     std::vector<size_t> stack2_;
     bool is_valid_;
 
@@ -92,14 +92,14 @@ private:
     void pop_initial()
     {
         JSONCONS_ASSERT(top_ == 1);
-        result_.set_rule(stack_[0].second);
+        result_.set_rule(stack_[0]);
         --top_;
     }
 
     void push_object()
     {
         stack2_.push_back(top_);
-        stack_[top_].second = std::make_shared<object>();
+        stack_[top_] = std::make_shared<object>();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -115,7 +115,7 @@ private:
     void push_array()
     {
         stack2_.push_back(top_);
-        stack_[top_].second = std::make_shared<array>();
+        stack_[top_] = std::make_shared<array>();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -165,12 +165,12 @@ private:
     void end_structure() 
     {
         JSONCONS_ASSERT(stack2_.size() > 0);
-        if (stack_[stack2_.back()].second->is_object())
+        if (stack_[stack2_.back()]->is_object())
         {
             size_t count = top_ - (stack2_.back() + 1);
             auto s = stack_.begin() + (stack2_.back()+1);
             auto send = s + count;
-            stack_[stack2_.back()].second->insert(
+            stack_[stack2_.back()]->insert(
                 std::make_move_iterator(s),
                 std::make_move_iterator(send));
             top_ -= count;
@@ -180,7 +180,7 @@ private:
             size_t count = top_ - (stack2_.back() + 1);
             auto s = stack_.begin() + (stack2_.back()+1);
             auto send = s + count;
-            stack_[stack2_.back()].second->insert(
+            stack_[stack2_.back()]->insert(
                 std::make_move_iterator(s),
                 std::make_move_iterator(send));
             top_ -= count;
@@ -189,7 +189,7 @@ private:
 
     void do_rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].second = std::make_shared<jcr_rule_name<json_type>>(p,length,sa_);
+        stack_[top_] = std::make_shared<jcr_rule_name<json_type>>(p,length,sa_);
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -198,7 +198,7 @@ private:
 
     void do_rule_definition(value_type rule, const basic_parsing_context<char_type>& context) override
     {
-        stack_[top_].second = rule;
+        stack_[top_] = rule;
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);

@@ -30,7 +30,7 @@ public:
     typedef typename string_type::value_type char_type;
     typedef typename JsonT json_type;
 
-    typedef typename std::vector<std::pair<string_type,std::shared_ptr<rule<JsonT>>>>::iterator iterator;
+    typedef typename std::vector<std::shared_ptr<rule<JsonT>>>::iterator iterator;
     typedef std::move_iterator<iterator> move_iterator;
     typedef rule<JsonT> rule_type;
 
@@ -544,7 +544,7 @@ public:
         auto d = elements_.begin()+pos;
         for (auto s = first; s != last; ++s, ++d)
         {
-            *d = s->second;
+            *d = *s;
         }
     }
 
@@ -609,11 +609,6 @@ public:
     typedef Alloc allocator_type;
     typedef StringT string_type;
     typedef std::shared_ptr<rule<JsonT>> value_type;
-
-    static value_type move_pair(std::pair<string_type,std::shared_ptr<rule<JsonT>>>&& val)
-    {
-        return std::move(val.second);
-    }
 private:
     std::vector<value_type,allocator_type> members_;
 public:
@@ -649,7 +644,14 @@ public:
 
     void insert(move_iterator first, move_iterator last) override
     {
-        insert(first,last,move_pair);
+        size_t count = std::distance(first,last);
+        size_t pos = members_.size();
+        members_.resize(pos+count);
+        auto d = members_.begin()+pos;
+        for (auto s = first; s != last; ++s, ++d)
+        {
+            *d = *s;
+        }
     }
 
     rule* clone() const override
@@ -674,19 +676,6 @@ public:
             }
         }
         return result;
-    }
-
-    template<class InputIt, class UnaryPredicate>
-    void insert(InputIt first, InputIt last, UnaryPredicate pred)
-    {
-        size_t count = std::distance(first,last);
-        size_t pos = members_.size();
-        members_.resize(pos+count);
-        auto d = members_.begin()+pos;
-        for (auto s = first; s != last; ++s, ++d)
-        {
-            *d = pred(*s);
-        }
     }
 private:
     object_rule<StringT,JsonT,Alloc>& operator=(const object_rule<StringT,JsonT,Alloc>&);
