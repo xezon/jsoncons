@@ -272,19 +272,19 @@ public:
 };
 
 template <class JsonT>
-class bool_rule : public rule<JsonT>
+class boolean_rule : public rule<JsonT>
 {
     bool val_;
 
 public:
-    bool_rule(bool val)
+    boolean_rule(bool val)
         : val_(val)
     {
     }
 
     rule<JsonT>* clone() const override
     {
-        return new bool_rule(val_);
+        return new boolean_rule(val_);
     }
 
     bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override

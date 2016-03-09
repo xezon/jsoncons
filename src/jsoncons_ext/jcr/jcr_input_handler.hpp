@@ -128,16 +128,6 @@ public:
         do_double_value(value, precision, context);
     }
 
-    void value(bool value, const basic_parsing_context<char_type>& context) 
-    {
-        do_bool_value(value,context);
-    }
-
-    void value(null_type, const basic_parsing_context<char_type>& context)
-    {
-        do_null_value(context);
-    }
-
 private:
     virtual void do_begin_json() = 0;
 
@@ -150,8 +140,6 @@ private:
     virtual void do_begin_array(const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_end_array(const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_null_value(const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_string_value(const char_type* value, size_t length, const basic_parsing_context<char_type>& context) = 0;
 
@@ -170,8 +158,6 @@ private:
     virtual void do_integer_range_value(int64_t from, int64_t to, const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_uinteger_range_value(uint64_t from, uint64_t to, const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_bool_value(bool value, const basic_parsing_context<char_type>& context) = 0;
 };
 
 }}

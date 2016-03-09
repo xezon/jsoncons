@@ -312,50 +312,9 @@ private:
         }
     }
 
-    void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
-    {
-        auto rule = std::make_shared<bool_rule<json_type>>(value);
-        if (stack_[stack2_.back()].second->is_object())
-        {
-            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
-        }
-        else
-        {
-            stack_[top_].second = rule;
-        }
-        if (++top_ >= stack_.size())
-        {
-            stack_.resize(top_*2);
-        }
-    }
-
-    void do_null_value(const basic_parsing_context<char_type>&) override
-    {
-        auto rule = std::make_shared<null_rule<json_type>>();
-        if (stack_[stack2_.back()].second->is_object())
-        {
-            stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
-        }
-        else
-        {
-            stack_[top_].second = rule;
-        }
-        if (++top_ >= stack_.size())
-        {
-            stack_.resize(top_*2);
-        }
-    }
-
     void do_rule_definition(value_type rule, const basic_parsing_context<char_type>& context) override
     {
-        //if (stack_[stack2_.back()].second->is_object())
-        //{
-        //    stack_[top_].second = std::make_shared<member_rule<json_type>>(stack_[top_].first,rule);
-        //}
-        //else
-        {
-            stack_[top_].second = rule;
-        }
+        stack_[top_].second = rule;
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
