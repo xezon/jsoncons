@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(test_jcr_integer)
 
     BOOST_CHECK(schema.validate(val1));
 }
-*/
+
 BOOST_AUTO_TEST_CASE(test_jcr_integer_range)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -97,7 +97,6 @@ BOOST_AUTO_TEST_CASE(test_jcr_integer_range)
     
 }
 
-/*
 BOOST_AUTO_TEST_CASE(test_jcr_string)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -118,7 +117,7 @@ BOOST_AUTO_TEST_CASE(test_jcr_string)
 
     BOOST_CHECK(schema.validate(val1));
 }
-
+*/
 BOOST_AUTO_TEST_CASE(test_named_rules)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -143,6 +142,7 @@ BOOST_AUTO_TEST_CASE(test_named_rules)
     BOOST_CHECK(schema.validate(val1));
 }
 
+/*
 BOOST_AUTO_TEST_CASE(test_named_rules2)
 {
     jcr_validator schema = jcr_validator::parse(R"(

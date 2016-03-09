@@ -2320,4 +2320,3 @@ typedef basic_jcr_parser<wjson> wjcr_parser;
 }}
 
 #endif
-

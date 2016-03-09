@@ -145,6 +145,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     size_t literal_index_;
 
     string_type member_name_;
+    std::shared_ptr<rule<JsonT>> from_rule_;
 
 public:
     basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
@@ -179,6 +180,7 @@ public:
     {
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
         rule_map_["integer"] = std::make_shared<any_integer_rule<JsonT>>(); 
+        rule_map_["string"] = std::make_shared<any_string_rule<JsonT>>(); 
         rule_map_["true"] = std::make_shared<boolean_rule<JsonT>>(true); 
         rule_map_["false"] = std::make_shared<boolean_rule<JsonT>>(false); 
         rule_map_["null"] = std::make_shared<null_rule<JsonT>>(); 
@@ -1148,9 +1150,7 @@ public:
                         }
                         break;
                     case '.':
-                        precision_ = static_cast<uint8_t>(number_buffer_.length());
-                        number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::fraction;
+                        stack_.back() = states::dot;
                         break;
                     case ',':
                         end_integer_value();
@@ -1163,6 +1163,99 @@ public:
                         err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
                         break;
                     }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::dot_dot:
+                switch (*p_)
+                {
+                case '-':
+                    is_negative_ = true;
+                    stack_.back() = states::minus;
+                    ++p_;
+                    ++column_;
+                    break;
+                case '0': 
+                    number_buffer_.push_back(static_cast<char>(*p_));
+                    stack_.back() = states::zero;
+                    ++p_;
+                    ++column_;
+                    break;
+                case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                    number_buffer_.push_back(static_cast<char>(*p_));
+                    stack_.back() = states::integer;
+                    ++p_;
+                    ++column_;
+                    break;
+                default:
+                    switch (stack_[stack_.size()-2])
+                    {
+                    case states::array:
+                    case states::root:
+                    case states::object:
+                        {
+                            auto mr = std::make_shared<member_rule<JsonT>>(member_name_,from_rule_);
+                            handler_->rule_definition(mr,*this);
+                            stack_.back() = states::expect_comma_or_end;
+                        }
+                        break;
+                    /*case modes::rule_member_value:
+                        handler_->named_rule(rule_name_,
+                            std::make_shared<member_rule<JsonT>>(rule_member_name_, from_rule_),
+                            *this);
+                        flip(modes::rule_member_value, modes::named_rule);
+                        stack_.back() = states::expect_named_rule;
+                        break;*/
+                        break;
+                    default:
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
+                        break;
+                    }
+                    from_rule_ = nullptr;
+                    break;
+                }
+                break;
+            case states::dot:
+                switch (*p_)
+                {
+                case '.':
+                {
+                    if (is_negative_)
+                    {
+                        try
+                        {
+                            auto val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                            from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
+                        }
+                        catch (const std::exception&)
+                        {
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            auto val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
+                        }
+                        catch (const std::exception&)
+                        {
+                            err_handler_->fatal_error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
+                        }
+                    }
+
+                    stack_.back() = states::dot_dot;
+                    number_buffer_.clear();
+                    is_negative_ = false;
+                }
+                    break;
+                default:
+                    precision_ = static_cast<uint8_t>(number_buffer_.length());
+                    number_buffer_.push_back(static_cast<char>(*p_));
+                    stack_.back() = states::fraction;
+                    break;
                 }
                 ++p_;
                 ++column_;
@@ -1244,9 +1337,7 @@ public:
                         stack_.back() = states::integer;
                         break;
                     case '.':
-                        precision_ = static_cast<uint8_t>(number_buffer_.length());
-                        number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::fraction;
+                        stack_.back() = states::dot;
                         break;
                     case ',':
                         end_integer_value();
