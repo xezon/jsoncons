@@ -45,7 +45,43 @@
                 }                                   \
             }                                       \
         }                                           \
-        break;                                      
+        break;                                      \
+    case '/':                                       \
+        stack_.push_back(states::slash);            \
+        break;
+
+#define JSONCONS_JCR_CASE_SP_CMT_ACTION(action)     \
+    case '\r':                                      \
+        action;                                     \
+        stack_.push_back(states::cr);               \
+        break;                                      \
+    case '\n':                                      \
+        action;                                     \
+        stack_.push_back(states::lf);               \
+        break;                                      \
+    case ' ':case '\t':                             \
+        {                                           \
+            action;                                 \
+            bool done = false;                      \
+            while (!done && (p_ + 1) < end_input_)  \
+            {                                       \
+                switch (*(p_ + 1))                  \
+                {                                   \
+                case ' ':case '\t':                 \
+                    ++p_;                           \
+                    ++column_;                      \
+                    break;                          \
+                default:                            \
+                    done = true;                    \
+                    break;                          \
+                }                                   \
+            }                                       \
+        }                                           \
+        break;                                      \
+    case '/':                                       \
+        action;                                     \
+        stack_.push_back(states::slash);            \
+        break;
 
 namespace jsoncons { namespace jcr {
 
@@ -443,9 +479,6 @@ public:
                         number_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::integer;
                         break;
-                    case '/':
-                        stack_.push_back(states::slash);
-                        break;
                     case '}':
                         err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_brace, json_error_category()), *this);
                         break;
@@ -532,9 +565,6 @@ public:
                     case ',':
                         begin_member_or_element();
                         break;
-                    case '/':
-                        stack_.push_back(states::slash);
-                        break;
                     default:
                         JSONCONS_ASSERT(stack_.size() >= 2);
                         if (stack_[stack_.size()-2] == states::array)
@@ -580,9 +610,6 @@ public:
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
                         break;
-                    case '/':
-                        stack_.push_back(states::slash);
-                        break;
                     case '\'':
                         err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
                         break;
@@ -597,7 +624,6 @@ public:
                             err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
                         }
                         break;
-                        break;
                     }
                 }
                 ++p_;
@@ -611,9 +637,6 @@ public:
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
-                        break;
-                    case '/':
-                        stack_.push_back(states::slash);
                         break;
                     case '}':
                         --nesting_depth_;
@@ -638,9 +661,6 @@ public:
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
-                        break;
-                    case '/':
-                        stack_.push_back(states::slash);
                         break;
                     case '}':
                         --nesting_depth_;
@@ -673,9 +693,6 @@ public:
                     case ':':
                         stack_.back() = states::expect_value;
                         break;
-                    case '/':
-                        stack_.push_back(states::slash);
-                        break;
                     default:
                         err_handler_->error(std::error_code(json_parser_errc::expected_colon, json_error_category()), *this);
                         break;
@@ -706,9 +723,6 @@ public:
                         stack_.back() = states::array;
                         stack_.push_back(states::array);
                         handler_->begin_array(*this);
-                        break;
-                    case '/':
-                        stack_.push_back(states::slash);
                         break;
                     case '\"':
                         stack_.back() = states::quoted_string_value;
@@ -859,9 +873,6 @@ public:
                     case '\"':
                         stack_.back() = states::quoted_string_value;
                         stack_.push_back(states::string);
-                        break;
-                    case '/':
-                        stack_.push_back(states::slash);
                         break;
                     case '-':
                         is_negative_ = true;
@@ -1215,31 +1226,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        end_integer_value();
-                        break; 
+                        JSONCONS_JCR_CASE_SP_CMT_ACTION((end_integer_value()))
                     case '}':
                         --nesting_depth_;
                         end_integer_value();
@@ -1310,31 +1297,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        end_fraction_value();
-                        break; 
+                        JSONCONS_JCR_CASE_SP_CMT_ACTION((end_fraction_value()))
                     case '}':
                         --nesting_depth_;
                         end_fraction_value();
@@ -1444,31 +1407,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        end_fraction_value();
-                        break; 
+                        JSONCONS_JCR_CASE_SP_CMT_ACTION((end_fraction_value()))
                     case '}':
                         --nesting_depth_;
                         end_fraction_value();
@@ -1592,6 +1531,10 @@ public:
                         break;
                     }
                 }
+                ++p_;
+                ++column_;
+                break;
+            case states::done: 
                 ++p_;
                 ++column_;
                 break;
