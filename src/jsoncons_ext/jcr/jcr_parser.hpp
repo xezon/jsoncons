@@ -21,6 +21,32 @@
 #include "jcr_error_category.hpp"
 #include "jcr_rules.hpp"
 
+#define JSONCONS_JCR_CASE_SP_CMT()                  \
+    case '\r':                                      \
+        stack_.push_back(states::cr);               \
+        break;                                      \
+    case '\n':                                      \
+        stack_.push_back(states::lf);               \
+        break;                                      \
+    case ' ':case '\t':                             \
+        {                                           \
+            bool done = false;                      \
+            while (!done && (p_ + 1) < end_input_)  \
+            {                                       \
+                switch (*(p_ + 1))                  \
+                {                                   \
+                case ' ':case '\t':                 \
+                    ++p_;                           \
+                    ++column_;                      \
+                    break;                          \
+                default:                            \
+                    done = true;                    \
+                    break;                          \
+                }                                   \
+            }                                       \
+        }                                           \
+        break;                                      
+
 namespace jsoncons { namespace jcr {
 
 template <typename char_type>
@@ -70,6 +96,7 @@ enum class states
     expect_comma_or_end,  
     object,
     expect_member_name, 
+    expect_rule_or_member_name, 
     expect_colon,
     expect_value,
     array, 
@@ -108,6 +135,7 @@ enum class states
     member_name,
     quoted_string_value,
     target_rule_name,
+    named_value,
     done
 };
 
@@ -144,6 +172,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     std::pair<const char_type*,size_t> literal_;
     size_t literal_index_;
 
+    string_type rule_name_;
     string_type member_name_;
     std::shared_ptr<rule<JsonT>> from_rule_;
 
@@ -332,7 +361,7 @@ public:
         p_ = begin_input_;
 
         index_ = start;
-        while ((p_ < end_input_) && (stack_.back() != states::done))
+        while (p_ < end_input_)
         {
             switch (*p_)
             {
@@ -373,30 +402,7 @@ public:
                 {
                     switch (*p_)
                     {
-                        case '\r':
-                            stack_.push_back(states::cr);
-                            break;
-                        case '\n':
-                            stack_.push_back(states::lf);
-                            break;
-                        case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break; 
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case '{':
                         if (++nesting_depth_ >= max_depth_)
                         {
@@ -450,7 +456,7 @@ public:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
                             string_buffer_.push_back(*p_);
-                            stack_.back() = states::target_rule_name;
+                            stack_.back() = states::rule_name;
                         }
                         else
                         {
@@ -467,30 +473,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break; 
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case '}':
                         --nesting_depth_;
                         JSONCONS_ASSERT(!stack_.empty())
@@ -572,30 +555,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case '}':
                         --nesting_depth_;
                         JSONCONS_ASSERT(!stack_.empty())
@@ -627,7 +587,16 @@ public:
                         err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
                         break;
                     default:
-                        err_handler_->error(std::error_code(json_parser_errc::expected_name, json_error_category()), *this);
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            string_buffer_.push_back(*p_);
+                            stack_.back() = states::rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
+                        break;
                         break;
                     }
                 }
@@ -638,30 +607,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
@@ -684,34 +630,46 @@ public:
                 ++p_;
                 ++column_;
                 break;
+            case states::expect_rule_or_member_name: 
+                {
+                    switch (*p_)
+                    {
+                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\"':
+                        stack_.back() = states::member_name;
+                        stack_.push_back(states::string);
+                        break;
+                    case '/':
+                        stack_.push_back(states::slash);
+                        break;
+                    case '}':
+                        --nesting_depth_;
+                        err_handler_->error(std::error_code(json_parser_errc::extra_comma, json_error_category()), *this);
+                        break;
+                    case '\'':
+                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
+                        break;
+                    default:
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            string_buffer_.push_back(*p_);
+                            stack_.back() = states::target_rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
             case states::expect_colon: 
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case ':':
                         stack_.back() = states::expect_value;
                         break;
@@ -730,30 +688,7 @@ public:
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case '{':
                         if (++nesting_depth_ >= max_depth_)
                         {
@@ -830,43 +765,59 @@ public:
                 else 
                 {
                     auto it = rule_map_.find(string_buffer_);
-                    if (it != rule_map_.end())
+                    switch (stack_[stack_.size()-2])
                     {
-                        auto mr = std::make_shared<member_rule<JsonT>>(member_name_,it->second);
-                        handler_->rule_definition(mr,*this);
+                    case states::array:
+                    case states::object:
+                        {
+                            if (it != rule_map_.end())
+                            {
+                                auto mr = std::make_shared<member_rule<JsonT>>(member_name_,it->second);
+                                handler_->rule_definition(mr,*this);
+                            }
+                            stack_.back() = states::expect_comma_or_end;
+                        }
+                        break;
+                    case states::root:
+                        {
+                            if (it != rule_map_.end())
+                            {
+                                auto mr = std::make_shared<member_rule<JsonT>>(member_name_,it->second);
+                                handler_->named_rule(rule_name_,mr,*this);
+                            }
+                            stack_.back() = states::start;
+                        }
+                        break;
                     }
                     string_buffer_.clear();
-                    stack_.back() = states::expect_comma_or_end;
+                }
+                break;
+            case states::rule_name:
+                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+                {
+                    string_buffer_.push_back(*p_);
+                    ++p_;
+                }
+                else 
+                {
+                    if (stack_[stack_.size()-2] == states::root)
+                    {
+                        rule_name_ = string_buffer_;
+                        stack_.back() = states::expect_member_name;
+                    }
+                    else
+                    {
+                        handler_->rule_name(string_buffer_.data(),string_buffer_.length(),*this);
+                        stack_.back() = states::expect_comma_or_end;
+                    }
+                    string_buffer_.clear();
                 }
                 break;
             case states::array: 
                 {
                     switch (*p_)
                     {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case ' ':case '\t':
-                        {
-                            bool done = false;
-                            while (!done && (p_ + 1) < end_input_)
-                            {
-                                switch (*(p_ + 1))
-                                {
-                                case ' ':case '\t':
-                                    ++p_;
-                                    ++column_;
-                                    break;
-                                default:
-                                    done = true;
-                                    break;
-                                }
-                            }
-                        }
-                        break;
+                        JSONCONS_JCR_CASE_SP_CMT()
                     case '{':
                         if (++nesting_depth_ >= max_depth_)
                         {
@@ -1889,12 +1840,13 @@ private:
         switch (stack_[stack_.size()-2])
         {
         case states::object:
-            stack_.back() = states::expect_member_name;
+            stack_.back() = states::expect_rule_or_member_name;
             break;
         case states::array:
             stack_.back() = states::expect_value;
             break;
         case states::root:
+            stack_.back() = states::start;
             break;
         default:
             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
