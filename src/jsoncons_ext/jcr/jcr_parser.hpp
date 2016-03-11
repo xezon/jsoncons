@@ -172,6 +172,7 @@ enum class states
     quoted_string_value,
     target_rule_name,
     named_value,
+    range_value,
     done
 };
 
@@ -1081,6 +1082,7 @@ public:
                     ++column_;
                     break;
                 default:
+                    stack_.pop_back();
                     switch (stack_[stack_.size()-2])
                     {
                     case states::root:
@@ -1145,7 +1147,8 @@ public:
                         }
                     }
 
-                    stack_.back() = states::dot_dot;
+                    stack_.back() = states::range_value;
+                    stack_.push_back(states::dot_dot);
                     number_buffer_.clear();
                     is_negative_ = false;
                 }
@@ -1557,11 +1560,12 @@ private:
             {
                 int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
 
-                if (from_rule_)
+                if (stack_[stack_.size()-2] == states::range_value)
                 {
                     auto to_r = std::make_shared<to_rule<JsonT,int64_t>>(val);
                     auto r = std::make_shared<composite_rule<JsonT>>(from_rule_, to_r);
                     rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                    stack_.pop_back();
                     //from_rule_ = nullptr;
                 }
                 else
@@ -1581,12 +1585,13 @@ private:
             {
                uint64_t val= string_to_uinteger(number_buffer_.data(), number_buffer_.length());
 
-                if (from_rule_)
+                if (stack_[stack_.size()-2] == states::range_value)
                 {
                     auto to_r = std::make_shared<to_rule<JsonT,uint64_t>>(val);
                     auto r = std::make_shared<composite_rule<JsonT>>(from_rule_,to_r);
                     rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
                     //from_rule_ = nullptr;
+                    stack_.pop_back();
                 }
                 else
                 {
