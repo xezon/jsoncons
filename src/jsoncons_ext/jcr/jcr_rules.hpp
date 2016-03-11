@@ -40,11 +40,6 @@ public:
     {
     }
 
-    virtual bool is_object() const
-    {
-        return false;
-    }
-
     virtual void insert(move_iterator first, move_iterator last)
     {
     }
@@ -473,136 +468,7 @@ public:
 };
 
 template <class JsonT>
-class array_rule : public rule<JsonT>
-{
-public:
-    typedef typename JsonT::array_allocator allocator_type;
-    typedef typename JsonT json_type;
-    typedef std::shared_ptr<rule<JsonT>> value_type;
-    typedef typename JsonT::array array;
-    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<JsonT> vector_allocator_type;
-    typedef typename std::vector<value_type,allocator_type>::reference reference;
-    typedef typename std::vector<value_type,allocator_type>::const_reference const_reference;
-    typedef typename std::vector<value_type,allocator_type>::iterator iterator;
-    typedef typename std::vector<value_type,allocator_type>::const_iterator const_iterator;
-
-    array_rule()
-        : elements_()
-    {
-    }
-
-    explicit array_rule(const allocator_type& allocator)
-        : elements_(allocator)
-    {
-    }
-
-    explicit array_rule(size_t n, const allocator_type& allocator = allocator_type())
-        : elements_(n,JsonT(),allocator)
-    {
-    }
-
-    explicit array_rule(size_t n, const JsonT& value, const allocator_type& allocator = allocator_type())
-        : elements_(n,value,allocator)
-    {
-    }
-
-    template <class InputIterator>
-    array_rule(InputIterator begin, InputIterator end, const allocator_type& allocator = allocator_type())
-        : elements_(begin,end,allocator)
-    {
-    }
-
-    array_rule(const array_rule& val)
-        : elements_(val.elements_)
-    {
-    }
-
-    array_rule(const array_rule& val, const allocator_type& allocator)
-        : elements_(val.elements_,allocator)
-    {
-    }
-    array_rule(array_rule&& val)
-        : elements_(std::move(val.elements_))
-    {
-    }
-    array_rule(array_rule&& val, const allocator_type& allocator)
-        : elements_(std::move(val.elements_),allocator)
-    {
-    }
-
-    array_rule(std::initializer_list<JsonT> init, 
-               const allocator_type& allocator = allocator_type())
-        : elements_(std::move(init),allocator)
-    {
-    }
-
-    void insert(move_iterator first, move_iterator last) override
-    {
-        size_t count = std::distance(first,last);
-        size_t pos = elements_.size();
-        elements_.resize(pos+count);
-        auto d = elements_.begin()+pos;
-        for (auto s = first; s != last; ++s, ++d)
-        {
-            *d = *s;
-        }
-    }
-
-    rule* clone() const override
-    {
-        return new array_rule(*this);
-    }
-
-    bool validate(const JsonT& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
-    {
-        bool result = false;
-        return result;
-    }
-
-    allocator_type get_allocator() const
-    {
-        return elements_.get_allocator();
-    }
-
-    void swap(array_rule<JsonT>& val)
-    {
-        elements_.swap(val.elements_);
-    }
-
-    JsonT& operator[](size_t i) {return elements_[i];}
-
-    const JsonT& operator[](size_t i) const {return elements_[i];}
-
-    iterator begin() {return elements_.begin();}
-
-    iterator end() {return elements_.end();}
-
-    const_iterator begin() const {return elements_.begin();}
-
-    const_iterator end() const {return elements_.end();}
-
-    bool operator==(const array_rule<JsonT>& rhs) const
-    {
-        if (size() != rhs.size())
-        {
-            return false;
-        }
-        for (size_t i = 0; i < size(); ++i)
-        {
-            if (elements_[i] != rhs.elements_[i])
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-private:
-    array_rule& operator=(const array_rule<JsonT>&);
-    std::vector<value_type,allocator_type> elements_;
-};
-
-template <class JsonT>
-class object_rule : public rule<JsonT>
+class group_rule : public rule<JsonT>
 {
 public:
     typedef typename JsonT json_type;
@@ -612,46 +478,29 @@ public:
 private:
     std::vector<value_type,allocator_type> members_;
 public:
-    object_rule(const allocator_type& allocator = allocator_type())
+    group_rule(const allocator_type& allocator = allocator_type())
         : members_(allocator)
     {
     }
 
-    object_rule(const object_rule<JsonT>& val)
+    group_rule(const group_rule<JsonT>& val)
         : members_(val.members_)
     {
     }
 
-    object_rule(object_rule&& val)
+    group_rule(group_rule&& val)
         : members_(std::move(val.members_))
     {
     }
 
-    object_rule(const object_rule<JsonT>& val, const allocator_type& allocator) :
+    group_rule(const group_rule<JsonT>& val, const allocator_type& allocator) :
         members_(val.members_,allocator)
     {
     }
 
-    object_rule(object_rule&& val,const allocator_type& allocator) :
+    group_rule(group_rule&& val,const allocator_type& allocator) :
         members_(std::move(val.members_),allocator)
     {
-    }
-
-    bool is_object() const override
-    {
-        return true;
-    }
-
-    void insert(move_iterator first, move_iterator last) override
-    {
-        size_t count = std::distance(first,last);
-        size_t pos = members_.size();
-        members_.resize(pos+count);
-        auto d = members_.begin()+pos;
-        for (auto s = first; s != last; ++s, ++d)
-        {
-            *d = *s;
-        }
     }
 
     void add_rule(std::shared_ptr<rule<JsonT>> rule)
@@ -661,7 +510,7 @@ public:
 
     rule* clone() const override
     {
-        return new object_rule(*this);
+        return new group_rule(*this);
     }
 
     allocator_type get_allocator() const
@@ -683,7 +532,7 @@ public:
         return result;
     }
 private:
-    object_rule<JsonT>& operator=(const object_rule<JsonT>&);
+    group_rule<JsonT>& operator=(const group_rule<JsonT>&);
 };
 
 

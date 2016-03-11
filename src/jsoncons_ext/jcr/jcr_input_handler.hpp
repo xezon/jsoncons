@@ -23,41 +23,6 @@ public:
 
     virtual ~basic_jcr_input_handler() {}
 
-    void begin_json()
-    {
-        do_begin_json();
-    }
-
-    void end_json()
-    {
-        do_end_json();
-    }
-
-    void begin_object(const basic_parsing_context<char_type>& context)
-    {
-        do_begin_object(context);
-    }
-
-    void end_object(const basic_parsing_context<char_type>& context)
-    {
-        do_end_object(context);
-    }
-
-    void begin_array(const basic_parsing_context<char_type>& context)
-    {
-        do_begin_array(context);
-    }
-
-    void end_array(const basic_parsing_context<char_type>& context)
-    {
-        do_end_array(context);
-    }
-
-    void rule_name(const char_type* p, size_t length, const basic_parsing_context<char_type>& context) 
-    {
-        do_rule_name(p, length, context);
-    }
-
     void rule_definition(std::shared_ptr<rule_type> rule, const basic_parsing_context<char_type>& context) 
     {
         do_rule_definition(rule, context);
@@ -69,20 +34,6 @@ public:
     }
 
 private:
-    virtual void do_begin_json() = 0;
-
-    virtual void do_end_json() = 0;
-
-    virtual void do_begin_object(const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_end_object(const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_begin_array(const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_end_array(const basic_parsing_context<char_type>& context) = 0;
-
-    virtual void do_rule_name(const char_type* value, size_t length, const basic_parsing_context<char_type>& context) = 0;
-
     virtual void do_rule_definition(std::shared_ptr<rule_type> rule, const basic_parsing_context<char_type>& context) = 0;
 
     virtual void do_named_rule(const string_type& name, std::shared_ptr<rule_type> rule, const basic_parsing_context<char_type>& context) = 0;

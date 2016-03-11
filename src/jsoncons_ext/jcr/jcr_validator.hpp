@@ -47,6 +47,7 @@ public:
 
     typedef typename rule<JsonT> rule_type;
     std::map<string_type,std::shared_ptr<rule_type>> rule_definitions_;
+    std::shared_ptr<rule_type> root_;
 
     //typedef name_value_pair<string_type,std::shared_ptr<rule_type>> member_type;
 
@@ -54,10 +55,7 @@ public:
     
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<rule_type> object_allocator;
 
-    typedef array_rule<json_type> array;
-    typedef object_rule<json_type>  object;
-
-    void set_rule(std::shared_ptr<rule<JsonT>> rule)
+    void set_root(std::shared_ptr<rule<JsonT>> rule)
     {
         rule_val_ = rule;
     }
