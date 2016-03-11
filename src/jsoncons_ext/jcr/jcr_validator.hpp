@@ -54,8 +54,8 @@ public:
     
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<rule_type> object_allocator;
 
-    typedef array_rule<json_type,array_allocator> array;
-    typedef object_rule<string_type,json_type,object_allocator>  object;
+    typedef array_rule<json_type> array;
+    typedef object_rule<json_type>  object;
 
     void set_rule(std::shared_ptr<rule<JsonT>> rule)
     {

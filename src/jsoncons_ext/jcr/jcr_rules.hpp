@@ -472,42 +472,42 @@ public:
     }
 };
 
-template <class JsonT, class Alloc>
+template <class JsonT>
 class array_rule : public rule<JsonT>
 {
 public:
-    typedef Alloc allocator_type;
+    typedef typename JsonT::array_allocator allocator_type;
     typedef typename JsonT json_type;
     typedef std::shared_ptr<rule<JsonT>> value_type;
     typedef typename JsonT::array array;
-    typedef typename std::allocator_traits<Alloc>:: template rebind_alloc<JsonT> vector_allocator_type;
-    typedef typename std::vector<value_type,Alloc>::reference reference;
-    typedef typename std::vector<value_type,Alloc>::const_reference const_reference;
-    typedef typename std::vector<value_type,Alloc>::iterator iterator;
-    typedef typename std::vector<value_type,Alloc>::const_iterator const_iterator;
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<JsonT> vector_allocator_type;
+    typedef typename std::vector<value_type,allocator_type>::reference reference;
+    typedef typename std::vector<value_type,allocator_type>::const_reference const_reference;
+    typedef typename std::vector<value_type,allocator_type>::iterator iterator;
+    typedef typename std::vector<value_type,allocator_type>::const_iterator const_iterator;
 
     array_rule()
         : elements_()
     {
     }
 
-    explicit array_rule(const Alloc& allocator)
+    explicit array_rule(const allocator_type& allocator)
         : elements_(allocator)
     {
     }
 
-    explicit array_rule(size_t n, const Alloc& allocator = Alloc())
+    explicit array_rule(size_t n, const allocator_type& allocator = allocator_type())
         : elements_(n,JsonT(),allocator)
     {
     }
 
-    explicit array_rule(size_t n, const JsonT& value, const Alloc& allocator = Alloc())
+    explicit array_rule(size_t n, const JsonT& value, const allocator_type& allocator = allocator_type())
         : elements_(n,value,allocator)
     {
     }
 
     template <class InputIterator>
-    array_rule(InputIterator begin, InputIterator end, const Alloc& allocator = Alloc())
+    array_rule(InputIterator begin, InputIterator end, const allocator_type& allocator = allocator_type())
         : elements_(begin,end,allocator)
     {
     }
@@ -517,7 +517,7 @@ public:
     {
     }
 
-    array_rule(const array_rule& val, const Alloc& allocator)
+    array_rule(const array_rule& val, const allocator_type& allocator)
         : elements_(val.elements_,allocator)
     {
     }
@@ -525,13 +525,13 @@ public:
         : elements_(std::move(val.elements_))
     {
     }
-    array_rule(array_rule&& val, const Alloc& allocator)
+    array_rule(array_rule&& val, const allocator_type& allocator)
         : elements_(std::move(val.elements_),allocator)
     {
     }
 
     array_rule(std::initializer_list<JsonT> init, 
-               const Alloc& allocator = Alloc())
+               const allocator_type& allocator = allocator_type())
         : elements_(std::move(init),allocator)
     {
     }
@@ -559,12 +559,12 @@ public:
         return result;
     }
 
-    Alloc get_allocator() const
+    allocator_type get_allocator() const
     {
         return elements_.get_allocator();
     }
 
-    void swap(array_rule<JsonT,Alloc>& val)
+    void swap(array_rule<JsonT>& val)
     {
         elements_.swap(val.elements_);
     }
@@ -581,7 +581,7 @@ public:
 
     const_iterator end() const {return elements_.end();}
 
-    bool operator==(const array_rule<JsonT,Alloc>& rhs) const
+    bool operator==(const array_rule<JsonT>& rhs) const
     {
         if (size() != rhs.size())
         {
@@ -597,17 +597,17 @@ public:
         return true;
     }
 private:
-    array_rule& operator=(const array_rule<JsonT,Alloc>&);
-    std::vector<value_type,Alloc> elements_;
+    array_rule& operator=(const array_rule<JsonT>&);
+    std::vector<value_type,allocator_type> elements_;
 };
 
-template <class StringT,class JsonT,class Alloc>
+template <class JsonT>
 class object_rule : public rule<JsonT>
 {
 public:
     typedef typename JsonT json_type;
-    typedef Alloc allocator_type;
-    typedef StringT string_type;
+    typedef typename JsonT::object_allocator allocator_type;
+    typedef typename JsonT::string_type string_type;
     typedef std::shared_ptr<rule<JsonT>> value_type;
 private:
     std::vector<value_type,allocator_type> members_;
@@ -617,7 +617,7 @@ public:
     {
     }
 
-    object_rule(const object_rule<StringT,JsonT,Alloc>& val)
+    object_rule(const object_rule<JsonT>& val)
         : members_(val.members_)
     {
     }
@@ -627,7 +627,7 @@ public:
     {
     }
 
-    object_rule(const object_rule<StringT,JsonT,Alloc>& val, const allocator_type& allocator) :
+    object_rule(const object_rule<JsonT>& val, const allocator_type& allocator) :
         members_(val.members_,allocator)
     {
     }
@@ -664,7 +664,7 @@ public:
         return new object_rule(*this);
     }
 
-    Alloc get_allocator() const
+    allocator_type get_allocator() const
     {
         return members_.get_allocator();
     }
@@ -683,7 +683,7 @@ public:
         return result;
     }
 private:
-    object_rule<StringT,JsonT,Alloc>& operator=(const object_rule<StringT,JsonT,Alloc>&);
+    object_rule<JsonT>& operator=(const object_rule<JsonT>&);
 };
 
 
