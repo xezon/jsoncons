@@ -131,6 +131,7 @@ enum class states
     slash_star_star,
     expect_comma_or_end,  
     object,
+    expect_rule_or_member_name, 
     expect_member_name, 
     expect_colon,
     expect_value,
@@ -445,7 +446,7 @@ public:
                             err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         stack_.back() = states::object;
-                        stack_.push_back(states::object);
+                        stack_.push_back(states::expect_rule_or_member_name);
                         handler_->begin_object(*this);
                         break;
                     case '[':
@@ -558,7 +559,7 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::object: 
+            case states::expect_rule_or_member_name: 
                 {
                     switch (*p_)
                     {
@@ -649,7 +650,7 @@ public:
                             err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         stack_.back() = states::object;
-                        stack_.push_back(states::object);
+                        stack_.push_back(states::expect_rule_or_member_name);
                         handler_->begin_object(*this);
                         break;
                     case '[':
@@ -775,7 +776,7 @@ public:
                             err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         stack_.back() = states::object;
-                        stack_.push_back(states::object);
+                        stack_.push_back(states::expect_rule_or_member_name);
                         handler_->begin_object(*this);
                         break;
                     case '[':
@@ -1721,7 +1722,7 @@ private:
         switch (stack_[stack_.size()-2])
         {
         case states::object:
-            stack_.back() = states::object;
+            stack_.back() = states::expect_rule_or_member_name;
             break;
         case states::array:
             stack_.back() = states::array;
