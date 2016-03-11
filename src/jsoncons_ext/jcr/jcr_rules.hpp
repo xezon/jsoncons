@@ -654,6 +654,11 @@ public:
         }
     }
 
+    void add_rule(std::shared_ptr<rule<JsonT>> rule)
+    {
+        members_.push_back(rule);
+    }
+
     rule* clone() const override
     {
         return new object_rule(*this);

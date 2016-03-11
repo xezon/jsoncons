@@ -62,7 +62,7 @@ public:
         rule_val_ = rule;
     }
 
-    void add_rule_definition(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+    void add_named_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
     {
         rule_definitions_[name] = rule;
     }

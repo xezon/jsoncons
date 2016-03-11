@@ -207,7 +207,7 @@ private:
 
     void do_named_rule(const string_type& name, value_type rule, const basic_parsing_context<char_type>& context) override
     {
-        result_.add_rule_definition(name,rule);
+        result_.add_named_rule(name,rule);
     }
 };
 
