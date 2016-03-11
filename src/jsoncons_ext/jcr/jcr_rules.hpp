@@ -333,51 +333,6 @@ public:
 };
 
 template <class JsonT>
-class integer_range_rule : public rule<JsonT>
-{
-    int64_t from_;
-    int64_t to_;
-
-public:
-    integer_range_rule(int64_t from, int64_t to)
-        : from_(from), to_(to)
-    {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new integer_range_rule(from_,to_);
-    }
-
-    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
-    {
-        return val.is_integer() && val.as_integer() >= from_ && val.as_integer() <= to_;
-    }
-};
-
-template <class JsonT>
-class uinteger_range_rule : public rule<JsonT>
-{
-    uint64_t from_;
-    uint64_t to_;
-public:
-    uinteger_range_rule(uint64_t from, uint64_t to)
-        : from_(from), to_(to)
-    {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new uinteger_range_rule(from_,to_);
-    }
-
-    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
-    {
-        return val.is_uinteger() && val.as_uinteger() >= from_ && val.as_uinteger() <= to_;
-    }
-};
-
-template <class JsonT>
 class group_rule : public rule<JsonT>
 {
 public:

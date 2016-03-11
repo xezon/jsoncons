@@ -1088,6 +1088,7 @@ public:
                             auto mr = std::make_shared<member_rule<JsonT>>(member_name_,from_rule_);
                             handler_->named_rule(rule_name_,mr,*this);
                             stack_.back() = states::start;
+                            from_rule_ = nullptr;
                         }
                         break;
                     case states::array:
@@ -1096,6 +1097,7 @@ public:
                             auto mr = std::make_shared<member_rule<JsonT>>(member_name_,from_rule_);
                             object_rule_->add_rule(mr);
                             stack_.back() = states::expect_comma_or_end;
+                            from_rule_ = nullptr;
                         }
                         break;
                     /*case modes::rule_member_value:
@@ -1110,7 +1112,6 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
                         break;
                     }
-                    from_rule_ = nullptr;
                     break;
                 }
                 break;
@@ -1549,15 +1550,25 @@ private:
 
     void end_integer_value()
     {
+        std::shared_ptr<rule<JsonT>> rule_ptr;
         if (is_negative_)
         {
             try
             {
-                int64_t d = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
 
-                auto r = std::make_shared<value_rule<JsonT,int64_t>>(d);
-                auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
-                object_rule_->add_rule(mr);
+                if (from_rule_)
+                {
+                    auto to_r = std::make_shared<to_rule<JsonT,int64_t>>(val);
+                    auto r = std::make_shared<composite_rule<JsonT>>(from_rule_, to_r);
+                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                    //from_rule_ = nullptr;
+                }
+                else
+                {
+                    auto r = std::make_shared<value_rule<JsonT,int64_t>>(val);
+                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                }
             }
             catch (const std::exception&)
             {
@@ -1568,30 +1579,40 @@ private:
         {
             try
             {
-                uint64_t d = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                auto r = std::make_shared<value_rule<JsonT,uint64_t>>(d);
-                auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
-                switch (stack_[stack_.size()-2])
+               uint64_t val= string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+
+                if (from_rule_)
                 {
-                case states::array:
-                case states::object:
-                    object_rule_->add_rule(mr);
-                    stack_.back() = states::expect_comma_or_end;
-                    break;
-                case states::root:
-                    stack_.back() = states::start;
-                    handler_->named_rule(rule_name_,mr, *this);
-                    break;
-                default:
-                    err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                    break;
+                    auto to_r = std::make_shared<to_rule<JsonT,uint64_t>>(val);
+                    auto r = std::make_shared<composite_rule<JsonT>>(from_rule_,to_r);
+                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                    //from_rule_ = nullptr;
                 }
-                
+                else
+                {
+                    auto r = std::make_shared<value_rule<JsonT,int64_t>>(val);
+                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                }
             }
             catch (const std::exception&)
             {
                 err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
             }
+        }
+        switch (stack_[stack_.size()-2])
+        {
+        case states::array:
+        case states::object:
+            object_rule_->add_rule(rule_ptr);
+            stack_.back() = states::expect_comma_or_end;
+            break;
+        case states::root:
+            stack_.back() = states::start;
+            handler_->named_rule(rule_name_, rule_ptr, *this);
+            break;
+        default:
+            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
+            break;
         }
 
         JSONCONS_ASSERT(stack_.size() >= 2);
