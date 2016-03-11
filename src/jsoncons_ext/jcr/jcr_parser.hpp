@@ -247,8 +247,8 @@ public:
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
         rule_map_["integer"] = std::make_shared<any_integer_rule<JsonT>>(); 
         rule_map_["string"] = std::make_shared<any_string_rule<JsonT>>(); 
-        rule_map_["true"] = std::make_shared<boolean_rule<JsonT>>(true); 
-        rule_map_["false"] = std::make_shared<boolean_rule<JsonT>>(false); 
+        rule_map_["true"] = std::make_shared<value_rule<JsonT,bool>>(true); 
+        rule_map_["false"] = std::make_shared<value_rule<JsonT,bool>>(false); 
         rule_map_["null"] = std::make_shared<null_rule<JsonT>>(); 
     }
 
@@ -1555,7 +1555,7 @@ private:
             {
                 int64_t d = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
 
-                auto r = std::make_shared<integer_rule<JsonT>>(d);
+                auto r = std::make_shared<value_rule<JsonT,int64_t>>(d);
                 auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
                 object_rule_->add_rule(mr);
             }
@@ -1569,7 +1569,7 @@ private:
             try
             {
                 uint64_t d = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                auto r = std::make_shared<uinteger_rule<JsonT>>(d);
+                auto r = std::make_shared<value_rule<JsonT,uint64_t>>(d);
                 auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
                 switch (stack_[stack_.size()-2])
                 {
