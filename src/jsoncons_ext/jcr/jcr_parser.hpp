@@ -564,18 +564,6 @@ public:
                     switch (*p_)
                     {
                         JSONCONS_JCR_CASE_SP_CMT()
-                    case '}':
-                        --nesting_depth_;
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() != states::object)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        }
-                        handler_->end_object(*this);
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        stack_.back() = states::start;
-                        break;
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
