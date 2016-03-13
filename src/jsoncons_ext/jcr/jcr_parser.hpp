@@ -132,7 +132,7 @@ enum class states
     expect_comma_or_end,  
     object,
     expect_rule_or_member_name, 
-    expect_member_name, 
+    expect_member_name_or_colon, 
     expect_colon,
     expect_value,
     array, 
@@ -169,6 +169,7 @@ enum class states
     expect_named_rule,
     expect_rule_value,
     member_name,
+    member_value,
     quoted_string_value,
     target_rule_name,
     named_value,
@@ -392,6 +393,16 @@ public:
         }
     }
 
+    states& parent() 
+    {
+        return stack_[stack_.size()-2];
+    }
+
+    states parent() const
+    {
+        return stack_[stack_.size()-2];
+    }
+
     void parse(const char_type* const input, size_t start, size_t length)
     {
         begin_input_ = input + start;
@@ -549,11 +560,11 @@ public:
                         break;
                     default:
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::array)
+                        if (parent() == states::array)
                         {
                             err_handler_->error(std::error_code(json_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
                         }
-                        else if (stack_[stack_.size()-2] == states::object)
+                        else if (parent() == states::object)
                         {
                             err_handler_->error(std::error_code(json_parser_errc::expected_comma_or_right_brace, json_error_category()), *this);
                         }
@@ -591,7 +602,7 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_member_name: 
+            case states::expect_member_name_or_colon: 
                 {
                     switch (*p_)
                     {
@@ -600,9 +611,8 @@ public:
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
                         break;
-                    case '}':
-                        --nesting_depth_;
-                        err_handler_->error(std::error_code(json_parser_errc::extra_comma, json_error_category()), *this);
+                    case ':':
+                        stack_.back() = states::expect_value;
                         break;
                     case '\'':
                         err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
@@ -673,7 +683,7 @@ public:
                         break;
                     case ']':
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::array)
+                        if (parent() == states::array)
                         {
                             err_handler_->error(std::error_code(json_parser_errc::extra_comma, json_error_category()), *this);
                         }
@@ -710,30 +720,7 @@ public:
                 else 
                 {
                     auto it = rule_map_.find(string_buffer_);
-                    switch (stack_[stack_.size()-2])
-                    {
-                    case states::array:
-                    case states::object:
-                        {
-                            if (it != rule_map_.end())
-                            {
-                                auto mr = std::make_shared<member_rule<JsonT>>(member_name_,it->second);
-                                object_rule_->add_rule(mr);
-                            }
-                            stack_.back() = states::expect_comma_or_end;
-                        }
-                        break;
-                    case states::root:
-                        {
-                            if (it != rule_map_.end())
-                            {
-                                auto mr = std::make_shared<member_rule<JsonT>>(member_name_,it->second);
-                                handler_->named_rule(rule_name_,mr,*this);
-                            }
-                            stack_.back() = states::start;
-                        }
-                        break;
-                    }
+                    end_rule(it->second);
                     string_buffer_.clear();
                 }
                 break;
@@ -745,10 +732,10 @@ public:
                 }
                 else 
                 {
-                    if (stack_[stack_.size()-2] == states::root)
+                    if (parent() == states::root)
                     {
                         rule_name_ = string_buffer_;
-                        stack_.back() = states::expect_member_name;
+                        stack_.back() = states::expect_member_name_or_colon;
                     }
                     else
                     {
@@ -793,7 +780,7 @@ public:
                         }
                         //handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1013,7 +1000,7 @@ public:
                         //handler_->end_object(*this);
                         handler_->rule_definition(object_rule_,*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1033,7 +1020,7 @@ public:
                         }
                         //handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1083,7 +1070,7 @@ public:
                     break;
                 default:
                     stack_.pop_back();
-                    switch (stack_[stack_.size()-2])
+                    switch (parent())
                     {
                     case states::root:
                         {
@@ -1179,7 +1166,7 @@ public:
                         //handler_->end_object(*this);
                         handler_->rule_definition(object_rule_,*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1199,7 +1186,7 @@ public:
                         }
                         //handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1249,7 +1236,7 @@ public:
                         //handler_->end_object(*this);
                         handler_->rule_definition(object_rule_,*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1269,7 +1256,7 @@ public:
                         }
                         //handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1358,7 +1345,7 @@ public:
                         //handler_->end_object(*this);
                         handler_->rule_definition(object_rule_,*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1378,7 +1365,7 @@ public:
                         }
                         //handler_->end_array(*this);
                         JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (stack_[stack_.size()-2] == states::root)
+                        if (parent() == states::root)
                         {
                             stack_.back() = states::start;
                         }
@@ -1482,7 +1469,7 @@ public:
     void end_parse()
     {
         JSONCONS_ASSERT(stack_.size() >= 2);
-        if (stack_[stack_.size()-2] == states::root)
+        if (parent() == states::root)
         {
             switch (stack_.back())
             {
@@ -1536,7 +1523,7 @@ private:
         is_negative_ = false;
 
         JSONCONS_ASSERT(stack_.size() >= 2);
-        switch (stack_[stack_.size()-2])
+        switch (parent())
         {
         case states::array:
         case states::object:
@@ -1560,18 +1547,16 @@ private:
             {
                 int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
 
-                if (stack_[stack_.size()-2] == states::range_value)
+                if (parent() == states::range_value)
                 {
                     auto to_r = std::make_shared<to_rule<JsonT,int64_t>>(val);
-                    auto r = std::make_shared<composite_rule<JsonT>>(from_rule_, to_r);
-                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                    rule_ptr = std::make_shared<composite_rule<JsonT>>(from_rule_, to_r);
                     stack_.pop_back();
                     //from_rule_ = nullptr;
                 }
                 else
                 {
-                    auto r = std::make_shared<value_rule<JsonT,int64_t>>(val);
-                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                    rule_ptr = std::make_shared<value_rule<JsonT,int64_t>>(val);
                 }
             }
             catch (const std::exception&)
@@ -1585,18 +1570,15 @@ private:
             {
                uint64_t val= string_to_uinteger(number_buffer_.data(), number_buffer_.length());
 
-                if (stack_[stack_.size()-2] == states::range_value)
+                if (parent() == states::range_value)
                 {
                     auto to_r = std::make_shared<to_rule<JsonT,uint64_t>>(val);
-                    auto r = std::make_shared<composite_rule<JsonT>>(from_rule_,to_r);
-                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
-                    //from_rule_ = nullptr;
+                    rule_ptr = std::make_shared<composite_rule<JsonT>>(from_rule_,to_r);
                     stack_.pop_back();
                 }
                 else
                 {
-                    auto r = std::make_shared<value_rule<JsonT,int64_t>>(val);
-                    rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+                    rule_ptr = std::make_shared<value_rule<JsonT,int64_t>>(val);
                 }
             }
             catch (const std::exception&)
@@ -1604,15 +1586,30 @@ private:
                 err_handler_->error(std::error_code(json_parser_errc::invalid_number, json_error_category()), *this);
             }
         }
-        switch (stack_[stack_.size()-2])
+
+        end_rule(rule_ptr);
+
+        JSONCONS_ASSERT(stack_.size() >= 2);
+        number_buffer_.clear();
+        is_negative_ = false;
+    }
+
+    void end_rule(std::shared_ptr<rule<JsonT>> rule_ptr)
+    {
+
+        switch (parent())
         {
+        case states::member_value:
+            {
+                auto mr = std::make_shared<member_rule<JsonT>>(member_name_, rule_ptr);
+                object_rule_->add_rule(mr);
+                stack_.pop_back();
+            }
+            break;
         case states::array:
-        case states::object:
             object_rule_->add_rule(rule_ptr);
-            stack_.back() = states::expect_comma_or_end;
             break;
         case states::root:
-            stack_.back() = states::start;
             handler_->named_rule(rule_name_, rule_ptr, *this);
             break;
         default:
@@ -1620,9 +1617,20 @@ private:
             break;
         }
 
-        JSONCONS_ASSERT(stack_.size() >= 2);
-        number_buffer_.clear();
-        is_negative_ = false;
+        switch (parent())
+        {
+        case states::array:
+        case states::object:
+            {
+                stack_.back() = states::expect_comma_or_end;
+            }
+            break;
+        case states::root:
+            {
+                stack_.back() = states::start;
+            }
+            break;
+        }
     }
 
     void append_codepoint(int c)
@@ -1705,11 +1713,11 @@ private:
     void end_string_value(const char_type* s, size_t length) 
     {
         JSONCONS_ASSERT(stack_.size() >= 2);
-        switch (stack_[stack_.size()-2])
+        switch (parent())
         {
         case states::member_name:
             member_name_ = string_type(s,length);
-            stack_.pop_back();
+            parent() = states::member_value;
             stack_.back() = states::expect_colon;
             break;
         case states::quoted_string_value:
@@ -1718,7 +1726,7 @@ private:
 
             auto r = std::make_shared<string_rule<JsonT>>(s, length);
             auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
-            switch (stack_[stack_.size()-2])
+            switch (parent())
             {
             case states::array:
             case states::object:
@@ -1743,7 +1751,7 @@ private:
     void begin_member_or_element() 
     {
         JSONCONS_ASSERT(stack_.size() >= 2);
-        switch (stack_[stack_.size()-2])
+        switch (parent())
         {
         case states::object:
             stack_.back() = states::expect_rule_or_member_name;
