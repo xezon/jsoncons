@@ -170,7 +170,6 @@ enum class states
     expect_rule_value,
     member_name,
     member_value,
-    quoted_string_value,
     target_rule_name,
     named_value,
     range_value,
@@ -473,8 +472,7 @@ public:
                         //handler_->begin_array(*this);
                         break;
                     case '\"':
-                        stack_.back() = states::quoted_string_value;
-                        stack_.push_back(states::string);
+                        stack_.back() = states::string;
                         break;
                     case '-':
                         is_negative_ = true;
@@ -666,8 +664,7 @@ public:
                         //handler_->begin_array(*this);
                         break;
                     case '\"':
-                        stack_.back() = states::quoted_string_value;
-                        stack_.push_back(states::string);
+                        stack_.back() = states::string;
                         break;
                     case '-':
                         is_negative_ = true;
@@ -790,8 +787,7 @@ public:
                         }
                         break;
                     case '\"':
-                        stack_.back() = states::quoted_string_value;
-                        stack_.push_back(states::string);
+                        stack_.back() = states::string;
                         break;
                     case '-':
                         is_negative_ = true;
@@ -1081,21 +1077,12 @@ public:
                         }
                         break;
                     case states::array:
-                    case states::object:
+                        break;
+                    case states::member_value:
                         {
-                            auto mr = std::make_shared<member_rule<JsonT>>(member_name_,from_rule_);
-                            object_rule_->add_rule(mr);
-                            stack_.back() = states::expect_comma_or_end;
+                            end_rule(from_rule_);
                             from_rule_ = nullptr;
                         }
-                        break;
-                    /*case modes::rule_member_value:
-                        handler_->named_rule(rule_name_,
-                            std::make_shared<member_rule<JsonT>>(rule_member_name_, from_rule_),
-                            *this);
-                        flip(modes::rule_member_value, modes::named_rule);
-                        stack_.back() = states::expect_named_rule;
-                        break;*/
                         break;
                     default:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
@@ -1601,34 +1588,34 @@ private:
         {
         case states::member_value:
             {
-                auto mr = std::make_shared<member_rule<JsonT>>(member_name_, rule_ptr);
-                object_rule_->add_rule(mr);
+                rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, rule_ptr);
                 stack_.pop_back();
             }
-            break;
-        case states::array:
-            object_rule_->add_rule(rule_ptr);
-            break;
-        case states::root:
-            handler_->named_rule(rule_name_, rule_ptr, *this);
-            break;
-        default:
-            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
         }
 
         switch (parent())
         {
         case states::array:
+            {
+                object_rule_->add_rule(rule_ptr);
+                stack_.back() = states::expect_comma_or_end;
+            }
+            break;
         case states::object:
             {
+                object_rule_->add_rule(rule_ptr);
                 stack_.back() = states::expect_comma_or_end;
             }
             break;
         case states::root:
             {
+                handler_->named_rule(rule_name_, rule_ptr, *this);
                 stack_.back() = states::start;
             }
+            break;
+        default:
+            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
             break;
         }
     }
@@ -1712,6 +1699,8 @@ private:
 
     void end_string_value(const char_type* s, size_t length) 
     {
+        std::shared_ptr<rule<JsonT>> rule_ptr;
+
         JSONCONS_ASSERT(stack_.size() >= 2);
         switch (parent())
         {
@@ -1720,25 +1709,11 @@ private:
             parent() = states::member_value;
             stack_.back() = states::expect_colon;
             break;
-        case states::quoted_string_value:
-        {
-            stack_.pop_back();
-
-            auto r = std::make_shared<string_rule<JsonT>>(s, length);
-            auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
-            switch (parent())
+        case states::member_value:
             {
-            case states::array:
-            case states::object:
-                stack_.back() = states::expect_comma_or_end;
-                object_rule_->add_rule(mr);
-                break;
-            case states::root:
-                stack_.back() = states::start;
-                handler_->named_rule(rule_name_,mr, *this);
-                break;
+                auto r = std::make_shared<string_rule<JsonT>>(s, length);
+                end_rule(r);
             }
-        }
             break;
         default:
             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);

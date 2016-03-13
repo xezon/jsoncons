@@ -22,7 +22,7 @@ BOOST_AUTO_TEST_SUITE(jcr_test_suite)
 struct jcr_fixture
 {
 };
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(test_jcr_integer)
 
     BOOST_CHECK(schema.validate(val1));
 }
-/*
+
 BOOST_AUTO_TEST_CASE(test_jcr_integer_range)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -141,7 +141,6 @@ BOOST_AUTO_TEST_CASE(test_named_rules)
 
     BOOST_CHECK(schema.validate(val1));
 } 
-
  
 BOOST_AUTO_TEST_CASE(test_named_rules2)
 {
@@ -166,7 +165,7 @@ BOOST_AUTO_TEST_CASE(test_named_rules2)
 
     BOOST_CHECK(schema.validate(val1));
 }
-
+*/
 BOOST_AUTO_TEST_CASE(test_value_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -198,7 +197,7 @@ BOOST_AUTO_TEST_CASE(test_value_rule)
     BOOST_CHECK(!schema.validate(val2));
     BOOST_CHECK(!schema.validate(val3));
 }
-*/
+
 BOOST_AUTO_TEST_SUITE_END()
 
 
