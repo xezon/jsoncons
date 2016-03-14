@@ -216,7 +216,8 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
     string_type member_name_;
     std::shared_ptr<rule<JsonT>> from_rule_;
-    std::shared_ptr<group_rule<JsonT>> object_rule_;
+    std::shared_ptr<object_rule<JsonT>> object_rule_;
+    std::shared_ptr<array_rule<JsonT>> array_rule_;
 
 public:
     basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
@@ -464,7 +465,7 @@ public:
                         stack_.back() = states::object;
                         stack_.push_back(states::expect_rule_or_member_name);
                         //handler_->begin_object(*this);
-                        object_rule_ = std::make_shared<group_rule<JsonT>>();
+                        object_rule_ = std::make_shared<object_rule<JsonT>>();
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -473,7 +474,7 @@ public:
                         }
                         stack_.back() = states::array;
                         stack_.push_back(states::expect_rule_or_element);
-                        object_rule_ = std::make_shared<group_rule<JsonT>>();
+                        array_rule_ = std::make_shared<array_rule<JsonT>>();
                         //handler_->begin_array(*this);
                         break;
                     case '\"':
@@ -546,7 +547,7 @@ public:
                         stack_.pop_back();
                         if (stack_.back() == states::array)
                         {
-                            end_rule(object_rule_);
+                            end_rule(array_rule_);
                             //handler_->end_array(*this);
                         }
                         else if (stack_.back() == states::object)
@@ -711,7 +712,7 @@ public:
                         stack_.back() = states::object;
                         stack_.push_back(states::expect_rule_or_member_name);
                         //handler_->begin_object(*this);
-                        object_rule_ = std::make_shared<group_rule<JsonT>>();
+                        object_rule_ = std::make_shared<object_rule<JsonT>>();
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -804,7 +805,8 @@ public:
                     else
                     {
                         auto rn = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        object_rule_->add_rule(rn);
+                        //object_rule_->add_rule(rn);
+                        end_rule(rn);
                         stack_.back() = states::expect_comma_or_end;
                     }
                     string_buffer_.clear();
@@ -844,7 +846,7 @@ public:
                         stack_.back() = states::object;
                         stack_.push_back(states::expect_rule_or_member_name);
                         //handler_->begin_object(*this);
-                        object_rule_ = std::make_shared<group_rule<JsonT>>();
+                        object_rule_ = std::make_shared<object_rule<JsonT>>();
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -1666,7 +1668,7 @@ private:
         {
         case states::array:
             {
-                object_rule_->add_rule(rule_ptr);
+                array_rule_->add_rule(rule_ptr);
                 stack_.back() = states::expect_comma_or_end;
             }
             break;

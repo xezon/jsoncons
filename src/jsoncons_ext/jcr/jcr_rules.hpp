@@ -362,7 +362,7 @@ public:
 };
 
 template <class JsonT>
-class group_rule : public rule<JsonT>
+class object_rule : public rule<JsonT>
 {
 public:
     typedef typename JsonT json_type;
@@ -372,27 +372,27 @@ public:
 private:
     std::vector<value_type,allocator_type> members_;
 public:
-    group_rule(const allocator_type& allocator = allocator_type())
+    object_rule(const allocator_type& allocator = allocator_type())
         : members_(allocator)
     {
     }
 
-    group_rule(const group_rule<JsonT>& val)
+    object_rule(const object_rule<JsonT>& val)
         : members_(val.members_)
     {
     }
 
-    group_rule(group_rule&& val)
+    object_rule(object_rule&& val)
         : members_(std::move(val.members_))
     {
     }
 
-    group_rule(const group_rule<JsonT>& val, const allocator_type& allocator) :
+    object_rule(const object_rule<JsonT>& val, const allocator_type& allocator) :
         members_(val.members_,allocator)
     {
     }
 
-    group_rule(group_rule&& val,const allocator_type& allocator) :
+    object_rule(object_rule&& val,const allocator_type& allocator) :
         members_(std::move(val.members_),allocator)
     {
     }
@@ -404,7 +404,7 @@ public:
 
     rule* clone() const override
     {
-        return new group_rule(*this);
+        return new object_rule(*this);
     }
 
     allocator_type get_allocator() const
@@ -426,7 +426,79 @@ public:
         return result;
     }
 private:
-    group_rule<JsonT>& operator=(const group_rule<JsonT>&);
+    object_rule<JsonT>& operator=(const object_rule<JsonT>&);
+};
+
+template <class JsonT>
+class array_rule : public rule<JsonT>
+{
+public:
+    typedef typename JsonT json_type;
+    typedef typename JsonT::object_allocator allocator_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::shared_ptr<rule<JsonT>> value_type;
+private:
+    std::vector<value_type,allocator_type> elements_;
+public:
+    array_rule(const allocator_type& allocator = allocator_type())
+        : elements_(allocator)
+    {
+    }
+
+    array_rule(const array_rule<JsonT>& val)
+        : elements_(val.elements_)
+    {
+    }
+
+    array_rule(array_rule&& val)
+        : elements_(std::move(val.elements_))
+    {
+    }
+
+    array_rule(const array_rule<JsonT>& val, const allocator_type& allocator) :
+        elements_(val.elements_,allocator)
+    {
+    }
+
+    array_rule(array_rule&& val,const allocator_type& allocator) :
+        elements_(std::move(val.elements_),allocator)
+    {
+    }
+
+    void add_rule(std::shared_ptr<rule<JsonT>> rule)
+    {
+        elements_.push_back(rule);
+    }
+
+    rule* clone() const override
+    {
+        return new array_rule(*this);
+    }
+
+    allocator_type get_allocator() const
+    {
+        return elements_.get_allocator();
+    }
+
+    bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        if (!val.is_array())
+        {
+            return false;
+        }
+        if (val.size() < elements_.size())
+        {
+            return false;
+        }
+        bool result = true;
+        for (size_t i = 0; result && i < elements_.size(); ++i)
+        {
+            result = elements_[i]->validate(val[i], optional, rules);
+        }
+        return result;
+    }
+private:
+    array_rule<JsonT>& operator=(const array_rule<JsonT>&);
 };
 
 
