@@ -195,6 +195,42 @@ public:
 };
 
 template <class JsonT>
+class optional_member_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+
+    string_type name_;
+    std::shared_ptr<rule<JsonT>> rule_;
+public:
+    optional_member_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+        : name_(name),rule_(rule)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new optional_member_rule(name_,rule_);
+    }
+
+    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        if (!val.is_object())
+        {
+            return false;
+        }
+        auto it = val.find(name_);
+        if (it == val.members().end())
+        {
+            return true;
+        }
+        
+        return rule_->validate(it->value(), rules);
+    }
+};
+
+template <class JsonT>
 class jcr_rule_name : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;

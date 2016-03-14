@@ -210,6 +210,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     std::pair<const char_type*,size_t> literal_;
     size_t literal_index_;
 
+    bool optional_member_rule_;
     string_type rule_name_;
     string_type member_name_;
     std::shared_ptr<rule<JsonT>> from_rule_;
@@ -1076,28 +1077,8 @@ public:
                     break;
                 default:
                     stack_.pop_back();
-                    switch (parent())
-                    {
-                    case states::root:
-                        {
-                            auto mr = std::make_shared<member_rule<JsonT>>(member_name_,from_rule_);
-                            handler_->named_rule(rule_name_,mr,*this);
-                            stack_.back() = states::start;
-                            from_rule_ = nullptr;
-                        }
-                        break;
-                    case states::array:
-                        break;
-                    case states::member_value:
-                        {
-                            end_rule(from_rule_);
-                            from_rule_ = nullptr;
-                        }
-                        break;
-                    default:
-                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_json_text, jcr_error_category()), *this);
-                        break;
-                    }
+                    end_rule(from_rule_);
+                    from_rule_ = nullptr;
                     break;
                 }
                 break;
