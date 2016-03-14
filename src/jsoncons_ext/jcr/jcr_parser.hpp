@@ -164,6 +164,8 @@ enum class states
     any_string,
     rule_name,
     expect_rule,
+    expect_optional_rule,
+    optional_rule,
     cr,
     lf,
     expect_named_rule,
@@ -210,7 +212,6 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     std::pair<const char_type*,size_t> literal_;
     size_t literal_index_;
 
-    bool optional_member_rule_;
     string_type rule_name_;
     string_type member_name_;
     std::shared_ptr<rule<JsonT>> from_rule_;
@@ -587,11 +588,35 @@ public:
                     case '\'':
                         err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
                         break;
+                    case '?':
+                        stack_.back() = states::expect_optional_rule;
+                        break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
                             string_buffer_.push_back(*p_);
                             stack_.back() = states::rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::expect_optional_rule: 
+                {
+                    switch (*p_)
+                    {
+                        JSONCONS_JCR_CASE_SP_CMT()
+                    default:
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            string_buffer_.push_back(*p_);
+                            stack_.back() = states::optional_rule;
                         }
                         else
                         {
@@ -748,6 +773,27 @@ public:
                     else
                     {
                         auto rn = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        object_rule_->add_rule(rn);
+                        stack_.back() = states::expect_comma_or_end;
+                    }
+                    string_buffer_.clear();
+                }
+                break;
+            case states::optional_rule:
+                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+                {
+                    string_buffer_.push_back(*p_);
+                    ++p_;
+                }
+                else 
+                {
+                    if (parent() == states::named_rule)
+                    {
+                    }
+                    else
+                    {
+                        auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        auto rn = std::make_shared<optional_rule<JsonT>>(r);
                         object_rule_->add_rule(rn);
                         stack_.back() = states::expect_comma_or_end;
                     }
