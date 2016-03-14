@@ -136,6 +136,7 @@ enum class states
     expect_colon,
     expect_value,
     array, 
+    expect_rule_or_element, 
     string,
     escape, 
     u1, 
@@ -471,7 +472,8 @@ public:
                             err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         stack_.back() = states::array;
-                        stack_.push_back(states::array);
+                        stack_.push_back(states::expect_rule_or_element);
+                        object_rule_ = std::make_shared<group_rule<JsonT>>();
                         //handler_->begin_array(*this);
                         break;
                     case '\"':
@@ -544,6 +546,7 @@ public:
                         stack_.pop_back();
                         if (stack_.back() == states::array)
                         {
+                            end_rule(object_rule_);
                             //handler_->end_array(*this);
                         }
                         else if (stack_.back() == states::object)
@@ -554,8 +557,6 @@ public:
                         {
                             err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_bracket, json_error_category()), *this);
                         }
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        stack_.back() = states::start;
                         break;
                     case ',':
                         begin_member_or_element();
@@ -583,6 +584,36 @@ public:
                         JSONCONS_JCR_CASE_SP_CMT()
                     case '\"':
                         stack_.back() = states::member_name;
+                        stack_.push_back(states::string);
+                        break;
+                    case '\'':
+                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
+                        break;
+                    case '?':
+                        stack_.back() = states::expect_optional_rule;
+                        break;
+                    default:
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            string_buffer_.push_back(*p_);
+                            stack_.back() = states::rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::expect_rule_or_element: 
+                {
+                    switch (*p_)
+                    {
+                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\"':
                         stack_.push_back(states::string);
                         break;
                     case '\'':
