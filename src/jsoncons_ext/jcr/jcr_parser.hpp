@@ -173,6 +173,7 @@ enum class states
     target_rule_name,
     named_value,
     range_value,
+    named_rule,
     done
 };
 
@@ -496,7 +497,8 @@ public:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
                             string_buffer_.push_back(*p_);
-                            stack_.back() = states::rule_name;
+                            stack_.back() = states::named_rule;
+                            stack_.push_back(states::rule_name);
                         }
                         else
                         {
@@ -520,8 +522,9 @@ public:
                         stack_.pop_back();
                         if (stack_.back() == states::object)
                         {
+                            end_rule(object_rule_);
                             //handler_->end_object(*this);
-                            handler_->rule_definition(object_rule_,*this);
+                            //handler_->rule_definition(object_rule_,*this);
                         }
                         else if (stack_.back() == states::array)
                         {
@@ -531,8 +534,7 @@ public:
                         {
                             err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_brace, json_error_category()), *this);
                         }
-
-                        stack_.back() = states::start;
+                        //stack_.back() = states::start;
                         break;
                     case ']':
                         --nesting_depth_;
@@ -717,7 +719,15 @@ public:
                 else 
                 {
                     auto it = rule_map_.find(string_buffer_);
-                    end_rule(it->second);
+                    if (it != rule_map_.end())
+                    {
+                        end_rule(it->second);
+                    }
+                    else
+                    {
+                        auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        end_rule(r);
+                    }
                     string_buffer_.clear();
                 }
                 break;
@@ -729,7 +739,7 @@ public:
                 }
                 else 
                 {
-                    if (parent() == states::root)
+                    if (parent() == states::named_rule)
                     {
                         rule_name_ = string_buffer_;
                         stack_.back() = states::expect_member_name_or_colon;
@@ -1608,9 +1618,16 @@ private:
                 stack_.back() = states::expect_comma_or_end;
             }
             break;
-        case states::root:
+        case states::named_rule:
             {
                 handler_->named_rule(rule_name_, rule_ptr, *this);
+                stack_.pop_back();
+                stack_.back() = states::start;
+            }
+            break;
+        case states::root:
+            {
+                handler_->rule_definition(rule_ptr, *this);
                 stack_.back() = states::start;
             }
             break;

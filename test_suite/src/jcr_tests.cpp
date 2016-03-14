@@ -19,10 +19,6 @@ using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
 
-struct jcr_fixture
-{
-};
-/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -165,8 +161,8 @@ BOOST_AUTO_TEST_CASE(test_named_rules2)
 
     BOOST_CHECK(schema.validate(val1));
 }
-*/
-BOOST_AUTO_TEST_CASE(test_value_rule)
+
+BOOST_AUTO_TEST_CASE(test_member_range_value_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
     {
@@ -196,6 +192,58 @@ BOOST_AUTO_TEST_CASE(test_value_rule)
     BOOST_CHECK(schema.validate(val1));
     BOOST_CHECK(!schema.validate(val2));
     BOOST_CHECK(!schema.validate(val3));
+}
+
+BOOST_AUTO_TEST_CASE(test_range_value_rule)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        m1
+    }
+    v1 : 0..3
+    m1 "value" : v1
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "value"  : 1
+    }
+    )");
+
+    json val2 = json::parse(R"(
+    {
+        "value"  : -1
+    }
+    )");
+
+    json val3 = json::parse(R"(
+    {
+        "value"  : 4
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+    BOOST_CHECK(!schema.validate(val2));
+    BOOST_CHECK(!schema.validate(val3));
+}
+
+BOOST_AUTO_TEST_CASE(test_optional_member_rule)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {o1}
+    v1 : 0..3
+    m1 "m1" : v1
+    m2 "m2" : v1
+    o1 "m0" : { m1, m2 }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "m0" : {"m1":1,"m2":2}
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
 }
 
 BOOST_AUTO_TEST_SUITE_END()
