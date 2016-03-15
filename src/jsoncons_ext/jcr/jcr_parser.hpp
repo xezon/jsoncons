@@ -186,7 +186,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     size_t literal_index_;
 
     string_type rule_name_;
-    string_type member_name_;
+    std::vector<string_type> member_name_stack_;
     std::shared_ptr<rule<JsonT>> from_rule_;
     std::vector<std::shared_ptr<object_rule<JsonT>>> object_rule_stack_;
     std::vector<std::shared_ptr<array_rule<JsonT>>> array_rule_stack_;
@@ -301,6 +301,7 @@ public:
         rule_map_["true"] = std::make_shared<value_rule<JsonT,bool>>(true); 
         rule_map_["false"] = std::make_shared<value_rule<JsonT,bool>>(false); 
         rule_map_["null"] = std::make_shared<null_rule<JsonT>>(); 
+        rule_map_["uri"] = std::make_shared<uri_rule<JsonT>>(); 
     }
 
     const basic_parsing_context<char_type>& parsing_context() const
@@ -444,11 +445,13 @@ public:
 
     states& parent() 
     {
+        JSONCONS_ASSERT(stack_.size() >= 2);
         return stack_[stack_.size()-2];
     }
 
     states parent() const
     {
+        JSONCONS_ASSERT(stack_.size() >= 2);
         return stack_[stack_.size()-2];
     }
 
@@ -562,7 +565,6 @@ public:
                         begin_member_or_element();
                         break;
                     default:
-                        JSONCONS_ASSERT(stack_.size() >= 2);
                         if (parent() == states::array)
                         {
                             err_handler_->error(std::error_code(json_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
@@ -761,7 +763,6 @@ public:
                         stack_.back() = states::integer;
                         break;
                     case ']':
-                        JSONCONS_ASSERT(stack_.size() >= 2);
                         if (parent() == states::array)
                         {
                             err_handler_->error(std::error_code(json_parser_errc::extra_comma, json_error_category()), *this);
@@ -798,16 +799,17 @@ public:
                 }
                 else 
                 {
+                    std::shared_ptr<rule<JsonT>> rule_ptr;
                     auto it = rule_map_.find(string_buffer_);
                     if (it != rule_map_.end())
                     {
-                        end_rule(it->second);
+                        rule_ptr = it->second;
                     }
                     else
                     {
-                        auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        end_rule(r);
+                        rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                     }
+                    end_rule(rule_ptr);
                     string_buffer_.clear();
                 }
                 break;
@@ -826,8 +828,17 @@ public:
                     }
                     else
                     {
-                        auto rn = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        end_rule(rn);
+                        std::shared_ptr<rule<JsonT>> rule_ptr;
+                        auto it = rule_map_.find(string_buffer_);
+                        if (it != rule_map_.end())
+                        {
+                            rule_ptr = it->second;
+                        }
+                        else
+                        {
+                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        }
+                        end_rule(rule_ptr);
                         stack_.back() = states::expect_comma_or_end;
                     }
                     string_buffer_.clear();
@@ -846,9 +857,17 @@ public:
                     }
                     else
                     {
-                        auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        auto rn = std::make_shared<optional_rule<JsonT>>(r);
-                        object_rule_stack_.back()->add_rule(rn);
+                        std::shared_ptr<rule<JsonT>> rule_ptr;
+                        auto it = rule_map_.find(string_buffer_);
+                        if (it != rule_map_.end())
+                        {
+                            rule_ptr = it->second;
+                        }
+                        else
+                        {
+                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        }
+                        object_rule_stack_.back()->add_rule(rule_ptr);
                         stack_.back() = states::expect_comma_or_end;
                     }
                     string_buffer_.clear();
@@ -867,9 +886,17 @@ public:
                     }
                     else
                     {
-                        auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        auto rn = std::make_shared<repeating_rule<JsonT>>(r);
-                        array_rule_stack_.back()->add_rule(rn);
+                        std::shared_ptr<rule<JsonT>> rule_ptr;
+                        auto it = rule_map_.find(string_buffer_);
+                        if (it != rule_map_.end())
+                        {
+                            rule_ptr = it->second;
+                        }
+                        else
+                        {
+                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        }
+                        array_rule_stack_.back()->add_rule(rule_ptr);
                         stack_.back() = states::expect_comma_or_end;
                     }
                    
@@ -1359,7 +1386,6 @@ public:
 
     void end_parse()
     {
-        JSONCONS_ASSERT(stack_.size() >= 2);
         if (parent() == states::root)
         {
             switch (stack_.back())
@@ -1403,7 +1429,8 @@ private:
                 d = -d;
 
             auto r = std::make_shared<value_rule<JsonT,double>>(d);
-            auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
+            auto mr = std::make_shared<member_rule<JsonT>>(member_name_stack_.back(), r);
+            member_name_stack_.pop_back();
             object_rule_stack_.back()->add_rule(mr);
         }
         catch (...)
@@ -1413,7 +1440,6 @@ private:
         number_buffer_.clear();
         is_negative_ = false;
 
-        JSONCONS_ASSERT(stack_.size() >= 2);
         switch (parent())
         {
         case states::array:
@@ -1492,7 +1518,8 @@ private:
         {
         case states::member_value:
             {
-                rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_, rule_ptr);
+                rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_stack_.back(), rule_ptr);
+                member_name_stack_.pop_back();
                 stack_.pop_back();
             }
             break;
@@ -1612,11 +1639,10 @@ private:
     {
         std::shared_ptr<rule<JsonT>> rule_ptr;
 
-        JSONCONS_ASSERT(stack_.size() >= 2);
         switch (parent())
         {
         case states::member_name:
-            member_name_ = string_type(s,length);
+            member_name_stack_.push_back(string_type(s,length));
             parent() = states::member_value;
             stack_.back() = states::expect_colon;
             break;
@@ -1636,7 +1662,6 @@ private:
 
     void begin_member_or_element() 
     {
-        JSONCONS_ASSERT(stack_.size() >= 2);
         switch (parent())
         {
         case states::object:

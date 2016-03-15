@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -410,5 +410,44 @@ BOOST_AUTO_TEST_CASE(test_nested_array_rules)
     )");
     BOOST_CHECK(!schema.validate(val2));
 }
+*/
 
+BOOST_AUTO_TEST_CASE(test_example)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+     { image }
+
+       image "Image" : {
+           width, height, "Title" : string,
+           thumbnail, "IDs" : [ *integer ]
+       }
+
+       thumbnail "Thumbnail" : {
+           width, height, "Url" : uri
+       }
+
+       width "Width" : width_v
+       height "Height" : height_v
+
+       width_v : 0..1280
+       height_v : 0..1024
+    )");
+
+    json val1 = json::parse(R"(
+       {
+         "Image": {
+             "Width":  800,
+             "Height": 600,
+             "Title":  "View from 15th Floor",
+             "Thumbnail": {
+                 "Url":    "http://www.example.com/image/481989943",
+                 "Height": 125,
+                 "Width":  100
+             },
+             "IDs": [116, 943, 234, 38793]
+          }
+       }
+    )");
+    BOOST_CHECK(schema.validate(val1));
+}
 BOOST_AUTO_TEST_SUITE_END()
