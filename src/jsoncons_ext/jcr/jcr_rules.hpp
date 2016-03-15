@@ -53,6 +53,79 @@ public:
 };
 
 template <class JsonT>
+class uri_rule :  public rule<JsonT>
+{
+    enum class states
+    {
+        start,
+        scheme,
+        expect_path
+    };
+public:
+    typedef typename JsonT::string_type string_type;
+    typedef typename JsonT::char_type char_type;
+
+    bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        if (!val.is_string())
+        {
+            return false;
+        }
+        bool result = true;
+        std::string s = val.as_string();
+
+        states state = states::scheme;
+
+        bool done = false;
+        for (const char_type* p = s.data(); !done && p < (s.data() + s.length()); ++p)
+        {
+            switch (state)
+            {
+            case states::start:
+                if (('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z'))
+                {
+                    state = states::scheme;
+                }
+                else
+                {
+                    done = true;
+                    result = false;
+                }
+                break;
+            case states::scheme:
+                switch (*p)
+                {
+                case ':':
+                    state = states::expect_path;
+                    break;
+                case '+': case '-': case '.':
+                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                    break;
+                default:
+                    if (!(('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')))
+                    {
+                        done = true;
+                        result = false;
+                    }
+                    break;
+                }
+                break;
+            case states::expect_path:
+                switch (*p)
+                {
+                case '/':
+                    state = states::expect_path;
+                    break;
+                }
+                break;
+            }
+        }
+
+        return result;
+    }
+};
+
+template <class JsonT>
 class any_object_rule : public rule<JsonT>
 {
 public:

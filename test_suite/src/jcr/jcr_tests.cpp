@@ -412,7 +412,3 @@ BOOST_AUTO_TEST_CASE(test_nested_array_rules)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-
-
-
-
