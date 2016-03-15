@@ -167,6 +167,8 @@ enum class states
     expect_rule,
     expect_optional_rule,
     optional_rule,
+    expect_repeating_rule,
+    repeating_rule,
     cr,
     lf,
     expect_named_rule,
@@ -620,8 +622,8 @@ public:
                     case '\'':
                         err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
                         break;
-                    case '?':
-                        stack_.back() = states::expect_optional_rule;
+                    case '*':
+                        stack_.back() = states::expect_repeating_rule;
                         break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
@@ -649,6 +651,27 @@ public:
                         {
                             string_buffer_.push_back(*p_);
                             stack_.back() = states::optional_rule;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::expect_repeating_rule: 
+                {
+                    switch (*p_)
+                    {
+                        JSONCONS_JCR_CASE_SP_CMT()
+                    default:
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            string_buffer_.push_back(*p_);
+                            stack_.back() = states::repeating_rule;
                         }
                         else
                         {
@@ -830,6 +853,28 @@ public:
                         object_rule_->add_rule(rn);
                         stack_.back() = states::expect_comma_or_end;
                     }
+                    string_buffer_.clear();
+                }
+                break;
+            case states::repeating_rule:
+                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+                {
+                    string_buffer_.push_back(*p_);
+                    ++p_;
+                }
+                else 
+                {
+                    if (parent() == states::named_rule)
+                    {
+                    }
+                    else
+                    {
+                        auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                        auto rn = std::make_shared<repeating_rule<JsonT>>(r);
+                        array_rule_->add_rule(rn);
+                        stack_.back() = states::expect_comma_or_end;
+                    }
+                   
                     string_buffer_.clear();
                 }
                 break;
@@ -1809,7 +1854,7 @@ private:
             stack_.back() = states::expect_rule_or_member_name;
             break;
         case states::array:
-            stack_.back() = states::array;
+            stack_.back() = states::expect_rule_or_element;
             break;
         case states::root:
             stack_.back() = states::start;

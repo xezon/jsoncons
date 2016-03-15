@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -282,6 +282,85 @@ BOOST_AUTO_TEST_CASE(test_array_rule)
     )");
 
     BOOST_CHECK(schema.validate(val1));
+
+    json val2 = json::parse(R"(
+    [
+        {"m2":2}
+    ]
+    )");
+
+    BOOST_CHECK(!schema.validate(val2));
+
+    json val3 = json::parse(R"(
+    [
+        {"m1":1}
+    ]
+    )");
+
+    BOOST_CHECK(schema.validate(val3));
+
+    BOOST_CHECK(!schema.validate(val2));
+
+    json val4 = json::parse(R"(
+    [
+        {"m1":-1}
+    ]
+    )");
+
+    BOOST_CHECK(!schema.validate(val4));
+}
+*/
+BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    [v1,*o1]
+    v1 : 0..3
+    m1 "m1" : v1
+    m2 "m2" : v1
+    o1 : { m1, ?m2 }
+    )");
+
+    json val1 = json::parse(R"(
+    [
+        0,{"m1":1,"m2":2}
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val1));
+
+    json val2 = json::parse(R"(
+    [
+        0,{"m2":2}
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val2));
+
+    json val3 = json::parse(R"(
+    [
+        0,{"m1":1}
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val3));
+
+    json val4 = json::parse(R"(
+    [
+        0,{"m1":-1}
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val4));
+
+    json val5 = json::parse(R"(
+    [
+        0,{"m1":1},{"m1":3}
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val5));
+
+    json val6 = json::parse(R"(
+    [
+        0,{"m1":1},{"m1":5}
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val6));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

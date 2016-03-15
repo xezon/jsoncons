@@ -40,6 +40,10 @@ public:
     }
     virtual bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const = 0;
     virtual rule* clone() const = 0;
+    virtual bool repeat() const
+    {
+        return false;
+    }
     virtual ~rule()
     {
     }
@@ -220,6 +224,36 @@ public:
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return rule_->validate(val, true, rules);
+    }
+};
+
+template <class JsonT>
+class repeating_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+
+    std::shared_ptr<rule<JsonT>> rule_;
+public:
+    repeating_rule(std::shared_ptr<rule<JsonT>> rule)
+        : rule_(rule)
+    {
+    }
+
+    rule<JsonT>* clone() const override
+    {
+        return new repeating_rule(rule_);
+    }
+
+    bool repeat() const override
+    {
+        return true;
+    }
+
+    bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return rule_->validate(val, optional, rules);
     }
 };
 
@@ -491,9 +525,19 @@ public:
             return false;
         }
         bool result = true;
-        for (size_t i = 0; result && i < elements_.size(); ++i)
+
+        bool done = false;
+        for (size_t i = 0; !done && result && i < elements_.size(); ++i)
         {
             result = elements_[i]->validate(val[i], optional, rules);
+            if (elements_[i]->repeat())
+            {
+                for (size_t j = i+1; result && j < val.size(); ++j)
+                {
+                    result = elements_[i]->validate(val[j], optional, rules);
+                }
+                done = true;
+            }
         }
         return result;
     }
