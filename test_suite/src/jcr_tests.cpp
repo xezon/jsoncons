@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -362,7 +362,26 @@ BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
     )");
     BOOST_CHECK(!schema.validate(val6));
 }
+*/
 
+BOOST_AUTO_TEST_CASE(test_optional_rule)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {"n1" : { m1, m2 }}
+    v1 : 0..3
+    m1 "m1" : v1
+    m2 "m2" : v1
+    o1 "n1" : { m1, m2 }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "n1" : {"m1":1,"m2":2}
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
 BOOST_AUTO_TEST_SUITE_END()
 
 

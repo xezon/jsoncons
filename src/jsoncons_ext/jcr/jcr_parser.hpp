@@ -221,6 +221,37 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     std::vector<std::shared_ptr<object_rule<JsonT>>> object_rule_stack_;
     std::vector<std::shared_ptr<array_rule<JsonT>>> array_rule_stack_;
 
+    void do_begin_object()
+    {
+        if (++nesting_depth_ >= max_depth_)
+        {
+            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
+        }
+        stack_.back() = states::object;
+        stack_.push_back(states::expect_rule_or_member_name);
+        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>());
+    }
+
+    void do_end_object()
+    {
+        --nesting_depth_;
+        JSONCONS_ASSERT(!stack_.empty())
+        stack_.pop_back();
+        if (stack_.back() == states::object)
+        {
+            end_rule(object_rule_stack_.back());
+            object_rule_stack_.pop_back();
+        }
+        else if (stack_.back() == states::array)
+        {
+            err_handler_->fatal_error(std::error_code(json_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
+        }
+        else
+        {
+            err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_brace, json_error_category()), *this);
+        }
+    }
+
 public:
     basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
        : handler_(std::addressof(handler)),
@@ -460,14 +491,7 @@ public:
                     {
                         JSONCONS_JCR_CASE_SP_CMT()
                     case '{':
-                        if (++nesting_depth_ >= max_depth_)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
-                        }
-                        stack_.back() = states::object;
-                        stack_.push_back(states::expect_rule_or_member_name);
-                        //handler_->begin_object(*this);
-                        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>());
+                        do_begin_object();
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -523,23 +547,7 @@ public:
                     {
                         JSONCONS_JCR_CASE_SP_CMT()
                     case '}':
-                        --nesting_depth_;
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() == states::object)
-                        {
-                            end_rule(object_rule_stack_.back());
-                            object_rule_stack_.pop_back();
-                        }
-                        else if (stack_.back() == states::array)
-                        {
-                            err_handler_->fatal_error(std::error_code(json_parser_errc::expected_comma_or_right_bracket, json_error_category()), *this);
-                        }
-                        else
-                        {
-                            err_handler_->fatal_error(std::error_code(json_parser_errc::unexpected_right_brace, json_error_category()), *this);
-                        }
-                        //stack_.back() = states::start;
+                        do_end_object();
                         break;
                     case ']':
                         --nesting_depth_;
@@ -726,14 +734,7 @@ public:
                     {
                         JSONCONS_JCR_CASE_SP_CMT()
                     case '{':
-                        if (++nesting_depth_ >= max_depth_)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
-                        }
-                        stack_.back() = states::object;
-                        stack_.push_back(states::expect_rule_or_member_name);
-                        //handler_->begin_object(*this);
-                        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>());
+                        do_begin_object();
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -742,7 +743,6 @@ public:
                         }
                         stack_.back() = states::array;
                         stack_.push_back(states::expect_rule_or_element);
-                        //handler_->begin_array(*this);
                         break;
                     case '\"':
                         stack_.back() = states::string;
@@ -1040,25 +1040,8 @@ public:
                         end_integer_value();
                         break; // No change
                     case '}':
-                        --nesting_depth_;
                         end_integer_value();
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() != states::object)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        }
-                        handler_->rule_definition(object_rule_stack_.back(),*this);
-                        object_rule_stack_.pop_back();
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (parent() == states::root)
-                        {
-                            stack_.back() = states::start;
-                        }
-                        else
-                        {
-                            stack_.back() = states::expect_comma_or_end;
-                        }
+                        do_end_object();
                         break;
                     case ']':
                         end_integer_value();
@@ -1177,25 +1160,8 @@ public:
                     {
                         JSONCONS_JCR_CASE_SP_CMT_ACTION((end_integer_value()))
                     case '}':
-                        --nesting_depth_;
                         end_integer_value();
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() != states::object)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        }
-                        handler_->rule_definition(object_rule_stack_.back(),*this);
-                        object_rule_stack_.pop_back();
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (parent() == states::root)
-                        {
-                            stack_.back() = states::start;
-                        }
-                        else
-                        {
-                            stack_.back() = states::expect_comma_or_end;
-                        }
+                        do_end_object();
                         break;
                     case ']':
                         end_integer_value();
@@ -1247,25 +1213,8 @@ public:
                     {
                         JSONCONS_JCR_CASE_SP_CMT_ACTION((end_fraction_value()))
                     case '}':
-                        --nesting_depth_;
                         end_fraction_value();
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() != states::object)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        }
-                        handler_->rule_definition(object_rule_stack_.back(),*this);
-                        object_rule_stack_.pop_back();
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (parent() == states::root)
-                        {
-                            stack_.back() = states::start;
-                        }
-                        else
-                        {
-                            stack_.back() = states::expect_comma_or_end;
-                        }
+                        do_end_object();
                         break;
                     case ']':
                         end_fraction_value();
@@ -1356,25 +1305,8 @@ public:
                     {
                         JSONCONS_JCR_CASE_SP_CMT_ACTION((end_fraction_value()))
                     case '}':
-                        --nesting_depth_;
                         end_fraction_value();
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() != states::object)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        }
-                        handler_->rule_definition(object_rule_stack_.back(),*this);
-                        object_rule_stack_.pop_back();
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (parent() == states::root)
-                        {
-                            stack_.back() = states::start;
-                        }
-                        else
-                        {
-                            stack_.back() = states::expect_comma_or_end;
-                        }
+                        do_end_object();
                         break;
                     case ']':
                         end_fraction_value();
