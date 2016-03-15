@@ -218,8 +218,8 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
     string_type member_name_;
     std::shared_ptr<rule<JsonT>> from_rule_;
-    std::shared_ptr<object_rule<JsonT>> object_rule_;
-    std::shared_ptr<array_rule<JsonT>> array_rule_;
+    std::vector<std::shared_ptr<object_rule<JsonT>>> object_rule_stack_;
+    std::vector<std::shared_ptr<array_rule<JsonT>>> array_rule_stack_;
 
 public:
     basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
@@ -467,7 +467,7 @@ public:
                         stack_.back() = states::object;
                         stack_.push_back(states::expect_rule_or_member_name);
                         //handler_->begin_object(*this);
-                        object_rule_ = std::make_shared<object_rule<JsonT>>();
+                        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>());
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -476,8 +476,7 @@ public:
                         }
                         stack_.back() = states::array;
                         stack_.push_back(states::expect_rule_or_element);
-                        array_rule_ = std::make_shared<array_rule<JsonT>>();
-                        //handler_->begin_array(*this);
+                        array_rule_stack_.push_back(std::make_shared<array_rule<JsonT>>() );
                         break;
                     case '\"':
                         stack_.back() = states::string;
@@ -529,9 +528,8 @@ public:
                         stack_.pop_back();
                         if (stack_.back() == states::object)
                         {
-                            end_rule(object_rule_);
-                            //handler_->end_object(*this);
-                            //handler_->rule_definition(object_rule_,*this);
+                            end_rule(object_rule_stack_.back());
+                            object_rule_stack_.pop_back();
                         }
                         else if (stack_.back() == states::array)
                         {
@@ -549,8 +547,8 @@ public:
                         stack_.pop_back();
                         if (stack_.back() == states::array)
                         {
-                            end_rule(array_rule_);
-                            //handler_->end_array(*this);
+                            end_rule(array_rule_stack_.back());
+                            array_rule_stack_.pop_back();
                         }
                         else if (stack_.back() == states::object)
                         {
@@ -735,7 +733,7 @@ public:
                         stack_.back() = states::object;
                         stack_.push_back(states::expect_rule_or_member_name);
                         //handler_->begin_object(*this);
-                        object_rule_ = std::make_shared<object_rule<JsonT>>();
+                        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>());
                         break;
                     case '[':
                         if (++nesting_depth_ >= max_depth_)
@@ -743,7 +741,7 @@ public:
                             err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
                         }
                         stack_.back() = states::array;
-                        stack_.push_back(states::array);
+                        stack_.push_back(states::expect_rule_or_element);
                         //handler_->begin_array(*this);
                         break;
                     case '\"':
@@ -828,7 +826,6 @@ public:
                     else
                     {
                         auto rn = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        //object_rule_->add_rule(rn);
                         end_rule(rn);
                         stack_.back() = states::expect_comma_or_end;
                     }
@@ -850,7 +847,7 @@ public:
                     {
                         auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                         auto rn = std::make_shared<optional_rule<JsonT>>(r);
-                        object_rule_->add_rule(rn);
+                        object_rule_stack_.back()->add_rule(rn);
                         stack_.back() = states::expect_comma_or_end;
                     }
                     string_buffer_.clear();
@@ -871,89 +868,12 @@ public:
                     {
                         auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                         auto rn = std::make_shared<repeating_rule<JsonT>>(r);
-                        array_rule_->add_rule(rn);
+                        array_rule_stack_.back()->add_rule(rn);
                         stack_.back() = states::expect_comma_or_end;
                     }
                    
                     string_buffer_.clear();
                 }
-                break;
-            case states::array: 
-                {
-                    switch (*p_)
-                    {
-                        JSONCONS_JCR_CASE_SP_CMT()
-                    case '{':
-                        if (++nesting_depth_ >= max_depth_)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
-                        }
-                        stack_.back() = states::object;
-                        stack_.push_back(states::expect_rule_or_member_name);
-                        //handler_->begin_object(*this);
-                        object_rule_ = std::make_shared<object_rule<JsonT>>();
-                        break;
-                    case '[':
-                        if (++nesting_depth_ >= max_depth_)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
-                        }
-                        stack_.back() = states::array;
-                        stack_.push_back(states::array);
-                        //handler_->begin_array(*this);
-                        break;
-                    case ']':
-                        --nesting_depth_;
-                        JSONCONS_ASSERT(!stack_.empty())
-                        stack_.pop_back();
-                        if (stack_.back() != states::array)
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        }
-                        //handler_->end_array(*this);
-                        JSONCONS_ASSERT(stack_.size() >= 2);
-                        if (parent() == states::root)
-                        {
-                            stack_.back() = states::start;
-                        }
-                        else
-                        {
-                            stack_.back() = states::expect_comma_or_end;
-                        }
-                        break;
-                    case '\"':
-                        stack_.back() = states::string;
-                        break;
-                    case '-':
-                        is_negative_ = true;
-                        stack_.back() = states::minus;
-                        break;
-                    case '0': 
-                        number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::zero;
-                        break;
-                    case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::integer;
-                        break;
-                    case '\'':
-                        err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
-                        break;
-                    default:
-                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
-                        {
-                            string_buffer_.push_back(*p_);
-                            stack_.back() = states::target_rule_name;
-                        }
-                        else
-                        {
-                            err_handler_->error(std::error_code(json_parser_errc::expected_value, json_error_category()), *this);
-                        }
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
                 break;
             case states::string: 
                 parse_string();
@@ -1128,8 +1048,8 @@ public:
                         {
                             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
-                        //handler_->end_object(*this);
-                        handler_->rule_definition(object_rule_,*this);
+                        handler_->rule_definition(object_rule_stack_.back(),*this);
+                        object_rule_stack_.pop_back();
                         JSONCONS_ASSERT(stack_.size() >= 2);
                         if (parent() == states::root)
                         {
@@ -1265,8 +1185,8 @@ public:
                         {
                             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
-                        //handler_->end_object(*this);
-                        handler_->rule_definition(object_rule_,*this);
+                        handler_->rule_definition(object_rule_stack_.back(),*this);
+                        object_rule_stack_.pop_back();
                         JSONCONS_ASSERT(stack_.size() >= 2);
                         if (parent() == states::root)
                         {
@@ -1335,8 +1255,8 @@ public:
                         {
                             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
-                        //handler_->end_object(*this);
-                        handler_->rule_definition(object_rule_,*this);
+                        handler_->rule_definition(object_rule_stack_.back(),*this);
+                        object_rule_stack_.pop_back();
                         JSONCONS_ASSERT(stack_.size() >= 2);
                         if (parent() == states::root)
                         {
@@ -1444,8 +1364,8 @@ public:
                         {
                             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
                         }
-                        //handler_->end_object(*this);
-                        handler_->rule_definition(object_rule_,*this);
+                        handler_->rule_definition(object_rule_stack_.back(),*this);
+                        object_rule_stack_.pop_back();
                         JSONCONS_ASSERT(stack_.size() >= 2);
                         if (parent() == states::root)
                         {
@@ -1615,7 +1535,7 @@ private:
 
             auto r = std::make_shared<value_rule<JsonT,double>>(d);
             auto mr = std::make_shared<member_rule<JsonT>>(member_name_, r);
-            object_rule_->add_rule(mr);
+            object_rule_stack_.back()->add_rule(mr);
         }
         catch (...)
         {
@@ -1713,13 +1633,13 @@ private:
         {
         case states::array:
             {
-                array_rule_->add_rule(rule_ptr);
+                array_rule_stack_.back()->add_rule(rule_ptr);
                 stack_.back() = states::expect_comma_or_end;
             }
             break;
         case states::object:
             {
-                object_rule_->add_rule(rule_ptr);
+                object_rule_stack_.back()->add_rule(rule_ptr);
                 stack_.back() = states::expect_comma_or_end;
             }
             break;
