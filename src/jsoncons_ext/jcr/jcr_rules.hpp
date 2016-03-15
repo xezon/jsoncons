@@ -39,7 +39,6 @@ public:
         return validate(val,false,rules);
     }
     virtual bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const = 0;
-    virtual rule* clone() const = 0;
     virtual bool repeat() const
     {
         return false;
@@ -61,11 +60,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new any_object_rule();
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return val.is_object();
@@ -84,11 +78,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new composite_rule(rule1_,rule2_);
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return rule1_->validate(val,optional,rules) && rule2_->validate(val,optional,rules);
@@ -103,11 +92,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new any_integer_rule();
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return val.is_integer() || val.as_uinteger();
@@ -120,11 +104,6 @@ class true_rule : public rule<JsonT>
 public:
     true_rule()
     {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new true_rule();
     }
 
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
@@ -155,11 +134,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new string_rule(s_);
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return val.is_string() && val.as_string() == s_;
@@ -179,11 +153,6 @@ public:
     member_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
         : name_(name),rule_(rule)
     {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new member_rule(name_,rule_);
     }
 
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
@@ -216,11 +185,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new optional_rule(rule_);
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return rule_->validate(val, true, rules);
@@ -239,11 +203,6 @@ public:
     repeating_rule(std::shared_ptr<rule<JsonT>> rule)
         : rule_(rule)
     {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new repeating_rule(rule_);
     }
 
     bool repeat() const override
@@ -275,11 +234,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new jcr_rule_name(name_);
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         auto it = rules.find(name_);
@@ -299,11 +253,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new any_string_rule();
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return val.is_string();
@@ -316,11 +265,6 @@ class null_rule : public rule<JsonT>
 public:
     null_rule()
     {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new null_rule();
     }
 
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
@@ -340,11 +284,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new value_rule(value_);
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return val.is<T>() && val.as<T>() == value_;
@@ -362,11 +301,6 @@ public:
     {
     }
 
-    rule<JsonT>* clone() const override
-    {
-        return new from_rule(from_);
-    }
-
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return val.is<T>() && val.as<T>() >= from_;
@@ -382,11 +316,6 @@ public:
     to_rule(T to)
         : to_(to)
     {
-    }
-
-    rule<JsonT>* clone() const override
-    {
-        return new to_rule(to_);
     }
 
     bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
@@ -434,11 +363,6 @@ public:
     void add_rule(std::shared_ptr<rule<JsonT>> rule)
     {
         members_.push_back(rule);
-    }
-
-    rule* clone() const override
-    {
-        return new object_rule(*this);
     }
 
     allocator_type get_allocator() const
@@ -502,11 +426,6 @@ public:
     void add_rule(std::shared_ptr<rule<JsonT>> rule)
     {
         elements_.push_back(rule);
-    }
-
-    rule* clone() const override
-    {
-        return new array_rule(*this);
     }
 
     allocator_type get_allocator() const

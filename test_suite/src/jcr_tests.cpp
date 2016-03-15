@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-/*
+
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -362,9 +362,8 @@ BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
     )");
     BOOST_CHECK(!schema.validate(val6));
 }
-*/
 
-BOOST_AUTO_TEST_CASE(test_optional_rule)
+BOOST_AUTO_TEST_CASE(test_nested_object_rules)
 {
     jcr_validator schema = jcr_validator::parse(R"(
     {"n1" : { m1, m2 }}
@@ -379,9 +378,39 @@ BOOST_AUTO_TEST_CASE(test_optional_rule)
         "n1" : {"m1":1,"m2":2}
     }
     )");
-
     BOOST_CHECK(schema.validate(val1));
+
+    json val2 = json::parse(R"(
+    {
+        "n1" : {"m1":1,"m2":4}
+    }
+    )");
+    BOOST_CHECK(!schema.validate(val2));
 }
+
+BOOST_AUTO_TEST_CASE(test_nested_array_rules)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    [v1, [ v1, v2 ]]
+    v1 : 0..3
+    v2 : 4..7
+    )");
+
+    json val1 = json::parse(R"(
+    [
+        1, [2,5]
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val1));
+
+    json val2 = json::parse(R"(
+    [
+        1, [4,5]
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val2));
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 

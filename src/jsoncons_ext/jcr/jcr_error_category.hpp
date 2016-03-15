@@ -36,6 +36,7 @@ namespace jcr_parser_errc
     const int expected_comma_or_right_bracket = 19;
     const int unexpected_right_bracket = 20;
     const int unexpected_right_brace = 21;
+    const int expected_rule_or_value = 22;
 }
 
 class jscr_error_category_impl
@@ -94,6 +95,8 @@ public:
             return "Unexpected right brace '}'";
         case jcr_parser_errc::unexpected_right_bracket:
             return "Unexpected right bracket ']'";
+        case jcr_parser_errc::expected_rule_or_value:
+            return "Expected rule name or value";
         default:
             return "Unknown JSON parser error";
         }
