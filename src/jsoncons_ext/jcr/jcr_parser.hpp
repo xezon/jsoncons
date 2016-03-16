@@ -21,38 +21,6 @@
 #include "jcr_error_category.hpp"
 #include "jcr_rules.hpp"
 
-#define JSONCONS_JCR_CASE_SP_CMT()                  \
-    case '\r':                                      \
-        stack_.push_back(states::cr);               \
-        break;                                      \
-    case '\n':                                      \
-        stack_.push_back(states::lf);               \
-        break;                                      \
-    case ' ':case '\t':                             \
-        do_space();                                 \
-        break;                                      \
-    case '/':                                       \
-        stack_.push_back(states::slash);            \
-        break;
-
-#define JSONCONS_JCR_CASE_SP_CMT_ACTION(action)     \
-    case '\r':                                      \
-        action;                                     \
-        stack_.push_back(states::cr);               \
-        break;                                      \
-    case '\n':                                      \
-        action;                                     \
-        stack_.push_back(states::lf);               \
-        break;                                      \
-    case ' ':case '\t':                             \
-        action;                                     \
-        do_space();                                 \
-        break;                                      \
-    case '/':                                       \
-        action;                                     \
-        stack_.push_back(states::slash);            \
-        break;
-
 namespace jsoncons { namespace jcr {
 
 template <typename char_type>
@@ -504,7 +472,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     case '{':
                         do_begin_object();
                         break;
@@ -554,7 +533,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     case '}':
                         do_end_object();
                         break;
@@ -583,7 +573,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
@@ -659,7 +660,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
@@ -680,7 +692,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
@@ -701,7 +724,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
@@ -724,7 +758,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     case ':':
                         stack_.back() = states::expect_value;
                         break;
@@ -740,7 +785,18 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT()
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
                     case '{':
                         do_begin_object();
                         break;
@@ -1170,7 +1226,22 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT_ACTION((end_integer_value()))
+                    case '\r': 
+                        end_integer_value();
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        end_integer_value();
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        end_integer_value();
+                        do_space();
+                        break;
+                    case '/': 
+                        end_integer_value();
+                        stack_.push_back(states::slash);
+                        break;
                     case '}':
                         end_integer_value();
                         do_end_object();
@@ -1207,7 +1278,22 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT_ACTION((end_fraction_value()))
+                    case '\r': 
+                        end_fraction_value();
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        end_fraction_value();
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        end_fraction_value();
+                        do_space();
+                        break;
+                    case '/': 
+                        end_fraction_value();
+                        stack_.push_back(states::slash);
+                        break;
                     case '}':
                         end_fraction_value();
                         do_end_object();
@@ -1283,7 +1369,22 @@ public:
                 {
                     switch (*p_)
                     {
-                        JSONCONS_JCR_CASE_SP_CMT_ACTION((end_fraction_value()))
+                    case '\r': 
+                        end_fraction_value();
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        end_fraction_value();
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        end_fraction_value();
+                        do_space();
+                        break;
+                    case '/': 
+                        end_fraction_value();
+                        stack_.push_back(states::slash);
+                        break;
                     case '}':
                         end_fraction_value();
                         do_end_object();
