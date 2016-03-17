@@ -75,7 +75,7 @@ enum class states
     expect_colon,
     expect_value,
     array, 
-    expect_rule_or_element, 
+    expect_rule_or_value, 
     string,
     escape, 
     u1, 
@@ -210,7 +210,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
             err_handler_->error(std::error_code(json_parser_errc::max_depth_exceeded, json_error_category()), *this);
         }
         stack_.back() = states::array;
-        stack_.push_back(states::expect_rule_or_element);
+        stack_.push_back(states::expect_rule_or_value);
         array_rule_stack_.push_back(std::make_shared<array_rule<JsonT>>() );
     }
 
@@ -620,7 +620,7 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_rule_or_element: 
+            case states::expect_rule_or_value: 
                 {
                     switch (*p_)
                     {
@@ -1823,7 +1823,7 @@ private:
             stack_.back() = states::expect_rule_or_member_name;
             break;
         case states::array:
-            stack_.back() = states::expect_rule_or_element;
+            stack_.back() = states::expect_rule_or_value;
             break;
         case states::group:
             stack_.back() = states::expect_member_name_or_colon;
