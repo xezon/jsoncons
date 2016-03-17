@@ -964,7 +964,8 @@ public:
                         }
                         else
                         {
-                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                            auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                            rule_ptr = std::make_shared<repeating_rule<JsonT>>(r);
                         }
                         array_rule_stack_.back()->add_rule(rule_ptr);
                         stack_.back() = states::expect_comma_or_end;
