@@ -1799,6 +1799,7 @@ private:
                 auto r = std::make_shared<string_rule<JsonT>>(s, length);
                 end_rule(r);
             }
+            break;
         case states::value:
             {
                 auto r = std::make_shared<string_rule<JsonT>>(s, length);

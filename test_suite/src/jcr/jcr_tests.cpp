@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -137,8 +137,27 @@ BOOST_AUTO_TEST_CASE(test_named_rules)
 
     BOOST_CHECK(schema.validate(val1));
 } 
- 
+*/ 
 BOOST_AUTO_TEST_CASE(test_named_rules2)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        fn
+    }
+    fn "file-name"  : "rfc7159.txt"
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "file-name"  : "rfc7159.txt",
+        "line-count" : 3426,
+        "word-count" : 27886
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
+/*BOOST_AUTO_TEST_CASE(test_named_rules2)
 {
     jcr_validator schema = jcr_validator::parse(R"(
     {
@@ -160,8 +179,8 @@ BOOST_AUTO_TEST_CASE(test_named_rules2)
     )");
 
     BOOST_CHECK(schema.validate(val1));
-}
-
+}*/
+/*
 BOOST_AUTO_TEST_CASE(test_member_range_value_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -470,7 +489,8 @@ BOOST_AUTO_TEST_CASE(test_boolean_rule)
     )");
 
     BOOST_CHECK(schema.validate(val1));
-}
+} 
+*/ 
 /*
 BOOST_AUTO_TEST_CASE(test_group_rule)
 {
