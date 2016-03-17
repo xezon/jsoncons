@@ -33,16 +33,21 @@ public:
     typedef typename std::vector<std::shared_ptr<rule<JsonT>>>::iterator iterator;
     typedef std::move_iterator<iterator> move_iterator;
     typedef rule<JsonT> rule_type;
+
+    enum class status
+    {
+        pass, fail, more
+    };
 private:
-    virtual bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const = 0;
+    virtual status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const = 0;
 public:
 
     virtual bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const 
     {
-        return do_validate(val,false,rules);
+        return do_validate(val,false,rules) == status::pass ? true : false;
     }
 
-    virtual bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const 
+    virtual status validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const 
     {
         return do_validate(val,optional,rules);
     }
@@ -73,13 +78,13 @@ public:
     typedef typename JsonT::string_type string_type;
     typedef typename JsonT::char_type char_type;
 private:
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         if (!val.is_string())
         {
-            return false;
+            return status::fail;
         }
-        bool result = true;
+        status result = status::pass;
         std::string s = val.as_string();
 
         states state = states::scheme;
@@ -97,7 +102,7 @@ private:
                 else
                 {
                     done = true;
-                    result = false;
+                    result = status::fail;
                 }
                 break;
             case states::scheme:
@@ -113,7 +118,7 @@ private:
                     if (!(('a' <= *p && *p <= 'z') || ('A' <= *p && *p <= 'Z')))
                     {
                         done = true;
-                        result = false;
+                        result = status::fail;
                     }
                     break;
                 }
@@ -141,9 +146,9 @@ public:
     {
     }
 private:
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_object();
+        return val.is_object() ? status::pass : status::fail;
     }
 };
 
@@ -160,9 +165,11 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return rule1_->validate(val,optional,rules) && rule2_->validate(val,optional,rules);
+        return rule1_->validate(val,optional,rules) == status::pass
+        && rule2_->validate(val,optional,rules) == status::pass 
+        ? status::pass : status::fail;
     }
 };
 
@@ -175,9 +182,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_integer() || val.as_uinteger();
+        return val.is_integer() || val.is_uinteger() ? status::pass : status::fail;
     }
 };
 
@@ -190,9 +197,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_double();
+        return val.is_double() ? status::pass : status::fail;
     }
 };
 
@@ -205,9 +212,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_bool();
+        return val.is_bool() ? status::pass : status::fail;
     }
 };
 
@@ -220,9 +227,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return true;
+        return status::pass;
     }
 };
 
@@ -249,9 +256,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_string() && val.as_string() == s_;
+        return val.is_string() && val.as_string() == s_ ? status::pass : status::fail;
     }
 };
 
@@ -271,16 +278,16 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         if (!val.is_object())
         {
-            return false;
+            return status::fail;
         }
         auto it = val.find(name_);
         if (it == val.members().end())
         {
-            return optional ? true : false;
+            return optional ? status::pass : status::fail;
         }
         
         return rule_->validate(it->value(), false, rules);
@@ -302,7 +309,7 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return rule_->validate(val, true, rules);
     }
@@ -328,7 +335,7 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         return rule_->validate(val, optional, rules);
     }
@@ -353,12 +360,12 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         auto it = rules.find(name_);
         if (it == rules.end())
         {
-            return false;
+            return status::fail;
         }
         return it->second->validate(val,optional,rules);
     }
@@ -373,9 +380,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_string();
+        return val.is_string() ? status::pass : status::fail;
     }
 };
 
@@ -388,9 +395,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is_null();
+        return val.is_null() ? status::pass : status::fail;
     }
 };
 
@@ -406,9 +413,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is<T>() && val.as<T>() == value_;
+        return val.is<T>() && val.as<T>() == value_ ? status::pass : status::fail;
     }
 };
 
@@ -424,9 +431,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is<T>() && val.as<T>() >= from_;
+        return val.is<T>() && val.as<T>() >= from_ ? status::pass : status::fail;
     }
 };
 
@@ -442,9 +449,9 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return val.is<T>() && val.as<T>() <= to_;
+        return val.is<T>() && val.as<T>() <= to_ ? status::pass : status::fail;
     }
 };
 
@@ -495,13 +502,13 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        bool result = true;
+        status result = status::pass;
         for (auto element : members_)
         {
             result = element->validate(val, optional, rules);
-            if (!result)
+            if (result == status::fail)
             {
                 break;
             }
@@ -559,25 +566,25 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
         if (!val.is_array())
         {
-            return false;
+            return status::fail;
         }
         if (val.size() < elements_.size())
         {
-            return false;
+            return status::fail;
         }
-        bool result = true;
+        status result = status::pass;
 
         bool done = false;
-        for (size_t i = 0; !done && result && i < elements_.size(); ++i)
+        for (size_t i = 0; !done && result == status::pass && i < elements_.size(); ++i)
         {
             result = elements_[i]->validate(val[i], optional, rules);
             if (elements_[i]->repeat())
             {
-                for (size_t j = i+1; result && j < val.size(); ++j)
+                for (size_t j = i+1; result == status::pass && j < val.size(); ++j)
                 {
                     result = elements_[i]->validate(val[j], optional, rules);
                 }
@@ -637,13 +644,13 @@ public:
     }
 private:
 
-    bool do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        bool result = true;
+        status result = status::pass;
         for (auto rule : elements_)
         {
             result = rule->validate(val,optional,rules);
-            if (!result)
+            if (result == status::fail)
             {
                 break;
             }
