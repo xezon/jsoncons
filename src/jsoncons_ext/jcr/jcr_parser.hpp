@@ -71,6 +71,7 @@ enum class states
     object,
     expect_rule_or_member_name, 
     expect_member_name_or_colon, 
+    expect_value_or_colon, 
     expect_colon,
     expect_value,
     array, 
@@ -102,6 +103,7 @@ enum class states
     any_integer,
     any_string,
     rule_name,
+    group,
     expect_rule,
     expect_optional_rule,
     optional_rule,
@@ -110,9 +112,9 @@ enum class states
     cr,
     lf,
     expect_named_rule,
-    expect_rule_value,
     member_name,
     member_value,
+    value,
     target_rule_name,
     named_value,
     range_value,
@@ -156,6 +158,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
     std::vector<string_type> member_name_stack_;
     std::shared_ptr<rule<JsonT>> from_rule_;
+    std::shared_ptr<group_rule<JsonT>> group_rule_;
     std::vector<std::shared_ptr<object_rule<JsonT>>> object_rule_stack_;
     std::vector<std::shared_ptr<array_rule<JsonT>>> array_rule_stack_;
 
@@ -264,6 +267,8 @@ public:
     void init()
     {
         max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
+        rule_map_["boolean"] = std::make_shared<any_boolean_rule<JsonT>>(); 
+        rule_map_["float"] = std::make_shared<any_float_rule<JsonT>>(); 
         rule_map_["integer"] = std::make_shared<any_integer_rule<JsonT>>(); 
         rule_map_["string"] = std::make_shared<any_string_rule<JsonT>>(); 
         rule_map_["true"] = std::make_shared<value_rule<JsonT,bool>>(true); 
@@ -554,6 +559,10 @@ public:
                     case ',':
                         begin_member_or_element();
                         break;
+                    case ')':
+                        stack_.pop_back();
+                        end_rule(group_rule_);
+                        break;
                     default:
                         if (parent() == states::array)
                         {
@@ -741,13 +750,46 @@ public:
                         stack_.push_back(states::string);
                         break;
                     case ':':
-                        stack_.back() = states::expect_value;
+                        stack_.back() = states::value;
+                        stack_.push_back(states::expect_value);
+                        break;
+                    case '(':
+                        stack_.back() = states::group;
+                        group_rule_ = std::make_shared<group_rule<JsonT>>();
+                        stack_.push_back(states::expect_member_name_or_colon);
                         break;
                     case '\'':
                         err_handler_->error(std::error_code(json_parser_errc::single_quote, json_error_category()), *this);
                         break;
                     default:
                         err_handler_->error(std::error_code(json_parser_errc::expected_name, json_error_category()), *this);
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::expect_value_or_colon: 
+                {
+                    switch (*p_)
+                    {
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case '/': 
+                        stack_.push_back(states::slash);
+                        break;
+                    case ':':
+                        stack_.back() = states::expect_value;
+                        break;
+                    default:
+                        stack_.back() = states::expect_value;
                         break;
                     }
                 }
@@ -895,7 +937,6 @@ public:
                             rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                         }
                         end_rule(rule_ptr);
-                        stack_.back() = states::expect_comma_or_end;
                     }
                     string_buffer_.clear();
                 }
@@ -1647,6 +1688,12 @@ private:
                 stack_.back() = states::start;
             }
             break;
+        case states::group:
+            {
+                group_rule_->add_rule(rule_ptr);
+                stack_.back() = states::expect_comma_or_end;
+            }
+            break;
         case states::root:
             {
                 handler_->rule_definition(rule_ptr, *this);
@@ -1752,6 +1799,12 @@ private:
                 auto r = std::make_shared<string_rule<JsonT>>(s, length);
                 end_rule(r);
             }
+        case states::value:
+            {
+                auto r = std::make_shared<string_rule<JsonT>>(s, length);
+                stack_.pop_back();
+                end_rule(r);
+            }
             break;
         default:
             err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
@@ -1770,6 +1823,9 @@ private:
             break;
         case states::array:
             stack_.back() = states::expect_rule_or_element;
+            break;
+        case states::group:
+            stack_.back() = states::expect_member_name_or_colon;
             break;
         case states::root:
             stack_.back() = states::start;

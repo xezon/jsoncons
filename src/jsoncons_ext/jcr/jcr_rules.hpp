@@ -172,6 +172,34 @@ public:
 };
 
 template <class JsonT>
+class any_float_rule : public rule<JsonT>
+{
+public:
+    any_float_rule()
+    {
+    }
+
+    bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return val.is_double();
+    }
+};
+
+template <class JsonT>
+class any_boolean_rule : public rule<JsonT>
+{
+public:
+    any_boolean_rule()
+    {
+    }
+
+    bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        return val.is_bool();
+    }
+};
+
+template <class JsonT>
 class true_rule : public rule<JsonT>
 {
 public:
@@ -535,6 +563,69 @@ public:
     }
 private:
     array_rule<JsonT>& operator=(const array_rule<JsonT>&);
+};
+
+template <class JsonT>
+class group_rule : public rule<JsonT>
+{
+public:
+    typedef typename JsonT json_type;
+    typedef typename JsonT::object_allocator allocator_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::shared_ptr<rule<JsonT>> value_type;
+private:
+    std::vector<value_type,allocator_type> elements_;
+public:
+    group_rule(const allocator_type& allocator = allocator_type())
+        : elements_(allocator)
+    {
+    }
+
+    group_rule(const group_rule<JsonT>& val)
+        : elements_(val.elements_)
+    {
+    }
+
+    group_rule(group_rule&& val)
+        : elements_(std::move(val.elements_))
+    {
+    }
+
+    group_rule(const group_rule<JsonT>& val, const allocator_type& allocator) :
+        elements_(val.elements_,allocator)
+    {
+    }
+
+    group_rule(group_rule&& val,const allocator_type& allocator) :
+        elements_(std::move(val.elements_),allocator)
+    {
+    }
+
+    void add_rule(std::shared_ptr<rule<JsonT>> rule)
+    {
+        elements_.push_back(rule);
+    }
+
+    allocator_type get_allocator() const
+    {
+        return elements_.get_allocator();
+    }
+
+    bool validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
+    {
+        bool result = true;
+        for (auto rule : elements_)
+        {
+            result = rule->validate(val,optional,rules);
+            if (!result)
+            {
+                break;
+            }
+        }
+        return result;
+    }
+private:
+    group_rule<JsonT>& operator=(const group_rule<JsonT>&);
 };
 
 
