@@ -137,7 +137,7 @@ BOOST_AUTO_TEST_CASE(test_named_rules)
 
     BOOST_CHECK(schema.validate(val1));
 } 
-*/ 
+ 
 BOOST_AUTO_TEST_CASE(test_named_rules2)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -157,7 +157,8 @@ BOOST_AUTO_TEST_CASE(test_named_rules2)
 
     BOOST_CHECK(schema.validate(val1));
 }
-/*BOOST_AUTO_TEST_CASE(test_named_rules2)
+
+BOOST_AUTO_TEST_CASE(test_named_rules3)
 {
     jcr_validator schema = jcr_validator::parse(R"(
     {
@@ -179,8 +180,8 @@ BOOST_AUTO_TEST_CASE(test_named_rules2)
     )");
 
     BOOST_CHECK(schema.validate(val1));
-}*/
-/*
+}
+
 BOOST_AUTO_TEST_CASE(test_member_range_value_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -245,7 +246,6 @@ BOOST_AUTO_TEST_CASE(test_range_value_rule)
     BOOST_CHECK(!schema.validate(val2));
     BOOST_CHECK(!schema.validate(val3));
 }
-
 BOOST_AUTO_TEST_CASE(test_optional_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -283,7 +283,6 @@ BOOST_AUTO_TEST_CASE(test_optional_member_optional_rule)
 
     BOOST_CHECK(schema.validate(val1));
 }
-
 BOOST_AUTO_TEST_CASE(test_array_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -318,8 +317,6 @@ BOOST_AUTO_TEST_CASE(test_array_rule)
 
     BOOST_CHECK(schema.validate(val3));
 
-    BOOST_CHECK(!schema.validate(val2));
-
     json val4 = json::parse(R"(
     [
         {"m1":-1}
@@ -327,59 +324,6 @@ BOOST_AUTO_TEST_CASE(test_array_rule)
     )");
 
     BOOST_CHECK(!schema.validate(val4));
-}
-
-BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
-{
-    jcr_validator schema = jcr_validator::parse(R"(
-    [v1,*o1]
-    v1 : 0..3
-    m1 "m1" : v1
-    m2 "m2" : v1
-    o1 : { m1, ?m2 }
-    )");
-
-    json val1 = json::parse(R"(
-    [
-        0,{"m1":1,"m2":2}
-    ]
-    )");
-    BOOST_CHECK(schema.validate(val1));
-
-    json val2 = json::parse(R"(
-    [
-        0,{"m2":2}
-    ]
-    )");
-    BOOST_CHECK(!schema.validate(val2));
-
-    json val3 = json::parse(R"(
-    [
-        0,{"m1":1}
-    ]
-    )");
-    BOOST_CHECK(schema.validate(val3));
-
-    json val4 = json::parse(R"(
-    [
-        0,{"m1":-1}
-    ]
-    )");
-    BOOST_CHECK(!schema.validate(val4));
-
-    json val5 = json::parse(R"(
-    [
-        0,{"m1":1},{"m1":3}
-    ]
-    )");
-    BOOST_CHECK(schema.validate(val5));
-
-    json val6 = json::parse(R"(
-    [
-        0,{"m1":1},{"m1":5}
-    ]
-    )");
-    BOOST_CHECK(!schema.validate(val6));
 }
 
 BOOST_AUTO_TEST_CASE(test_nested_object_rules)
@@ -468,6 +412,7 @@ BOOST_AUTO_TEST_CASE(test_example)
     )");
     BOOST_CHECK(schema.validate(val1));
 }
+
 BOOST_AUTO_TEST_CASE(test_boolean_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -490,7 +435,59 @@ BOOST_AUTO_TEST_CASE(test_boolean_rule)
 
     BOOST_CHECK(schema.validate(val1));
 } 
-*/ 
+*/
+BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    [v1,*o1]
+    v1 : 0..3
+    m1 "m1" : v1
+    m2 "m2" : v1
+    o1 : { m1, ?m2 }
+    )");
+
+    json val1 = json::parse(R"(
+    [
+        0,{"m1":1,"m2":2}
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val1));
+
+    json val2 = json::parse(R"(
+    [
+        0,{"m2":2}
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val2));
+
+    json val3 = json::parse(R"(
+    [
+        0,{"m1":1}
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val3));
+
+    json val4 = json::parse(R"(
+    [
+        0,{"m1":-1}
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val4));
+
+    json val5 = json::parse(R"(
+    [
+        0,{"m1":1},{"m1":3}
+    ]
+    )");
+    BOOST_CHECK(schema.validate(val5));
+
+    json val6 = json::parse(R"(
+    [
+        0,{"m1":1},{"m1":5}
+    ]
+    )");
+    BOOST_CHECK(!schema.validate(val6));
+}
 /*
 BOOST_AUTO_TEST_CASE(test_group_rule)
 {

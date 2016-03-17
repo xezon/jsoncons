@@ -71,7 +71,6 @@ enum class states
     object,
     expect_rule_or_member_name, 
     expect_member_name_or_colon, 
-    expect_value_or_colon, 
     expect_colon,
     expect_value,
     array, 
@@ -769,33 +768,6 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_value_or_colon: 
-                {
-                    switch (*p_)
-                    {
-                    case '\r': 
-                        stack_.push_back(states::cr);
-                        break; 
-                    case '\n': 
-                        stack_.push_back(states::lf); 
-                        break;   
-                    case ' ':case '\t':
-                        do_space();
-                        break;
-                    case '/': 
-                        stack_.push_back(states::slash);
-                        break;
-                    case ':':
-                        stack_.back() = states::expect_value;
-                        break;
-                    default:
-                        stack_.back() = states::expect_value;
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
             case states::expect_colon: 
                 {
                     switch (*p_)
@@ -962,7 +934,8 @@ public:
                         }
                         else
                         {
-                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                            auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                            rule_ptr = std::make_shared<optional_rule<JsonT>>(r);
                         }
                         object_rule_stack_.back()->add_rule(rule_ptr);
                         stack_.back() = states::expect_comma_or_end;
@@ -1665,6 +1638,9 @@ private:
                 stack_.pop_back();
             }
             break;
+        case states::value:
+            stack_.pop_back();
+            break;
         }
 
         switch (parent())
@@ -1803,7 +1779,7 @@ private:
         case states::value:
             {
                 auto r = std::make_shared<string_rule<JsonT>>(s, length);
-                stack_.pop_back();
+                //stack_.pop_back();
                 end_rule(r);
             }
             break;
