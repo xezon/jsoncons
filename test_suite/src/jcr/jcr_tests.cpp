@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-/*
+
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -471,7 +471,7 @@ BOOST_AUTO_TEST_CASE(test_boolean_rule)
 
     BOOST_CHECK(schema.validate(val1));
 }
-*/
+
 /*BOOST_AUTO_TEST_CASE(test_group_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -486,7 +486,8 @@ BOOST_AUTO_TEST_CASE(test_boolean_rule)
     )");
 
     BOOST_CHECK(schema.validate(val1));
-}*/
+}
+/*
 BOOST_AUTO_TEST_CASE(test_group_rule)
 {
     auto parents = std::make_shared<group_rule<json>>();
@@ -506,5 +507,5 @@ BOOST_AUTO_TEST_CASE(test_group_rule)
     auto rules = std::map<std::string,std::shared_ptr<rule<json>>>();
     BOOST_CHECK(a->validate(the_bradys ,false,rules));
 }
-
+*/
 BOOST_AUTO_TEST_SUITE_END()
