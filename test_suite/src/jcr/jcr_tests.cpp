@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -488,7 +488,7 @@ BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
     )");
     BOOST_CHECK(!schema.validate(val6));
 }
-/*
+*/
 BOOST_AUTO_TEST_CASE(test_group_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -504,24 +504,5 @@ BOOST_AUTO_TEST_CASE(test_group_rule)
 
     BOOST_CHECK(schema.validate(val1));
 }
-BOOST_AUTO_TEST_CASE(test_group_rule)
-{
-    auto parents = std::make_shared<group_rule<json>>();
-    parents->add_rule(std::make_shared<value_rule<json,std::string>>("Mike"));
-    parents->add_rule(std::make_shared<value_rule<json,std::string>>("Carol"));
-    auto children = std::make_shared<group_rule<json>>();
-    children->add_rule(std::make_shared<value_rule<json,std::string>>("Greg"));
-    children->add_rule(std::make_shared<value_rule<json,std::string>>("Marsha"));
-    children->add_rule(std::make_shared<value_rule<json,std::string>>("Bobby"));
-    children->add_rule(std::make_shared<value_rule<json,std::string>>("Jan"));
-    auto a = std::make_shared<group_rule<json>>();
-    a->add_rule(parents);
-    a->add_rule(children);
-
-    json the_bradys  = {"Mike", "Carol", "Greg", "Marsha", "Bobby", "Jan"};
-
-    auto rules = std::map<std::string,std::shared_ptr<rule<json>>>();
-    BOOST_CHECK(a->validate(the_bradys ,false,rules));
-}*/
 
 BOOST_AUTO_TEST_SUITE_END()
