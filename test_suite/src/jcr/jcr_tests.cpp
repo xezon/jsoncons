@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-/*
+
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -488,7 +488,7 @@ BOOST_AUTO_TEST_CASE(test_repeating_array_rule)
     )");
     BOOST_CHECK(!schema.validate(val6));
 }
-*/
+
 BOOST_AUTO_TEST_CASE(test_group_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
