@@ -51,11 +51,6 @@ public:
     {
         return do_validate(val,optional,rules);
     }
-
-    virtual bool repeat() const
-    {
-        return false;
-    }
     virtual ~rule()
     {
     }
@@ -328,16 +323,11 @@ public:
         : rule_(rule)
     {
     }
-
-    bool repeat() const override
-    {
-        return true;
-    }
 private:
 
     status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const override
     {
-        return rule_->validate(val, optional, rules);
+        return rule_->validate(val, optional, rules) == status::fail ? status::fail : status::more;
     }
 };
 
@@ -578,20 +568,16 @@ private:
         }
         status result = status::pass;
 
-        bool done = false;
-        for (size_t i = 0; !done && result == status::pass && i < elements_.size(); ++i)
+        for (size_t i = 0, j = 0; result != status::fail && i < elements_.size() && j < val.size(); ++i)
         {
-            result = elements_[i]->validate(val[i], optional, rules);
-            if (elements_[i]->repeat())
+            do
             {
-                for (size_t j = i+1; result == status::pass && j < val.size(); ++j)
-                {
-                    result = elements_[i]->validate(val[j], optional, rules);
-                }
-                done = true;
+                result = elements_[i]->validate(val[j], optional, rules);
+                ++j;
             }
+            while (result == status::more && j < val.size());
         }
-        return result;
+        return result == status::fail ? status::fail : status::pass;
     }
 
     array_rule<JsonT>& operator=(const array_rule<JsonT>&);
