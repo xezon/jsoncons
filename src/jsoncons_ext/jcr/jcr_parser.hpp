@@ -63,10 +63,7 @@ enum class states
 {
     root,
     start, 
-    slash,  
-    slash_slash, 
-    slash_star, 
-    slash_star_star,
+    comment,  
     expect_comma_or_end,  
     object,
     expect_rule_or_member_name, 
@@ -485,8 +482,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     case '{':
                         do_begin_object();
@@ -546,8 +543,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     case '}':
                         do_end_object();
@@ -590,8 +587,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     case '\"':
                         stack_.back() = states::member_name;
@@ -638,8 +635,8 @@ public:
                         ++p_;
                         ++column_;
                         break;                                   
-                    case '/':                                    
-                        stack_.push_back(states::slash);         
+                    case ';':                                    
+                        stack_.push_back(states::comment);         
                         ++p_;
                         ++column_;
                         break;
@@ -677,8 +674,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
@@ -709,8 +706,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
@@ -741,8 +738,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     case '\"':
                         stack_.back() = states::member_name;
@@ -781,8 +778,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     case ':':
                         stack_.back() = states::expect_value;
@@ -808,8 +805,8 @@ public:
                     case ' ':case '\t':
                         do_space();
                         break;
-                    case '/': 
-                        stack_.push_back(states::slash);
+                    case ';': 
+                        stack_.push_back(states::comment);
                         break;
                     case '{':
                         do_begin_object();
@@ -1253,9 +1250,9 @@ public:
                         end_integer_value();
                         do_space();
                         break;
-                    case '/': 
+                    case ';': 
                         end_integer_value();
-                        stack_.push_back(states::slash);
+                        stack_.push_back(states::comment);
                         break;
                     case '}':
                         end_integer_value();
@@ -1305,9 +1302,9 @@ public:
                         end_fraction_value();
                         do_space();
                         break;
-                    case '/': 
+                    case ';': 
                         end_fraction_value();
-                        stack_.push_back(states::slash);
+                        stack_.push_back(states::comment);
                         break;
                     case '}':
                         end_fraction_value();
@@ -1396,9 +1393,9 @@ public:
                         end_fraction_value();
                         do_space();
                         break;
-                    case '/': 
+                    case ';': 
                         end_fraction_value();
-                        stack_.push_back(states::slash);
+                        stack_.push_back(states::comment);
                         break;
                     case '}':
                         end_fraction_value();
@@ -1425,43 +1422,7 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::slash: 
-                {
-                    switch (*p_)
-                    {
-                    case '*':
-                        stack_.back() = states::slash_star;
-                        break;
-                    case '/':
-                        stack_.back() = states::slash_slash;
-                        break;
-                    default:    
-                        err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::slash_star:  
-                {
-                    switch (*p_)
-                    {
-                    case '\r':
-                        stack_.push_back(states::cr);
-                        break;
-                    case '\n':
-                        stack_.push_back(states::lf);
-                        break;
-                    case '*':
-                        stack_.back() = states::slash_star_star;
-                        break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::slash_slash: 
+            case states::comment: 
                 {
                     switch (*p_)
                     {
@@ -1471,21 +1432,8 @@ public:
                     case '\n':
                         stack_.back() = states::lf;
                         break;
-                    }
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::slash_star_star: 
-                {
-                    switch (*p_)
-                    {
-                    case '/':
-                        JSONCONS_ASSERT(!stack_.empty())
+                    case ';':
                         stack_.pop_back();
-                        break;
-                    default:    
-                        stack_.back() = states::slash_star;
                         break;
                     }
                 }

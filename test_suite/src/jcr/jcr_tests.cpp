@@ -18,7 +18,7 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
-
+/*
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -494,6 +494,23 @@ BOOST_AUTO_TEST_CASE(test_group_rule)
     jcr_validator schema = jcr_validator::parse(R"(
         [ parents, children ]
 
+        children ( :"Greg", :"Marsha", :"Bobby", :"Jan" )
+        parents ( :"Mike", :"Carol" )
+    )");
+
+    json val1 = json::parse(R"(
+        ["Mike", "Carol", "Greg", "Marsha", "Bobby", "Jan"]
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
+*/
+BOOST_AUTO_TEST_CASE(test_group_rule2)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+        [the_bradys]
+
+        the_bradys : [ parents, children ]
         children ( :"Greg", :"Marsha", :"Bobby", :"Jan" )
         parents ( :"Mike", :"Carol" )
     )");
