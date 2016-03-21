@@ -156,6 +156,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     std::shared_ptr<group_rule<JsonT>> group_rule_;
     std::vector<std::shared_ptr<object_rule<JsonT>>> object_rule_stack_;
     std::vector<std::shared_ptr<array_rule<JsonT>>> array_rule_stack_;
+    bool sequence_;
 
     void do_space()
     {
@@ -174,7 +175,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
         }
         stack_.back() = states::object;
         stack_.push_back(states::expect_rule_or_member_name);
-        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>());
+        object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>(sequence_));
     }
 
     void do_end_object()
@@ -206,7 +207,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
         }
         stack_.back() = states::array;
         stack_.push_back(states::expect_rule_or_value);
-        array_rule_stack_.push_back(std::make_shared<array_rule<JsonT>>() );
+        array_rule_stack_.push_back(std::make_shared<array_rule<JsonT>>(sequence_) );
     }
 
     void do_end_array()
@@ -316,6 +317,7 @@ public:
         line_ = 1;
         column_ = 1;
         nesting_depth_ = 0;
+        sequence_ = true;
     }
 
     void check_done(const char_type* input, size_t start, size_t length)

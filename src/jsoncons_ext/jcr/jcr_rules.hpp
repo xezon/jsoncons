@@ -455,29 +455,10 @@ public:
     typedef std::shared_ptr<rule<JsonT>> value_type;
 private:
     std::vector<value_type,allocator_type> members_;
+    bool sequence_;
 public:
-    object_rule(const allocator_type& allocator = allocator_type())
-        : members_(allocator)
-    {
-    }
-
-    object_rule(const object_rule<JsonT>& val)
-        : members_(val.members_)
-    {
-    }
-
-    object_rule(object_rule&& val)
-        : members_(std::move(val.members_))
-    {
-    }
-
-    object_rule(const object_rule<JsonT>& val, const allocator_type& allocator) :
-        members_(val.members_,allocator)
-    {
-    }
-
-    object_rule(object_rule&& val,const allocator_type& allocator) :
-        members_(std::move(val.members_),allocator)
+    object_rule(bool sequence, const allocator_type& allocator = allocator_type())
+        : sequence_(sequence), members_(allocator)
     {
     }
 
@@ -519,29 +500,10 @@ public:
     typedef std::shared_ptr<rule<JsonT>> value_type;
 private:
     std::vector<value_type,allocator_type> elements_;
+    bool sequence_;
 public:
-    array_rule(const allocator_type& allocator = allocator_type())
-        : elements_(allocator)
-    {
-    }
-
-    array_rule(const array_rule<JsonT>& val)
-        : elements_(val.elements_)
-    {
-    }
-
-    array_rule(array_rule&& val)
-        : elements_(std::move(val.elements_))
-    {
-    }
-
-    array_rule(const array_rule<JsonT>& val, const allocator_type& allocator) :
-        elements_(val.elements_,allocator)
-    {
-    }
-
-    array_rule(array_rule&& val,const allocator_type& allocator) :
-        elements_(std::move(val.elements_),allocator)
+    array_rule(bool sequence, const allocator_type& allocator = allocator_type())
+        : sequence_(sequence), elements_(allocator)
     {
     }
 
