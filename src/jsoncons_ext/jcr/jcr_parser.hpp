@@ -1492,10 +1492,8 @@ private:
             if (is_negative_)
                 d = -d;
 
-            auto r = std::make_shared<value_rule<JsonT,double>>(d);
-            auto mr = std::make_shared<member_rule<JsonT>>(member_name_stack_.back(), r);
-            member_name_stack_.pop_back();
-            object_rule_stack_.back()->add_rule(mr);
+            auto rule_ptr = std::make_shared<value_rule<JsonT,double>>(d);
+            end_rule(rule_ptr);
         }
         catch (...)
         {
@@ -1503,20 +1501,6 @@ private:
         }
         number_buffer_.clear();
         is_negative_ = false;
-
-        switch (parent())
-        {
-        case states::array:
-        case states::object:
-            stack_.back() = states::expect_comma_or_end;
-            break;
-        case states::root:
-            stack_.back() = states::start;
-            break;
-        default:
-            err_handler_->error(std::error_code(json_parser_errc::invalid_json_text, json_error_category()), *this);
-            break;
-        }
     }
 
     void end_integer_value()
