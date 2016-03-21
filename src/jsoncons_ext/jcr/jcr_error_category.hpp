@@ -15,7 +15,7 @@ namespace jsoncons { namespace jcr {
 namespace jcr_parser_errc 
 {
     const int unexpected_eof = 0;
-    const int invalid_json_text = 1;
+    const int invalid_jcr_text = 1;
     const int extra_character = 2;
     const int max_depth_exceeded = 3;
     const int single_quote = 4;
@@ -39,13 +39,13 @@ namespace jcr_parser_errc
     const int expected_rule_or_value = 22;
 }
 
-class jscr_error_category_impl
+class jcr_error_category_impl
    : public std::error_category
 {
 public:
     virtual const char* name() const JSONCONS_NOEXCEPT
     {
-        return "json";
+        return "jcr";
     }
     virtual std::string message(int ev) const
     {
@@ -53,8 +53,8 @@ public:
         {
         case jcr_parser_errc::unexpected_eof:
             return "Unexpected end of file";
-        case jcr_parser_errc::invalid_json_text:
-            return "Invalid JSON text";
+        case jcr_parser_errc::invalid_jcr_text:
+            return "Invalid JCR text";
         case jcr_parser_errc::extra_character:
             return "Unexpected non-whitespace character after JSON text";
         case jcr_parser_errc::max_depth_exceeded:
@@ -98,7 +98,7 @@ public:
         case jcr_parser_errc::expected_rule_or_value:
             return "Expected rule name or value";
         default:
-            return "Unknown JSON parser error";
+            return "Unknown JCR parser error";
         }
     }
 };
@@ -106,7 +106,7 @@ public:
 inline
 const std::error_category& jcr_error_category()
 {
-  static jscr_error_category_impl instance;
+  static jcr_error_category_impl instance;
   return instance;
 }
 
