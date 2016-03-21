@@ -109,7 +109,6 @@ enum class states
     lf,
     expect_named_rule,
     member_name,
-    //member_value,
     value,
     target_rule_name,
     named_value,
@@ -1580,7 +1579,6 @@ private:
         }
         switch (parent())
         {
-        //case states::member_value:
         case states::member_name:
             {
                 rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_stack_.back(), rule_ptr);
@@ -1714,20 +1712,12 @@ private:
         {
         case states::member_name:
             member_name_stack_.push_back(string_type(s,length));
-            //parent() = states::member_value;
             stack_.back() = states::value;
             stack_.push_back(states::expect_colon);
             break;
-        //case states::member_value:
-        //    {
-        //        auto r = std::make_shared<string_rule<JsonT>>(s, length);
-        //        end_rule(r);
-        //    }
-        //    break;
         case states::value:
             {
                 auto r = std::make_shared<string_rule<JsonT>>(s, length);
-                //stack_.pop_back();
                 end_rule(r);
             }
             break;
