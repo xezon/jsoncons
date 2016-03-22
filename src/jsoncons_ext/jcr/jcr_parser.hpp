@@ -176,6 +176,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
         stack_.back() = states::object;
         stack_.push_back(states::expect_rule_or_member_name);
         object_rule_stack_.push_back(std::make_shared<object_rule<JsonT>>(sequence_));
+        sequence_ = true;
     }
 
     void do_end_object()
@@ -208,6 +209,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
         stack_.back() = states::array;
         stack_.push_back(states::expect_rule_or_value);
         array_rule_stack_.push_back(std::make_shared<array_rule<JsonT>>(sequence_) );
+        sequence_ = true;
     }
 
     void do_end_array()
@@ -565,6 +567,11 @@ public:
                         do_end_array();
                         break;
                     case ',':
+                        sequence_ = true;
+                        begin_member_or_element();
+                        break;
+                    case '|':
+                        sequence_ = false;
                         begin_member_or_element();
                         break;
                     case ')':
@@ -763,8 +770,9 @@ public:
                         break;
                     case '(':
                         stack_.back() = states::group;
-                        group_rule_ = std::make_shared<group_rule<JsonT>>();
                         stack_.push_back(states::expect_member_name_or_colon);
+                        group_rule_ = std::make_shared<group_rule<JsonT>>(sequence_);
+                        sequence_ = true;
                         break;
                     case '\'':
                         err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
@@ -1159,6 +1167,12 @@ public:
                         stack_.back() = states::dot;
                         break;
                     case ',':
+                        sequence_ = true;
+                        end_integer_value();
+                        begin_member_or_element();
+                        break;
+                    case '|':
+                        sequence_ = false;
                         end_integer_value();
                         begin_member_or_element();
                         break;
@@ -1283,6 +1297,12 @@ public:
                         stack_.back() = states::dot;
                         break;
                     case ',':
+                        sequence_ = true;
+                        end_integer_value();
+                        begin_member_or_element();
+                        break;
+                    case '|':
+                        sequence_ = false;
                         end_integer_value();
                         begin_member_or_element();
                         break;
@@ -1333,6 +1353,12 @@ public:
                         stack_.back() = states::fraction;
                         break;
                     case ',':
+                        sequence_ = true;
+                        end_fraction_value();
+                        begin_member_or_element();
+                        break;
+                    case '|':
+                        sequence_ = false;
                         end_fraction_value();
                         begin_member_or_element();
                         break;
@@ -1418,6 +1444,12 @@ public:
                         do_end_array();
                         break;
                     case ',':
+                        sequence_ = true;
+                        end_fraction_value();
+                        begin_member_or_element();
+                        break;
+                    case '|':
+                        sequence_ = false;
                         end_fraction_value();
                         begin_member_or_element();
                         break;

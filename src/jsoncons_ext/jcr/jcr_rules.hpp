@@ -479,9 +479,13 @@ private:
         for (auto element : members_)
         {
             result = element->validate(val, optional,rules, pos);
-            if (result == status::fail)
+            if (sequence_ && result == status::fail)
             {
-                break;
+                return result;
+            }
+            else if (!sequence_ && result == status::pass)
+            {
+                return result;
             }
         }
         return result;
@@ -530,12 +534,20 @@ private:
         }
         status result = status::pass;
 
-        for (size_t i = 0, j = 0; result != status::fail && i < elements_.size() && j < val.size(); ++i)
+        for (size_t i = 0, j = 0; i < elements_.size() && j < val.size(); ++i)
         {
             size_t pos = 0;
             do
             {
                 result = elements_[i]->validate(val[j], optional,rules, pos);
+                if (sequence_ && result == status::fail)
+                {
+                    return result;
+                }
+                else if (!sequence_ && result == status::pass)
+                {
+                    return result;
+                }
                 ++j;
                 ++pos;
             }
@@ -557,29 +569,10 @@ public:
     typedef std::shared_ptr<rule<JsonT>> value_type;
 private:
     std::vector<value_type,allocator_type> elements_;
+    bool sequence_;
 public:
-    group_rule(const allocator_type& allocator = allocator_type())
-        : elements_(allocator)
-    {
-    }
-
-    group_rule(const group_rule<JsonT>& val)
-        : elements_(val.elements_)
-    {
-    }
-
-    group_rule(group_rule&& val)
-        : elements_(std::move(val.elements_))
-    {
-    }
-
-    group_rule(const group_rule<JsonT>& val, const allocator_type& allocator) :
-        elements_(val.elements_,allocator)
-    {
-    }
-
-    group_rule(group_rule&& val,const allocator_type& allocator) :
-        elements_(std::move(val.elements_),allocator)
+    group_rule(bool sequence, const allocator_type& allocator = allocator_type())
+        : sequence_(sequence), elements_(allocator)
     {
     }
 
@@ -600,7 +593,11 @@ private:
         if (pos < elements_.size())
         {
             result = elements_[pos]->validate(val,optional,rules, pos);
-            if (result == status::fail)
+            if (sequence_ && result == status::fail)
+            {
+                return result;
+            }
+            else if (!sequence_ && result == status::pass)
             {
                 return result;
             }
