@@ -457,13 +457,17 @@ private:
     std::vector<value_type,allocator_type> members_;
     bool sequence_;
 public:
-    object_rule(bool sequence, const allocator_type& allocator = allocator_type())
-        : sequence_(sequence), members_(allocator)
+    object_rule(const allocator_type& allocator = allocator_type())
+        : sequence_(true), members_(allocator)
     {
     }
 
-    void add_rule(std::shared_ptr<rule<JsonT>> rule)
+    void add_rule(bool sequence, std::shared_ptr<rule<JsonT>> rule)
     {
+        if (members_.size() > 0)
+        {
+            sequence_ = sequence;
+        }
         members_.push_back(rule);
     }
 
@@ -506,13 +510,17 @@ private:
     std::vector<value_type,allocator_type> elements_;
     bool sequence_;
 public:
-    array_rule(bool sequence, const allocator_type& allocator = allocator_type())
-        : sequence_(sequence), elements_(allocator)
+    array_rule(const allocator_type& allocator = allocator_type())
+        : sequence_(true), elements_(allocator)
     {
     }
 
-    void add_rule(std::shared_ptr<rule<JsonT>> rule)
+    void add_rule(bool sequence, std::shared_ptr<rule<JsonT>> rule)
     {
+        if (elements_.size() > 0)
+        {
+            sequence_ = sequence;
+        }
         elements_.push_back(rule);
     }
 
@@ -571,13 +579,17 @@ private:
     std::vector<value_type,allocator_type> elements_;
     bool sequence_;
 public:
-    group_rule(bool sequence, const allocator_type& allocator = allocator_type())
-        : sequence_(sequence), elements_(allocator)
+    group_rule(const allocator_type& allocator = allocator_type())
+        : sequence_(true), elements_(allocator)
     {
     }
 
-    void add_rule(std::shared_ptr<rule<JsonT>> rule)
+    void add_rule(bool sequence, std::shared_ptr<rule<JsonT>> rule)
     {
+        if (elements_.size() > 0)
+        {
+            sequence_ = sequence;
+        }
         elements_.push_back(rule);
     }
 
