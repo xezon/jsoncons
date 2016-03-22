@@ -417,7 +417,7 @@ BOOST_AUTO_TEST_CASE(test_boolean_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
     {
-        "FistName" : string,
+        "FirstName" : string,
         "LastName" : string,
         "IsRetired" : boolean,
         "Income" : float
@@ -426,7 +426,7 @@ BOOST_AUTO_TEST_CASE(test_boolean_rule)
 
     json val1 = json::parse(R"(
     {
-        "FistName" : "John",
+        "FirstName" : "John",
         "LastName" : "Smith",
         "IsRetired" : false,
         "Income" : 100000.00
@@ -504,6 +504,25 @@ BOOST_AUTO_TEST_CASE(test_group_rule)
 
     BOOST_CHECK(schema.validate(val1));
 }
+
+BOOST_AUTO_TEST_CASE(test_choice)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        "FirstName" : "Smith" |
+        "FirstName" : "John"
+    }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "FirstName" : "John",
+        "LastName" : "Smith"
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+} 
 /*
 BOOST_AUTO_TEST_CASE(test_group_rule2)
 {

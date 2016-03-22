@@ -153,7 +153,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
     std::vector<string_type> member_name_stack_;
     std::shared_ptr<rule<JsonT>> from_rule_;
-    std::shared_ptr<group_rule<JsonT>> group_rule_;
+    std::vector<std::shared_ptr<group_rule<JsonT>>> group_rule_stack_;
     std::vector<std::shared_ptr<object_rule<JsonT>>> object_rule_stack_;
     std::vector<std::shared_ptr<array_rule<JsonT>>> array_rule_stack_;
     bool sequence_;
@@ -226,6 +226,30 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
         else if (stack_.back() == states::object)
         {
             err_handler_->fatal_error(std::error_code(jcr_parser_errc::expected_comma_or_right_brace, jcr_error_category()), *this);
+        }
+        else
+        {
+            err_handler_->fatal_error(std::error_code(jcr_parser_errc::unexpected_right_bracket, jcr_error_category()), *this);
+        }
+    }
+
+    void do_begin_group()
+    {
+        stack_.back() = states::group;
+        stack_.push_back(states::expect_member_name_or_colon);
+        group_rule_stack_.push_back(std::make_shared<group_rule<JsonT>>(sequence_) );
+        sequence_ = true;
+    }
+
+    void do_end_group()
+    {
+        JSONCONS_ASSERT(!stack_.empty())
+        stack_.pop_back();
+        if (stack_.back() == states::group)
+        {
+            auto rule_ptr = group_rule_stack_.back();
+            group_rule_stack_.pop_back();
+            end_rule(rule_ptr);
         }
         else
         {
@@ -575,8 +599,7 @@ public:
                         begin_member_or_element();
                         break;
                     case ')':
-                        stack_.pop_back();
-                        end_rule(group_rule_);
+                        do_end_group();
                         break;
                     default:
                         if (parent() == states::array)
@@ -769,10 +792,7 @@ public:
                         stack_.push_back(states::expect_value);
                         break;
                     case '(':
-                        stack_.back() = states::group;
-                        stack_.push_back(states::expect_member_name_or_colon);
-                        group_rule_ = std::make_shared<group_rule<JsonT>>(sequence_);
-                        sequence_ = true;
+                        do_begin_group();
                         break;
                     case '\'':
                         err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
@@ -1645,7 +1665,7 @@ private:
             break;
         case states::group:
             {
-                group_rule_->add_rule(rule_ptr);
+                group_rule_stack_.back()->add_rule(rule_ptr);
                 stack_.back() = states::expect_comma_or_end;
             }
             break;
