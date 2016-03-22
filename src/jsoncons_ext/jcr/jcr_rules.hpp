@@ -317,10 +317,14 @@ class repeating_rule : public rule<JsonT>
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
 
+    size_t min_;
+    size_t max_;
     std::shared_ptr<rule<JsonT>> rule_;
 public:
     repeating_rule(std::shared_ptr<rule<JsonT>> rule)
-        : rule_(rule)
+        : min_(0), 
+          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP()), 
+          rule_(rule)
     {
     }
 private:
