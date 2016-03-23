@@ -1006,7 +1006,7 @@ public:
                         else
                         {
                             auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                            rule_ptr = std::make_shared<repeating_rule<JsonT>>(r);
+                            rule_ptr = std::make_shared<repeating_rule<JsonT>>(r,0,std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP());
                         }
                         array_rule_stack_.back().second->add_rule(sequence_,rule_ptr);
                         stack_.back() = states::expect_comma_or_end;

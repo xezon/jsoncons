@@ -349,14 +349,14 @@ class repeating_rule : public rule<JsonT>
     typedef rule<JsonT> rule_type;
     typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 
+    std::shared_ptr<rule<JsonT>> rule_;
     size_t min_;
     size_t max_;
-    std::shared_ptr<rule<JsonT>> rule_;
 public:
-    repeating_rule(std::shared_ptr<rule<JsonT>> rule)
-        : min_(0), 
-          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP()), 
-          rule_(rule)
+    repeating_rule(std::shared_ptr<rule<JsonT>> rule, size_t min, size_t max)
+        : rule_(rule),
+          min_(min), 
+          max_(max)
     {
     }
 private:
