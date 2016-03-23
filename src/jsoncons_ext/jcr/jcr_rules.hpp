@@ -22,40 +22,36 @@
 
 namespace jsoncons { namespace jcr {
 
+enum class status
+{
+    pass, fail, may_repeat, must_repeat
+};
+
 template <class JsonT>
 class rule
 {
 public:
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
-    typedef typename JsonT json_type;
 
     typedef typename std::vector<std::shared_ptr<rule<JsonT>>>::iterator iterator;
     typedef std::move_iterator<iterator> move_iterator;
     typedef rule<JsonT> rule_type;
-
-    enum class status
-    {
-        pass, fail, repeat
-    };
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 private:
-    virtual status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const = 0;
+    virtual status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const = 0;
 public:
 
-    bool validate(const json_type& val, const std::map<string_type,std::shared_ptr<rule_type>>& rules) const 
+    bool validate(const JsonT& val, const name_rule_map& rules) const 
     {
         return do_validate(val,false,rules,0) == status::pass ? true : false;
     }
 
-    status validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const 
+    status validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const 
     {
-        return do_validate(val,optional,rules, pos);
+        return do_validate(val,optional,rules, index);
     }
     virtual ~rule()
-    {
-    }
-
-    virtual void insert(move_iterator first, move_iterator last)
     {
     }
 };
@@ -63,6 +59,10 @@ public:
 template <class JsonT>
 class uri_rule :  public rule<JsonT>
 {
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     enum class states
     {
         start,
@@ -73,7 +73,7 @@ public:
     typedef typename JsonT::string_type string_type;
     typedef typename JsonT::char_type char_type;
 private:
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_string())
         {
@@ -137,11 +137,15 @@ template <class JsonT>
 class any_object_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     any_object_rule()
     {
     }
 private:
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_object() ? status::pass : status::fail;
     }
@@ -150,6 +154,10 @@ private:
 template <class JsonT>
 class composite_rule : public rule<JsonT>
 {
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type, std::shared_ptr<rule_type>> name_rule_map;
+
     std::shared_ptr<rule<JsonT>> rule1_;
     std::shared_ptr<rule<JsonT>> rule2_;
 public:
@@ -160,10 +168,10 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return rule1_->validate(val,optional,rules, pos) == status::pass
-        && rule2_->validate(val,optional,rules, pos) == status::pass 
+        return rule1_->validate(val,optional,rules, index) == status::pass
+        && rule2_->validate(val,optional,rules, index) == status::pass 
         ? status::pass : status::fail;
     }
 };
@@ -172,12 +180,16 @@ template <class JsonT>
 class any_integer_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     any_integer_rule()
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_integer() || val.is_uinteger() ? status::pass : status::fail;
     }
@@ -187,12 +199,16 @@ template <class JsonT>
 class any_float_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     any_float_rule()
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_double() ? status::pass : status::fail;
     }
@@ -202,12 +218,16 @@ template <class JsonT>
 class any_boolean_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     any_boolean_rule()
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_bool() ? status::pass : status::fail;
     }
@@ -217,12 +237,16 @@ template <class JsonT>
 class true_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     true_rule()
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return status::pass;
     }
@@ -234,6 +258,8 @@ class string_rule : public rule<JsonT>
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 
     string_type s_;
 public:
@@ -251,7 +277,7 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_string() && val.as_string() == s_ ? status::pass : status::fail;
     }
@@ -263,6 +289,8 @@ class member_rule : public rule<JsonT>
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 
     string_type name_;
     std::shared_ptr<rule<JsonT>> rule_;
@@ -273,7 +301,7 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
         {
@@ -285,7 +313,7 @@ private:
             return optional ? status::pass : status::fail;
         }
         
-        return rule_->validate(it->value(), false,rules, pos);
+        return rule_->validate(it->value(), false,rules, index);
     }
 };
 
@@ -295,6 +323,8 @@ class optional_rule : public rule<JsonT>
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 
     std::shared_ptr<rule<JsonT>> rule_;
 public:
@@ -304,9 +334,9 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return rule_->validate(val, true,rules, pos);
+        return rule_->validate(val, true,rules, index);
     }
 };
 
@@ -316,6 +346,8 @@ class repeating_rule : public rule<JsonT>
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 
     size_t min_;
     size_t max_;
@@ -329,9 +361,19 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return rule_->validate(val, optional,rules, pos) == status::fail ? status::fail : status::repeat;
+        if (index >= max_)
+        {
+            return status::fail;
+        }
+        status result = rule_->validate(val, optional,rules, index);
+        if (result == status::fail)
+        {
+            return status::fail;
+        }
+
+        return index + 1 < min_ ? status::must_repeat : status::may_repeat;
     }
 };
 
@@ -341,6 +383,8 @@ class jcr_rule_name : public rule<JsonT>
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 
     string_type name_;
 public:
@@ -354,14 +398,14 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         auto it = rules.find(name_);
         if (it == rules.end())
         {
             return status::fail;
         }
-        return it->second->validate(val,optional,rules, pos);
+        return it->second->validate(val,optional,rules, index);
     }
 };
 
@@ -369,12 +413,16 @@ template <class JsonT>
 class any_string_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     any_string_rule()
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_string() ? status::pass : status::fail;
     }
@@ -384,12 +432,16 @@ template <class JsonT>
 class null_rule : public rule<JsonT>
 {
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     null_rule()
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         return val.is_null() ? status::pass : status::fail;
     }
@@ -401,15 +453,19 @@ class value_rule : public rule<JsonT>
     T value_;
 
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     value_rule(T value)
         : value_(value)
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return val.is<T>() && val.as<T>() == value_ ? status::pass : status::fail;
+        return val.template is<T>() && val.template as<T>() == value_ ? status::pass : status::fail;
     }
 };
 
@@ -419,15 +475,19 @@ class from_rule : public rule<JsonT>
     T from_;
 
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     from_rule(T from)
         : from_(from)
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return val.is<T>() && val.as<T>() >= from_ ? status::pass : status::fail;
+        return val.template is<T>() && val.template as<T>() >= from_ ? status::pass : status::fail;
     }
 };
 
@@ -437,15 +497,19 @@ class to_rule : public rule<JsonT>
     T to_;
 
 public:
+    typedef rule<JsonT> rule_type;
+    typedef typename JsonT::string_type string_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
     to_rule(T to)
         : to_(to)
     {
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return val.is<T>() && val.as<T>() <= to_ ? status::pass : status::fail;
+        return val.template is<T>() && val.template as<T>() <= to_ ? status::pass : status::fail;
     }
 };
 
@@ -453,13 +517,14 @@ template <class JsonT>
 class object_rule : public rule<JsonT>
 {
 public:
-    typedef typename JsonT json_type;
     typedef typename JsonT::object_allocator allocator_type;
     typedef typename JsonT::string_type string_type;
-    typedef std::shared_ptr<rule<JsonT>> value_type;
+    typedef std::shared_ptr<rule<JsonT>> rule_ptr_type;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 private:
-    std::vector<value_type,allocator_type> members_;
     bool sequence_;
+    std::vector<rule_ptr_type,allocator_type> members_;
 public:
     object_rule(const allocator_type& allocator = allocator_type())
         : sequence_(true), members_(allocator)
@@ -481,12 +546,12 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         status result = status::pass;
         for (auto element : members_)
         {
-            result = element->validate(val, optional,rules, pos);
+            result = element->validate(val, optional,rules, index);
             if (sequence_ && result == status::fail)
             {
                 return result;
@@ -506,13 +571,14 @@ template <class JsonT>
 class array_rule : public rule<JsonT>
 {
 public:
-    typedef typename JsonT json_type;
     typedef typename JsonT::object_allocator allocator_type;
     typedef typename JsonT::string_type string_type;
-    typedef std::shared_ptr<rule<JsonT>> value_type;
+    typedef std::shared_ptr<rule<JsonT>> rule_ptr_type;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 private:
-    std::vector<value_type,allocator_type> elements_;
     bool sequence_;
+    std::vector<rule_ptr_type,allocator_type> elements_;
 public:
     array_rule(const allocator_type& allocator = allocator_type())
         : sequence_(true), elements_(allocator)
@@ -534,7 +600,7 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_array())
         {
@@ -548,10 +614,10 @@ private:
 
         for (size_t i = 0, j = 0; i < elements_.size() && j < val.size(); ++i)
         {
-            size_t pos = 0;
+            size_t index = 0;
             do
             {
-                result = elements_[i]->validate(val[j], optional,rules, pos);
+                result = elements_[i]->validate(val[j], optional,rules, index);
                 if (sequence_ && result == status::fail)
                 {
                     return result;
@@ -561,11 +627,11 @@ private:
                     return result;
                 }
                 ++j;
-                ++pos;
+                ++index;
             }
-            while (result == status::repeat && j < val.size());
+            while ((result == status::may_repeat || result == status::must_repeat) && j < val.size());
         }
-        return result == status::fail ? status::fail : status::pass;
+        return (result == status::fail || result == status::must_repeat) ? status::fail : status::pass;
     }
 
     array_rule<JsonT>& operator=(const array_rule<JsonT>&);
@@ -575,13 +641,14 @@ template <class JsonT>
 class group_rule : public rule<JsonT>
 {
 public:
-    typedef typename JsonT json_type;
     typedef typename JsonT::object_allocator allocator_type;
     typedef typename JsonT::string_type string_type;
-    typedef std::shared_ptr<rule<JsonT>> value_type;
+    typedef rule<JsonT> rule_type;
+    typedef std::shared_ptr<rule<JsonT>> rule_ptr_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 private:
-    std::vector<value_type,allocator_type> elements_;
     bool sequence_;
+    std::vector<rule_ptr_type,allocator_type> elements_;
 public:
     group_rule(const allocator_type& allocator = allocator_type())
         : sequence_(true), elements_(allocator)
@@ -603,12 +670,12 @@ public:
     }
 private:
 
-    status do_validate(const json_type& val, bool optional, const std::map<string_type,std::shared_ptr<rule_type>>& rules, size_t pos) const override
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
     {
         status result = status::pass;
-        if (pos < elements_.size())
+        if (index < elements_.size())
         {
-            result = elements_[pos]->validate(val,optional,rules, pos);
+            result = elements_[index]->validate(val,optional,rules, index);
             if (sequence_ && result == status::fail)
             {
                 return result;
@@ -618,7 +685,7 @@ private:
                 return result;
             }
         }
-        return (pos+1) < elements_.size() ? status::repeat : status::pass;
+        return (index+1) < elements_.size() ? status::may_repeat : status::pass;
     }
 
     group_rule<JsonT>& operator=(const group_rule<JsonT>&);

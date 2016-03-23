@@ -17,7 +17,7 @@ template <typename RuleT>
 class basic_jcr_input_handler
 {
 public:
-    typedef typename RuleT rule_type;
+    typedef RuleT rule_type;
     typedef typename RuleT::string_type string_type;
     typedef typename string_type::value_type char_type;
 

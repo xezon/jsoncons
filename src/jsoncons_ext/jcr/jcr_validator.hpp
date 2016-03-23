@@ -45,7 +45,7 @@ public:
     typedef typename JsonT::string_type string_type;
     typedef basic_jcr_validator<JsonT> value_type;
 
-    typedef typename rule<JsonT> rule_type;
+    typedef rule<JsonT> rule_type;
     std::map<string_type,std::shared_ptr<rule_type>> rule_definitions_;
     std::shared_ptr<rule_type> root_;
 

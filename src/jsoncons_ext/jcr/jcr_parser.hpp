@@ -120,7 +120,7 @@ enum class states
 template<typename JsonT>
 class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type>
 {
-    typedef typename rule<JsonT> rule_type;
+    typedef rule<JsonT> rule_type;
     typedef typename std::shared_ptr<rule<JsonT>> rule_ptr;
     typedef typename JsonT::char_type char_type;
     typedef typename JsonT::string_type string_type;
