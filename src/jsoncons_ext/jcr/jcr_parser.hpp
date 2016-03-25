@@ -1316,10 +1316,13 @@ public:
                         end_integer_value();
                         do_end_array();
                         break;
+                    case '*':
+                        min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                        stack_.back() = states::expect_repeating_rule;
+                        break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                         number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::integer;
                         break;
                     case '.':
                         stack_.back() = states::dot;
