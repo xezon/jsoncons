@@ -1268,6 +1268,10 @@ public:
                     case '0': case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                         err_handler_->error(std::error_code(jcr_parser_errc::leading_zero, jcr_error_category()), *this);
                         break;
+                    case '*':
+                        min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                        stack_.back() = states::expect_max_or_repeating_rule;
+                        break;
                     default:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
                         break;
@@ -1379,7 +1383,7 @@ public:
                         break;
                     case '*':
                         min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                        stack_.back() = states::expect_repeating_rule;
+                        stack_.back() = states::expect_max_or_repeating_rule;
                         break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
