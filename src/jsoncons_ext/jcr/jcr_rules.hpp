@@ -359,6 +359,11 @@ public:
           max_(max)
     {
     }
+
+    void max_repeat(size_t value)
+    {
+        max_ = value;
+    }
 private:
 
     status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override

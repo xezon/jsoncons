@@ -105,6 +105,7 @@ enum class states
     optional_rule,
     expect_repeating_rule,
     repeating_rule,
+    expect_max_or_comma_or_end,  
     cr,
     lf,
     expect_named_rule,
@@ -622,6 +623,34 @@ public:
                 ++p_;
                 ++column_;
                 break;
+            case states::expect_max_or_comma_or_end: 
+                {
+                    switch (*p_)
+                    {
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        ++p_;
+                        ++column_;
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        ++p_;
+                        ++column_;
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        ++p_;
+                        ++column_;
+                        break;
+                    case '0': case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                        stack_.push_back(states::integer);
+                        break;
+                    default:
+                        stack_.back() = states::expect_comma_or_end;
+                        break;
+                    }
+                }
+                break;
             case states::expect_rule_or_member_name: 
                 {
                     switch (*p_)
@@ -1013,7 +1042,7 @@ public:
                             rule_ptr = std::make_shared<repeating_rule<JsonT>>(r,min_repeat_,max_repeat_);
                         }
                         array_rule_stack_.back().second->add_rule(sequence_,rule_ptr);
-                        stack_.back() = states::expect_comma_or_end;
+                        stack_.back() = states::expect_max_or_comma_or_end;
                     }
                    
                     string_buffer_.clear();
