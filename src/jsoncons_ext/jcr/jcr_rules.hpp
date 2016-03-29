@@ -353,11 +353,27 @@ class repeating_rule : public rule<JsonT>
     size_t min_;
     size_t max_;
 public:
+    repeating_rule()
+        : min_(0), 
+          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
+    {
+    }
+    repeating_rule(size_t min_repitition)
+        : min_(min_repitition), 
+          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
+    {
+    }
+
     repeating_rule(std::shared_ptr<rule<JsonT>> rule, size_t min, size_t max)
         : rule_(rule),
           min_(min), 
           max_(max)
     {
+    }
+
+    void rule(std::shared_ptr<rule<JsonT>> rule_ptr)
+    {
+        rule_ = rule_ptr;
     }
 
     void max_repeat(size_t value)

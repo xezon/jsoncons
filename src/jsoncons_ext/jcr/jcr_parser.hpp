@@ -103,10 +103,10 @@ enum class states
     expect_rule,
     expect_optional_rule,
     optional_rule,
+    max_repeat,
     expect_max_or_repeating_rule,
     expect_repeating_rule,
     repeating_rule,
-    expect_max_or_comma_or_end,  
     cr,
     lf,
     expect_named_rule,
@@ -155,7 +155,6 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
     std::vector<string_type> member_name_stack_;
     std::shared_ptr<rule<JsonT>> from_rule_;
-    size_t min_repeat_;
     size_t max_repeat_;
     std::shared_ptr<repeating_rule<JsonT>> repeating_rule_ptr_;
 
@@ -625,35 +624,6 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_max_or_comma_or_end: 
-                {
-                    switch (*p_)
-                    {
-                    case '\r': 
-                        stack_.push_back(states::cr);
-                        ++p_;
-                        ++column_;
-                        break; 
-                    case '\n': 
-                        stack_.push_back(states::lf); 
-                        ++p_;
-                        ++column_;
-                        break;   
-                    case ' ':case '\t':
-                        do_space();
-                        ++p_;
-                        ++column_;
-                        break;
-                    case '0': case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        stack_.push_back(states::integer);
-                        break;
-                    default:
-                        array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
-                        stack_.back() = states::expect_comma_or_end;
-                        break;
-                    }
-                }
-                break;
             case states::expect_rule_or_member_name: 
                 {
                     switch (*p_)
@@ -721,9 +691,9 @@ public:
                         ++column_;
                         break;
                     case '*':
-                        min_repeat_ = 0;
-                        max_repeat_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
-                        stack_.back() = states::expect_repeating_rule;
+                        repeating_rule_ptr_ = std::make_shared<repeating_rule<JsonT>>();
+                        array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
+                        stack_.back() = states::expect_max_or_repeating_rule;
                         ++p_;
                         ++column_;
                         break;
@@ -830,6 +800,10 @@ public:
                         stack_.push_back(states::comment);
                         ++p_;
                         ++column_;
+                        break;
+                    case '0': 
+                    case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                        stack_.back() = states::max_repeat;
                         break;
                     default:
                         stack_.back() = states::expect_repeating_rule;
@@ -1073,8 +1047,8 @@ public:
                         {
                             rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                         }
-                        repeating_rule_ptr_ = std::make_shared<repeating_rule<JsonT>>(rule_ptr,min_repeat_,max_repeat_);
-                        stack_.back() = states::expect_max_or_comma_or_end;
+                        repeating_rule_ptr_->rule(rule_ptr);
+                        stack_.back() = states::expect_comma_or_end;
                     }
                    
                     string_buffer_.clear();
@@ -1269,8 +1243,12 @@ public:
                         err_handler_->error(std::error_code(jcr_parser_errc::leading_zero, jcr_error_category()), *this);
                         break;
                     case '*':
-                        min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                        stack_.back() = states::expect_max_or_repeating_rule;
+                        {
+                            size_t min_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            repeating_rule_ptr_ = std::make_shared<repeating_rule<JsonT>>(min_repeat);
+                            array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
+                            stack_.back() = states::expect_max_or_repeating_rule;
+                        }
                         break;
                     default:
                         err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
@@ -1382,8 +1360,12 @@ public:
                         do_end_array();
                         break;
                     case '*':
-                        min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                        stack_.back() = states::expect_max_or_repeating_rule;
+                        {
+                            size_t min_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            repeating_rule_ptr_ = std::make_shared<repeating_rule<JsonT>>(min_repeat);
+                            array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
+                            stack_.back() = states::expect_max_or_repeating_rule;
+                        }
                         break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
@@ -1413,6 +1395,25 @@ public:
                 }
                 ++p_;
                 ++column_;
+                break;
+            case states::max_repeat: 
+                {
+                    switch (*p_)
+                    {
+                    case '0': 
+                    case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                        number_buffer_.push_back(static_cast<char>(*p_));
+                        ++p_;
+                        ++column_;
+                        break;
+                    default:
+                        size_t max_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                        repeating_rule_ptr_->max_repeat(max_repeat);
+                        number_buffer_.clear();
+                        stack_.back() = states::expect_repeating_rule;
+                        break;
+                    }
+                }
                 break;
             case states::fraction: 
                 {
@@ -1673,19 +1674,13 @@ private:
         {
             try
             {
-               uint64_t val= string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                uint64_t val= string_to_uinteger(number_buffer_.data(), number_buffer_.length());
 
                 if (parent() == states::range_value)
                 {
                     auto to_r = std::make_shared<to_rule<JsonT,uint64_t>>(val);
                     rule_ptr = std::make_shared<composite_rule<JsonT>>(from_rule_,to_r);
                     pop_state(states::range_value);
-                }
-                else if (parent() == states::repeating_rule)
-                {
-                    repeating_rule_ptr_->max_repeat(val);
-                    array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
-                    pop_state(states::repeating_rule);
                 }
                 else
                 {
