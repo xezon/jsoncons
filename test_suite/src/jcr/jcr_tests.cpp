@@ -522,7 +522,8 @@ BOOST_AUTO_TEST_CASE(test_choice)
     )");
 
     BOOST_CHECK(schema.validate(val1));
-} 
+}  
+ 
 /*
 BOOST_AUTO_TEST_CASE(test_group_rule2)
 {

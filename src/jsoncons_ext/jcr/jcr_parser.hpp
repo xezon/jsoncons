@@ -103,6 +103,7 @@ enum class states
     expect_rule,
     expect_optional_rule,
     optional_rule,
+    expect_max_or_repeating_rule,
     expect_repeating_rule,
     repeating_rule,
     expect_max_or_comma_or_end,  
@@ -805,6 +806,36 @@ public:
                 }
                 ++p_;
                 ++column_;
+                break;
+            case states::expect_max_or_repeating_rule: 
+                {
+                    switch (*p_)
+                    {
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        ++p_;
+                        ++column_;
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        ++p_;
+                        ++column_;
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        ++p_;
+                        ++column_;
+                        break;
+                    case ';': 
+                        stack_.push_back(states::comment);
+                        ++p_;
+                        ++column_;
+                        break;
+                    default:
+                        stack_.back() = states::expect_repeating_rule;
+                        break;
+                    }
+                }
                 break;
             case states::expect_member_name_or_colon: 
                 {
@@ -1645,6 +1676,12 @@ private:
                     auto to_r = std::make_shared<to_rule<JsonT,uint64_t>>(val);
                     rule_ptr = std::make_shared<composite_rule<JsonT>>(from_rule_,to_r);
                     pop_state(states::range_value);
+                }
+                else if (parent() == states::repeating_rule)
+                {
+                    repeating_rule_ptr_->max_repeat(val);
+                    array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
+                    pop_state(states::repeating_rule);
                 }
                 else
                 {
