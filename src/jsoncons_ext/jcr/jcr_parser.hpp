@@ -156,6 +156,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     std::shared_ptr<rule<JsonT>> from_rule_;
     size_t min_repeat_;
     size_t max_repeat_;
+    std::shared_ptr<repeating_rule<JsonT>> repeating_rule_ptr_;
 
     std::vector<std::pair<bool,std::shared_ptr<group_rule<JsonT>>>> group_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<object_rule<JsonT>>>> object_rule_stack_;
@@ -646,6 +647,7 @@ public:
                         stack_.push_back(states::integer);
                         break;
                     default:
+                        array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
                         stack_.back() = states::expect_comma_or_end;
                         break;
                     }
@@ -1038,10 +1040,9 @@ public:
                         }
                         else
                         {
-                            auto r = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                            rule_ptr = std::make_shared<repeating_rule<JsonT>>(r,min_repeat_,max_repeat_);
+                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                         }
-                        array_rule_stack_.back().second->add_rule(sequence_,rule_ptr);
+                        repeating_rule_ptr_ = std::make_shared<repeating_rule<JsonT>>(rule_ptr,min_repeat_,max_repeat_);
                         stack_.back() = states::expect_max_or_comma_or_end;
                     }
                    
