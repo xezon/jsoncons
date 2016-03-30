@@ -19,6 +19,7 @@
 #include <utility>
 #include <initializer_list>
 #include <map>
+#include <regex>
 
 namespace jsoncons { namespace jcr {
 
@@ -284,6 +285,44 @@ private:
 };
 
 template <class JsonT>
+class string_pattern_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
+    string_type pattern_;
+    std::regex::flag_type flags_;
+public:
+    string_pattern_rule(const char_type* p, size_t length, string_allocator sa)
+        : pattern_(p,length,sa), flags_(std::regex_constants::ECMAScript)
+    {
+    }
+    string_pattern_rule(const char_type* p, size_t length)
+        : pattern_(p,length), flags_(std::regex_constants::ECMAScript)
+    {
+    }
+    string_pattern_rule(const string_type& s)
+        : pattern_(s), flags_(std::regex_constants::ECMAScript)
+    {
+    }
+private:
+
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    {
+        if (!val.is_string())
+        {
+            return false;
+        }
+        std::basic_regex<char_type> pattern(pattern_,flags_);
+
+        return std::regex_match(val.as_string(), pattern) ? status::pass : status::fail;
+    }
+};
+
+template <class JsonT>
 class member_rule : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
@@ -318,6 +357,52 @@ private:
 };
 
 template <class JsonT>
+class regex_member_rule : public rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
+    string_type name_pattern_;
+    std::regex::flag_type flags_;
+    std::shared_ptr<rule<JsonT>> rule_;
+public:
+    regex_member_rule(const string_type& name_pattern,
+                      std::shared_ptr<rule<JsonT>> rule, 
+                      std::regex::flag_type flags = std::regex_constants::ECMAScript)
+        : name_pattern_(name_pattern), flags_(flags), rule_(rule)
+    {
+    }
+private:
+
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    {
+        if (!val.is_object())
+        {
+            return status::fail;
+        }
+        std::basic_regex<char_type> pattern(pattern_,flags_);
+
+        auto it = val.members().begin();
+        auto end = val.members().end();
+
+        status result = status::pass;
+        while (it != end && result == status::pass)
+        {
+            if (!std::regex_match(it->name(), pattern))
+            {
+                result = status::fail;
+            }
+            ++it;
+        }
+        
+        return result;
+    }
+};
+
+template <class JsonT>
 class optional_rule : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
@@ -341,7 +426,7 @@ private:
 };
 
 template <class JsonT>
-class repeating_rule : public rule<JsonT>
+class repeat_array_item_rule : public rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
@@ -353,18 +438,18 @@ class repeating_rule : public rule<JsonT>
     size_t min_;
     size_t max_;
 public:
-    repeating_rule()
+    repeat_array_item_rule()
         : min_(0), 
           max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
     {
     }
-    repeating_rule(size_t min_repitition)
+    repeat_array_item_rule(size_t min_repitition)
         : min_(min_repitition), 
           max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
     {
     }
 
-    repeating_rule(std::shared_ptr<rule<JsonT>> rule, size_t min, size_t max)
+    repeat_array_item_rule(std::shared_ptr<rule<JsonT>> rule, size_t min, size_t max)
         : rule_(rule),
           min_(min), 
           max_(max)
