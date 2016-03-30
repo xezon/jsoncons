@@ -72,6 +72,7 @@ enum class states
     expect_value,
     array, 
     expect_rule_or_value, 
+    regex,
     string,
     escape, 
     u1, 
@@ -446,6 +447,21 @@ public:
                 done = true;
                 ++p_;
                 break;
+            case '/': // regex
+                if (string_buffer_.length() == 0)
+                {
+                    end_string_value(sb,p_-sb);
+                }
+                else
+                {
+                    string_buffer_.append(sb,p_-sb);
+                    end_string_value(string_buffer_.data(),string_buffer_.length());
+                    string_buffer_.clear();
+                }
+                column_ += (p_ - sb + 1);
+                done = true;
+                ++p_;
+                break;
             default:
                 ++p_;
                 break;
@@ -536,6 +552,9 @@ public:
                         break;
                     case '[':
                         do_begin_array();
+                        break;
+                    case '/': // regex
+                        stack_.back() = states::string;
                         break;
                     case '\"':
                         stack_.back() = states::string;
@@ -639,6 +658,10 @@ public:
                         break;
                     case ';': 
                         stack_.push_back(states::comment);
+                        break;
+                    case '/':
+                        stack_.back() = states::member_name;
+                        stack_.push_back(states::string);
                         break;
                     case '\"':
                         stack_.back() = states::member_name;
@@ -827,6 +850,10 @@ public:
                     case ';': 
                         stack_.push_back(states::comment);
                         break;
+                    case '/':
+                        stack_.back() = states::member_name;
+                        stack_.push_back(states::string);
+                        break;
                     case '\"':
                         stack_.back() = states::member_name;
                         stack_.push_back(states::string);
@@ -897,6 +924,9 @@ public:
                         break;
                     case '[':
                         do_begin_array();
+                        break;
+                    case '/':
+                        stack_.back() = states::string;
                         break;
                     case '\"':
                         stack_.back() = states::string;

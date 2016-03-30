@@ -555,7 +555,7 @@ BOOST_AUTO_TEST_CASE(test_repeat_min_max_array_item_rule)
     )");
     BOOST_CHECK(!schema.validate(val7));
 }
-*/
+
 BOOST_AUTO_TEST_CASE(test_repeat_min_array_item_rule)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -587,6 +587,7 @@ BOOST_AUTO_TEST_CASE(test_repeat_min_array_item_rule)
     )");
     BOOST_CHECK(!schema.validate(val7));
 }
+*/
  
 /*
 BOOST_AUTO_TEST_CASE(test_group_rule2)
@@ -604,4 +605,25 @@ BOOST_AUTO_TEST_CASE(test_group_rule2)
     BOOST_CHECK(schema.validate(val1));
 }
 */
+
+BOOST_AUTO_TEST_CASE(test_name_pattern)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        /rfc.*/ : string,
+        "line-count" : 0..,
+        "word-count" : 0..
+    }
+    )");
+
+    json val1 = json::parse(R"(
+    {
+        "file-name"  : "rfc7159.txt",
+        "line-count" : 3426,
+        "word-count" : 27886
+    }
+    )");
+
+    BOOST_CHECK(schema.validate(val1));
+}
 BOOST_AUTO_TEST_SUITE_END()
