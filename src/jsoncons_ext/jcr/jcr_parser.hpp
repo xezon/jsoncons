@@ -74,6 +74,7 @@ enum class states
     expect_rule_or_value, 
     regex,
     string,
+    string_pattern,
     escape, 
     u1, 
     u2, 
@@ -154,11 +155,12 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     size_t literal_index_;
 
     string_type rule_name_;
-    std::vector<string_type> member_name_stack_;
+
     std::shared_ptr<rule<JsonT>> from_rule_;
     size_t max_repeat_;
     std::shared_ptr<repeat_array_item_rule<JsonT>> repeating_rule_ptr_;
 
+    std::vector<std::shared_ptr<member_rule<JsonT>>> member_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<group_rule<JsonT>>>> group_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<object_rule<JsonT>>>> object_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<array_rule<JsonT>>>> array_rule_stack_;
@@ -447,15 +449,84 @@ public:
                 done = true;
                 ++p_;
                 break;
+            default:
+                ++p_;
+                break;
+            }
+        }
+        if (!done)
+        {
+            string_buffer_.append(sb,p_-sb);
+            column_ += (p_ - sb + 1);
+        }
+    }
+
+    void parse_string_pattern()
+    {
+        const char_type* sb = p_;
+        bool done = false;
+        while (!done && p_ < end_input_)
+        {
+            switch (*p_)
+            {
+            case 0x00:case 0x01:case 0x02:case 0x03:case 0x04:case 0x05:case 0x06:case 0x07:case 0x08:case 0x0b:
+            case 0x0c:case 0x0e:case 0x0f:case 0x10:case 0x11:case 0x12:case 0x13:case 0x14:case 0x15:case 0x16:
+            case 0x17:case 0x18:case 0x19:case 0x1a:case 0x1b:case 0x1c:case 0x1d:case 0x1e:case 0x1f:
+                string_buffer_.append(sb,p_-sb);
+                column_ += (p_ - sb + 1);
+                err_handler_->error(std::error_code(jcr_parser_errc::illegal_control_character, jcr_error_category()), *this);
+                // recovery - skip
+                done = true;
+                ++p_;
+                break;
+            case '\r':
+                {
+                    column_ += (p_ - sb + 1);
+                    err_handler_->error(std::error_code(jcr_parser_errc::illegal_character_in_string, jcr_error_category()), *this);
+                    // recovery - keep
+                    string_buffer_.append(sb, p_ - sb + 1);
+                    stack_.push_back(states::cr);
+                    done = true;
+                    ++p_;
+                }
+                break;
+            case '\n':
+                {
+                    column_ += (p_ - sb + 1);
+                    err_handler_->error(std::error_code(jcr_parser_errc::illegal_character_in_string, jcr_error_category()), *this);
+                    // recovery - keep
+                    string_buffer_.append(sb, p_ - sb + 1);
+                    stack_.push_back(states::lf);
+                    done = true;
+                    ++p_;
+                }
+                break;
+            case '\t':
+                {
+                    column_ += (p_ - sb + 1);
+                    err_handler_->error(std::error_code(jcr_parser_errc::illegal_character_in_string, jcr_error_category()), *this);
+                    // recovery - keep
+                    string_buffer_.append(sb, p_ - sb + 1);
+                    done = true;
+                    ++p_;
+                }
+                break;
+            case '\\': 
+                string_buffer_.append(sb,p_-sb);
+                column_ += (p_ - sb + 1);
+                stack_.back() = states::escape;
+                done = true;
+                ++p_;
+                break;
             case '/': // regex
                 if (string_buffer_.length() == 0)
                 {
-                    end_string_value(sb,p_-sb);
+                    end_string_pattern(sb,p_-sb);
                 }
                 else
                 {
                     string_buffer_.append(sb,p_-sb);
-                    end_string_value(string_buffer_.data(),string_buffer_.length());
+                    end_string_pattern(string_buffer_.data(),string_buffer_.length());
                     string_buffer_.clear();
                 }
                 column_ += (p_ - sb + 1);
@@ -554,7 +625,7 @@ public:
                         do_begin_array();
                         break;
                     case '/': // regex
-                        stack_.back() = states::string;
+                        stack_.back() = states::string_pattern;
                         break;
                     case '\"':
                         stack_.back() = states::string;
@@ -661,7 +732,7 @@ public:
                         break;
                     case '/':
                         stack_.back() = states::member_name;
-                        stack_.push_back(states::string);
+                        stack_.push_back(states::string_pattern);
                         break;
                     case '\"':
                         stack_.back() = states::member_name;
@@ -852,7 +923,7 @@ public:
                         break;
                     case '/':
                         stack_.back() = states::member_name;
-                        stack_.push_back(states::string);
+                        stack_.push_back(states::string_pattern);
                         break;
                     case '\"':
                         stack_.back() = states::member_name;
@@ -926,7 +997,7 @@ public:
                         do_begin_array();
                         break;
                     case '/':
-                        stack_.back() = states::string;
+                        stack_.back() = states::string_pattern;
                         break;
                     case '\"':
                         stack_.back() = states::string;
@@ -1086,6 +1157,9 @@ public:
                 break;
             case states::string: 
                 parse_string();
+                break;
+            case states::string_pattern: 
+                parse_string_pattern();
                 break;
             case states::escape: 
                 {
@@ -1744,8 +1818,9 @@ private:
         {
         case states::member_name:
             {
-                rule_ptr = std::make_shared<member_rule<JsonT>>(member_name_stack_.back(), rule_ptr);
-                member_name_stack_.pop_back();
+                member_rule_stack_.back()->set_rule(rule_ptr);
+                rule_ptr = member_rule_stack_.back();
+                member_rule_stack_.pop_back();
                 stack_.pop_back();
             }
             break;
@@ -1874,9 +1949,40 @@ private:
         switch (parent())
         {
         case states::member_name:
-            member_name_stack_.push_back(string_type(s,length));
-            stack_.back() = states::value;
-            stack_.push_back(states::expect_colon);
+            {
+                auto rule_ptr = std::make_shared<name_value_pair_rule<JsonT>>(string_type(s, length));
+                member_rule_stack_.push_back(rule_ptr);
+                stack_.back() = states::value;
+                stack_.push_back(states::expect_colon);
+            }
+            break;
+        case states::value:
+            {
+                auto r = std::make_shared<string_rule<JsonT>>(s, length);
+                end_rule(sequence_,r);
+            }
+            break;
+        default:
+            err_handler_->error(std::error_code(jcr_parser_errc::invalid_jcr_text, jcr_error_category()), *this);
+            break;
+        }
+
+        string_buffer_.clear();
+    }
+
+    void end_string_pattern(const char_type* s, size_t length) 
+    {
+        std::shared_ptr<rule<JsonT>> rule_ptr;
+
+        switch (parent())
+        {
+        case states::member_name:
+            {
+                auto rule_ptr = std::make_shared<pattern_value_pair_rule<JsonT>>(string_type(s, length));
+                member_rule_stack_.push_back(rule_ptr);
+                stack_.back() = states::value;
+                stack_.push_back(states::expect_colon);
+            }
             break;
         case states::value:
             {

@@ -325,6 +325,13 @@ private:
 template <class JsonT>
 class member_rule : public rule<JsonT>
 {
+public:
+    virtual void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) = 0;
+};
+
+template <class JsonT>
+class name_value_pair_rule : public member_rule<JsonT>
+{
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
     typedef typename string_type::allocator_type string_allocator;
@@ -334,9 +341,18 @@ class member_rule : public rule<JsonT>
     string_type name_;
     std::shared_ptr<rule<JsonT>> rule_;
 public:
-    member_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+    name_value_pair_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
         : name_(name),rule_(rule)
     {
+    }
+    name_value_pair_rule(const string_type& name)
+        : name_(name)
+    {
+    }
+
+    void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    {
+        rule_ = rule_ptr;
     }
 private:
 
@@ -357,7 +373,7 @@ private:
 };
 
 template <class JsonT>
-class regex_member_rule : public rule<JsonT>
+class pattern_value_pair_rule : public member_rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
@@ -369,11 +385,15 @@ class regex_member_rule : public rule<JsonT>
     std::regex::flag_type flags_;
     std::shared_ptr<rule<JsonT>> rule_;
 public:
-    regex_member_rule(const string_type& name_pattern,
-                      std::shared_ptr<rule<JsonT>> rule, 
-                      std::regex::flag_type flags = std::regex_constants::ECMAScript)
-        : name_pattern_(name_pattern), flags_(flags), rule_(rule)
+    pattern_value_pair_rule(const string_type& name_pattern,
+                            std::regex::flag_type flags = std::regex_constants::ECMAScript)
+        : name_pattern_(name_pattern), flags_(flags)
     {
+    }
+
+    void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    {
+        rule_ = rule_ptr;
     }
 private:
 
@@ -383,7 +403,7 @@ private:
         {
             return status::fail;
         }
-        std::basic_regex<char_type> pattern(pattern_,flags_);
+        std::basic_regex<char_type> pattern(name_pattern_,flags_);
 
         auto it = val.members().begin();
         auto end = val.members().end();
@@ -391,9 +411,9 @@ private:
         status result = status::pass;
         while (it != end && result == status::pass)
         {
-            if (!std::regex_match(it->name(), pattern))
+            if (std::regex_match(it->name(), pattern))
             {
-                result = status::fail;
+                result = rule_->validate(it->value(),optional,rules,index);
             }
             ++it;
         }
