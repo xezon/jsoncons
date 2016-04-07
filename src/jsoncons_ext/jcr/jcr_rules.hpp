@@ -43,6 +43,10 @@ private:
     virtual status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const = 0;
 public:
 
+    virtual void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr)
+    {
+    }
+
     bool validate(const JsonT& val, const name_rule_map& rules) const 
     {
         return do_validate(val,false,rules,0) == status::pass ? true : false;
@@ -330,7 +334,31 @@ public:
 };
 
 template <class JsonT>
-class name_value_pair_rule : public member_rule<JsonT>
+class repeat_member_rule : public member_rule<JsonT>
+{
+    std::shared_ptr<rule<JsonT>> rule_;
+    size_t min_;
+    size_t max_;
+public:
+    repeat_member_rule(size_t min_repitition, size_t max_repitition)
+        : min_(min_repitition), 
+          max_(max_repitition)
+    {
+    }
+
+    void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    {
+        rule_ = rule_ptr;
+    }
+
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    {
+        return status::pass;
+    }
+};
+
+template <class JsonT>
+class qstring_member_rule : public member_rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
@@ -341,11 +369,11 @@ class name_value_pair_rule : public member_rule<JsonT>
     string_type name_;
     std::shared_ptr<rule<JsonT>> rule_;
 public:
-    name_value_pair_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
+    qstring_member_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
         : name_(name),rule_(rule)
     {
     }
-    name_value_pair_rule(const string_type& name)
+    qstring_member_rule(const string_type& name)
         : name_(name)
     {
     }
@@ -373,7 +401,7 @@ private:
 };
 
 template <class JsonT>
-class pattern_value_pair_rule : public member_rule<JsonT>
+class regex_member_rule : public member_rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;
     typedef typename string_type::value_type char_type;
@@ -385,7 +413,7 @@ class pattern_value_pair_rule : public member_rule<JsonT>
     std::regex::flag_type flags_;
     std::shared_ptr<rule<JsonT>> rule_;
 public:
-    pattern_value_pair_rule(const string_type& name_pattern,
+    regex_member_rule(const string_type& name_pattern,
                             std::regex::flag_type flags = std::regex_constants::ECMAScript)
         : name_pattern_(name_pattern), flags_(flags)
     {
@@ -468,6 +496,11 @@ public:
           max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
     {
     }
+    repeat_array_item_rule(size_t min_repitition, size_t max_repitition)
+        : min_(min_repitition), 
+          max_(max_repitition)
+    {
+    }
 
     repeat_array_item_rule(std::shared_ptr<rule<JsonT>> rule, size_t min, size_t max)
         : rule_(rule),
@@ -476,15 +509,11 @@ public:
     {
     }
 
-    void rule(std::shared_ptr<rule<JsonT>> rule_ptr)
+    void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
     {
         rule_ = rule_ptr;
     }
 
-    void max_repeat(size_t value)
-    {
-        max_ = value;
-    }
 private:
 
     status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
@@ -724,6 +753,15 @@ public:
     {
         return elements_.get_allocator();
     }
+
+    void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    {
+        if (elements_.size() > 0)
+        {
+            elements_.back()->base_rule(rule_ptr);
+        }
+    }
+
 private:
 
     status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override

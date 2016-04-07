@@ -157,8 +157,9 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
 
     std::shared_ptr<rule<JsonT>> from_rule_;
+    size_t min_repeat_;
     size_t max_repeat_;
-    std::shared_ptr<repeat_array_item_rule<JsonT>> repeating_rule_ptr_;
+    //std::shared_ptr<repeat_array_item_rule<JsonT>> repeating_rule_ptr_;
 
     std::vector<std::shared_ptr<member_rule<JsonT>>> member_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<group_rule<JsonT>>>> group_rule_stack_;
@@ -785,9 +786,8 @@ public:
                         ++column_;
                         break;
                     case '*':
-                        repeating_rule_ptr_ = std::make_shared<repeat_array_item_rule<JsonT>>();
-                        array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
-                        stack_.back() = states::expect_max_or_repeating_rule;
+                        min_repeat_ = 0;
+                        stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
                         break;
@@ -900,6 +900,8 @@ public:
                         stack_.back() = states::max_repeat;
                         break;
                     default:
+                        auto repeating_rule_ptr = std::make_shared<repeat_array_item_rule<JsonT>>(min_repeat_);
+                        array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr);
                         stack_.back() = states::expect_repeating_rule;
                         break;
                     }
@@ -1148,7 +1150,8 @@ public:
                         {
                             rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
                         }
-                        repeating_rule_ptr_->rule(rule_ptr);
+                        //repeating_rule_ptr_->rule(rule_ptr);
+                        array_rule_stack_.back().second->base_rule(rule_ptr);
                         stack_.back() = states::expect_comma_or_end;
                     }
                    
@@ -1348,11 +1351,9 @@ public:
                         break;
                     case '*':
                         {
-                            size_t min_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                            repeating_rule_ptr_ = std::make_shared<repeat_array_item_rule<JsonT>>(min_repeat);
-                            array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
-                            stack_.back() = states::expect_max_or_repeating_rule;
+                            min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
                             number_buffer_.clear();
+                            stack_.back() = states::expect_max_or_repeating_rule;                        
                         }
                         break;
                     default:
@@ -1466,11 +1467,9 @@ public:
                         break;
                     case '*':
                         {
-                            size_t min_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                            repeating_rule_ptr_ = std::make_shared<repeat_array_item_rule<JsonT>>(min_repeat);
-                            array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr_);
-                            stack_.back() = states::expect_max_or_repeating_rule;
+                            min_repeat_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
                             number_buffer_.clear();
+                            stack_.back() = states::expect_max_or_repeating_rule;
                         }
                         break;
                     case '0': 
@@ -1514,7 +1513,24 @@ public:
                         break;
                     default:
                         size_t max_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                        repeating_rule_ptr_->max_repeat(max_repeat);
+                        switch (parent())
+                        {
+                        case states::array:
+                            {
+                                auto repeating_rule_ptr = std::make_shared<repeat_array_item_rule<JsonT>>(min_repeat_,max_repeat);
+                                array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr);
+                                stack_.back() = states::expect_max_or_repeating_rule;
+                            }
+                            break;
+                        case states::object:
+                            {
+                                auto repeating_rule_ptr = std::make_shared<repeat_member_rule<JsonT>>(min_repeat_,max_repeat);
+                                object_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr);
+                                stack_.back() = states::expect_max_or_repeating_rule;
+                            }
+                            break;
+                        }
+
                         number_buffer_.clear();
                         stack_.back() = states::expect_repeating_rule;
                         break;
@@ -1950,7 +1966,7 @@ private:
         {
         case states::member_name:
             {
-                auto rule_ptr = std::make_shared<name_value_pair_rule<JsonT>>(string_type(s, length));
+                auto rule_ptr = std::make_shared<qstring_member_rule<JsonT>>(string_type(s, length));
                 member_rule_stack_.push_back(rule_ptr);
                 stack_.back() = states::value;
                 stack_.push_back(states::expect_colon);
@@ -1978,7 +1994,7 @@ private:
         {
         case states::member_name:
             {
-                auto rule_ptr = std::make_shared<pattern_value_pair_rule<JsonT>>(string_type(s, length));
+                auto rule_ptr = std::make_shared<regex_member_rule<JsonT>>(string_type(s, length));
                 member_rule_stack_.push_back(rule_ptr);
                 stack_.back() = states::value;
                 stack_.push_back(states::expect_colon);
