@@ -2237,7 +2237,7 @@ private:
         {
         case states::member_name:
             {
-                auto rule_ptr = std::make_shared<qstring_member_rule<JsonT>>(string_type(s, length));
+                auto rule_ptr = std::make_shared<qstring_member_rule<JsonT>>(string_type(s, length), min_repetitions_, max_repetitions_);
                 member_rule_stack_.push_back(rule_ptr);
                 stack_.back() = states::value;
                 stack_.push_back(states::expect_colon);

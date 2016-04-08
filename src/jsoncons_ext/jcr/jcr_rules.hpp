@@ -344,13 +344,15 @@ class qstring_member_rule : public member_rule<JsonT>
 
     string_type name_;
     std::shared_ptr<rule<JsonT>> rule_;
+
+    size_t min_repetitions_;
+    size_t max_repetitions_;
 public:
-    qstring_member_rule(const string_type& name, std::shared_ptr<rule<JsonT>> rule)
-        : name_(name),rule_(rule)
-    {
-    }
-    qstring_member_rule(const string_type& name)
-        : name_(name)
+    qstring_member_rule(const string_type& name,
+                        size_t min_repetitions, size_t max_repetitions)
+        : name_(name), 
+          min_repetitions_(min_repetitions),
+          max_repetitions_(max_repetitions)
     {
     }
 
