@@ -538,6 +538,44 @@ public:
         }
     }
 
+    void parse_repeat_array_item()
+    {
+        bool done = false;
+        while (!done && p_ < end_input_)
+        {
+            if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+            {
+                string_buffer_.push_back(*p_);
+                ++p_;
+            }
+            else 
+            {
+                if (parent() == states::named_rule)
+                {
+                    rule_name_ = string_buffer_;
+                    stack_.back() = states::expect_member_name_or_colon;
+                }
+                else
+                {
+                    std::shared_ptr<rule<JsonT>> rule_ptr;
+                    auto it = rule_map_.find(string_buffer_);
+                    if (it != rule_map_.end())
+                    {
+                        rule_ptr = it->second;
+                    }
+                    else
+                    {
+                        rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
+                    }
+                    array_rule_stack_.back().second->base_rule(rule_ptr);
+                    stack_.back() = states::expect_comma_or_end;
+                }
+                string_buffer_.clear();
+                done = true;
+            }
+        }
+    }
+
     void parse_string_pattern()
     {
         const char_type* sb = p_;
@@ -1164,35 +1202,7 @@ public:
                 parse_optional_rule();
                 break;
             case states::repeat_array_item_rule:
-                if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
-                {
-                    string_buffer_.push_back(*p_);
-                    ++p_;
-                }
-                else 
-                {
-                    if (parent() == states::named_rule)
-                    {
-                    }
-                    else
-                    {
-                        std::shared_ptr<rule<JsonT>> rule_ptr;
-                        auto it = rule_map_.find(string_buffer_);
-                        if (it != rule_map_.end())
-                        {
-                            rule_ptr = it->second;
-                        }
-                        else
-                        {
-                            rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_);
-                        }
-                        //repeating_rule_ptr_->rule(rule_ptr);
-                        array_rule_stack_.back().second->base_rule(rule_ptr);
-                        stack_.back() = states::expect_comma_or_end;
-                    }
-                   
-                    string_buffer_.clear();
-                }
+                parse_repeat_array_item();
                 break;
             case states::string: 
                 parse_string();
