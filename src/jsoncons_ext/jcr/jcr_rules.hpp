@@ -41,7 +41,13 @@ public:
     typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 private:
     virtual status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const = 0;
+
 public:
+    virtual status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
+                               bool optional, const name_rule_map& rules, size_t index) const
+    {
+        return status::fail;
+    }
 
     virtual void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr)
     {
@@ -330,7 +336,10 @@ template <class JsonT>
 class member_rule : public rule<JsonT>
 {
 public:
-    virtual void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) = 0;
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    {
+        return validate1(val,1,1,optional,rules,index);
+    }
 };
 
 template <class JsonT>
@@ -345,15 +354,21 @@ public:
           max_(max_repitition)
     {
     }
+    repeat_member_rule(size_t min_repitition)
+        : min_(min_repitition), 
+          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
+    {
+    }
 
-    void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
     {
         rule_ = rule_ptr;
     }
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
+                       bool optional, const name_rule_map& rules, size_t index) const override
     {
-        return status::pass;
+        return rule_->validate1(val,min_,max_,optional,rules,index);
     }
 };
 
@@ -378,13 +393,14 @@ public:
     {
     }
 
-    void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
     {
         rule_ = rule_ptr;
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
+                       bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
         {
@@ -419,13 +435,14 @@ public:
     {
     }
 
-    void set_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
+    void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
     {
         rule_ = rule_ptr;
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
+                       bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
         {
@@ -437,13 +454,17 @@ private:
         auto end = val.members().end();
 
         status result = status::pass;
-        while (it != end && result == status::pass)
+        if (val.size() > 0)
         {
-            if (std::regex_match(it->name(), pattern))
+            result = status::fail;
+            while (it != end && result != status::pass)
             {
-                result = rule_->validate(it->value(),optional,rules,index);
+                if (std::regex_match(it->name(), pattern))
+                {
+                    result = rule_->validate(it->value(),optional,rules,index);
+                }
+                ++it;
             }
-            ++it;
         }
         
         return result;
