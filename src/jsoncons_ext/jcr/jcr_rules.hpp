@@ -43,11 +43,6 @@ private:
     virtual status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const = 0;
 
 public:
-    virtual status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
-                               bool optional, const name_rule_map& rules, size_t index) const
-    {
-        return status::fail;
-    }
 
     virtual void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr)
     {
@@ -336,34 +331,6 @@ template <class JsonT>
 class member_rule : public rule<JsonT>
 {
 public:
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
-    {
-        return validate1(val,1,1,optional,rules,index);
-    }
-};
-
-template <class JsonT>
-class repeat_member_rule : public member_rule<JsonT>
-{
-    std::shared_ptr<rule<JsonT>> rule_;
-    size_t min_;
-    size_t max_;
-public:
-    repeat_member_rule(size_t min_repitition, size_t max_repitition)
-        : min_(min_repitition), 
-          max_(max_repitition)
-    {
-    }
-    repeat_member_rule(size_t min_repitition)
-        : min_(min_repitition), 
-          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
-    {
-    }
-
-    void base_rule(std::shared_ptr<rule<JsonT>> rule_ptr) override
-    {
-        rule_ = rule_ptr;
-    }
 };
 
 template <class JsonT>
@@ -393,7 +360,7 @@ public:
     }
 private:
 
-    status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
+    status do_validate(const JsonT& val,
                        bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
@@ -441,7 +408,7 @@ public:
     }
 private:
 
-    status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
+    status do_validate(const JsonT& val,
                        bool optional, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
