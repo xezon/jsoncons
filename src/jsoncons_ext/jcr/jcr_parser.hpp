@@ -901,6 +901,8 @@ public:
                         ++column_;
                         break;
                     case '?':
+                        min_repetitions_ = 0;
+                        max_repetitions_ = 1;
                         stack_.back() = states::expect_optional_rule;
                         ++p_;
                         ++column_;
@@ -1043,11 +1045,6 @@ public:
                         ++p_;
                         ++column_;
                         break;
-                    case '?':
-                        stack_.back() = states::expect_optional_rule;
-                        ++p_;
-                        ++column_;
-                        break;
                     case '*':
                         min_repetitions_ = 1;
                         max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
@@ -1133,9 +1130,6 @@ public:
                         break;
                     case '\'':
                         err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
-                        break;
-                    case '?':
-                        stack_.back() = states::expect_optional_rule;
                         break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
