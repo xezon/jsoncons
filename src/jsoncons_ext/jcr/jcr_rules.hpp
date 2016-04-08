@@ -428,10 +428,16 @@ class regex_member_rule : public member_rule<JsonT>
     string_type name_pattern_;
     std::regex::flag_type flags_;
     std::shared_ptr<rule<JsonT>> rule_;
+
+    size_t min_repetitions_;
+    size_t max_repetitions_;
 public:
     regex_member_rule(const string_type& name_pattern,
-                            std::regex::flag_type flags = std::regex_constants::ECMAScript)
-        : name_pattern_(name_pattern), flags_(flags)
+                      size_t min_repetitions, size_t max_repetitions)
+        : name_pattern_(name_pattern), 
+          min_repetitions_(min_repetitions),
+          max_repetitions_(max_repetitions),
+          flags_(std::regex_constants::ECMAScript)
     {
     }
 
