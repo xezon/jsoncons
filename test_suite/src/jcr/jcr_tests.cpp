@@ -19,7 +19,6 @@ using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
 
-#if 0
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -624,7 +623,7 @@ BOOST_AUTO_TEST_CASE(test_name_pattern)
 
     BOOST_CHECK(schema.validate(val1));
 }
-#endif
+
 BOOST_AUTO_TEST_CASE(test_name_pattern1)
 {
     jcr_validator schema = jcr_validator::parse(R"(

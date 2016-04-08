@@ -334,6 +334,40 @@ public:
 };
 
 template <class JsonT>
+class member_target_rule : public member_rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
+    string_type name_;
+
+    size_t min_repetitions_;
+    size_t max_repetitions_;
+public:
+    member_target_rule(const string_type& name,
+                       size_t min_repetitions, size_t max_repetitions)
+        : name_(name), 
+          min_repetitions_(min_repetitions),
+          max_repetitions_(max_repetitions)
+    {
+    }
+private:
+
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    {
+        auto it = rules.find(name_);
+        if (it == rules.end())
+        {
+            return min_repetitions_ == 0 ? status::pass : status::fail;
+        }
+        return it->second->validate(val,optional,rules, index);
+    }
+};
+
+template <class JsonT>
 class qstring_member_rule : public member_rule<JsonT>
 {
     typedef typename JsonT::string_type string_type;

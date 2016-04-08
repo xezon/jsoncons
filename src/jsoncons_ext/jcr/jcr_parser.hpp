@@ -509,6 +509,43 @@ public:
         }
     }
 
+    void parse_member_rule()
+    {
+        bool done = false;
+        while (!done && p_ < end_input_)
+        {
+            if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z') || ('0' <=*p_ && *p_ <= '9') || *p_ == '-' || *p_ == '_')
+            {
+                string_buffer_.push_back(*p_);
+                ++p_;
+            }
+            else 
+            {
+                if (parent() == states::named_rule)
+                {
+                    rule_name_ = string_buffer_;
+                    stack_.back() = states::expect_member_name_or_colon;
+                }
+                else
+                {
+                    std::shared_ptr<rule<JsonT>> rule_ptr;
+                    auto it = rule_map_.find(string_buffer_);
+                    if (it != rule_map_.end())
+                    {
+                        rule_ptr = it->second;
+                    }
+                    else
+                    {
+                        rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_,min_repetitions_,max_repetitions_);
+                    }
+                    end_rule(sequence_,rule_ptr);
+                }
+                string_buffer_.clear();
+                done = true;
+            }
+        }
+    }
+
     void parse_optional_rule()
     {
         bool done = false;
