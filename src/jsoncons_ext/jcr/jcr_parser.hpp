@@ -66,7 +66,9 @@ enum class states
     comment,  
     expect_comma_or_end,  
     object,
+    repetition,
     expect_member_min_or_repeat_or_rule_or_name, 
+    expect_member_repeat_or_rule_or_name, 
     expect_member_rule_or_name, 
     expect_member_name_or_colon, 
     expect_colon,
@@ -829,53 +831,131 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_member_rule_or_name: 
+            case states::expect_member_min_or_repeat_or_rule_or_name: 
                 {
                     switch (*p_)
                     {
                     case '\r': 
                         stack_.push_back(states::cr);
+                        ++p_;
+                        ++column_;
                         break; 
                     case '\n': 
                         stack_.push_back(states::lf); 
+                        ++p_;
+                        ++column_;
                         break;   
                     case ' ':case '\t':
                         do_space();
+                        ++p_;
+                        ++column_;
                         break;
                     case ';': 
                         stack_.push_back(states::comment);
-                        break;
-                    case '/':
-                        stack_.back() = states::member_name;
-                        stack_.push_back(states::string_pattern);
-                        break;
-                    case '\"':
-                        stack_.back() = states::member_name;
-                        stack_.push_back(states::string);
-                        break;
-                    case '\'':
-                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
+                        ++p_;
+                        ++column_;
                         break;
                     case '?':
                         stack_.back() = states::expect_optional_rule;
+                        ++p_;
+                        ++column_;
+                        break;
+                    case '0':
+                        min_repetitions_ = 0;
+                        stack_.back() = states::expect_member_repeat_or_rule_or_name;                       
+                        ++p_;
+                        ++column_;
+                        break;
+                    case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                        stack_.back() = states::repetition;
+                        break;
+                    case '*':
+                        min_repetitions_ = 1;
+                        stack_.back() = states::expect_max_or_repeating_rule;                       
+                        ++p_;
+                        ++column_;
                         break;
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
                             string_buffer_.push_back(*p_);
                             stack_.back() = states::rule_name;
+                            ++p_;
+                            ++column_;
                         }
                         else
                         {
-                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                            stack_.back() = states::expect_member_rule_or_name;
                         }
+                        break;
+                    }
+                }
+                break;
+            case states::repetition: 
+                {
+                    switch (*p_)
+                    {
+                    case '\r': 
+                        end_integer_value();
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        end_integer_value();
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        end_integer_value();
+                        do_space();
+                        break;
+                    case ';': 
+                        end_integer_value();
+                        stack_.push_back(states::comment);
+                        break;
+                    case '}':
+                        end_integer_value();
+                        do_end_object();
+                        break;
+                    case ']':
+                        end_integer_value();
+                        do_end_array();
+                        break;
+                    case '*':
+                        {
+                            min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            number_buffer_.clear();
+                            stack_.back() = states::expect_max_or_repeating_rule;
+                        }
+                        break;
+                    case '0': 
+                    case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                        number_buffer_.push_back(static_cast<char>(*p_));
+                        break;
+                    case '.':
+                        stack_.back() = states::dot;
+                        break;
+                    case ',':
+                        sequence_ = true;
+                        end_integer_value();
+                        begin_member_or_element();
+                        break;
+                    case '|':
+                        sequence_ = false;
+                        end_integer_value();
+                        begin_member_or_element();
+                        break;
+                    case 'e':case 'E':
+                        number_buffer_.push_back(static_cast<char>(*p_));
+                        stack_.back() = states::exp1;
+                        break;
+                    default:
+                        err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
                         break;
                     }
                 }
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_member_min_or_repeat_or_rule_or_name: 
+            case states::expect_member_repeat_or_rule_or_name: 
                 {
                     switch (*p_)
                     {
@@ -925,6 +1005,52 @@ public:
                         break;
                     }
                 }
+                break;
+            case states::expect_member_rule_or_name: 
+                {
+                    switch (*p_)
+                    {
+                    case '\r': 
+                        stack_.push_back(states::cr);
+                        break; 
+                    case '\n': 
+                        stack_.push_back(states::lf); 
+                        break;   
+                    case ' ':case '\t':
+                        do_space();
+                        break;
+                    case ';': 
+                        stack_.push_back(states::comment);
+                        break;
+                    case '/':
+                        stack_.back() = states::member_name;
+                        stack_.push_back(states::string_pattern);
+                        break;
+                    case '\"':
+                        stack_.back() = states::member_name;
+                        stack_.push_back(states::string);
+                        break;
+                    case '\'':
+                        err_handler_->error(std::error_code(jcr_parser_errc::single_quote, jcr_error_category()), *this);
+                        break;
+                    case '?':
+                        stack_.back() = states::expect_optional_rule;
+                        break;
+                    default:
+                        if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
+                        {
+                            string_buffer_.push_back(*p_);
+                            stack_.back() = states::rule_name;
+                        }
+                        else
+                        {
+                            err_handler_->error(std::error_code(jcr_parser_errc::expected_name, jcr_error_category()), *this);
+                        }
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
                 break;
             case states::expect_repeat_or_rule_or_value: 
                 {
