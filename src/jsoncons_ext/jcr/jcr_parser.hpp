@@ -189,6 +189,8 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
             err_handler_->error(std::error_code(jcr_parser_errc::max_depth_exceeded, jcr_error_category()), *this);
         }
         stack_.back() = states::object;
+        min_repetitions_ = 1;
+        max_repetitions_ = 1;
         stack_.push_back(states::expect_member_min_or_repeat_or_rule_or_name);
         object_rule_stack_.push_back(std::make_pair(sequence_,std::make_shared<object_rule<JsonT>>()));
         sequence_ = true;
@@ -362,6 +364,8 @@ public:
         column_ = 1;
         nesting_depth_ = 0;
         sequence_ = true;
+        min_repetitions_ = 1;
+        max_repetitions_ = 1;
     }
 
     void check_done(const char_type* input, size_t start, size_t length)
@@ -866,7 +870,6 @@ public:
                         break;
                     case '0':
                         min_repetitions_ = 0;
-                        max_repetitions_ = 1;
                         stack_.back() = states::expect_member_repeat_or_rule_or_name;                       
                         ++p_;
                         ++column_;
@@ -876,8 +879,8 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
-                        max_repetitions_ = 1;
-                        stack_.back() = states::expect_max_or_repeating_rule;                       
+                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                        stack_.back() = states::expect_max_repetitions;                       
                         ++p_;
                         ++column_;
                         break;
@@ -904,7 +907,7 @@ public:
                     case '*':
                         {
                             min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                            max_repetitions_ = 1;
+                            max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
                             number_buffer_.clear();
                             stack_.back() = states::expect_max_repetitions;
                             ++p_;
@@ -967,6 +970,8 @@ public:
                         break;
                     case '0': 
                         max_repetitions_ = 0;
+                        ++p_;
+                        ++column_;
                         break;
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                         stack_.back() = states::max_repetitions;
@@ -1008,7 +1013,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
-                        max_repetitions_ = 1;
+                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1054,7 +1059,7 @@ public:
                         ++column_;
                         break;
                     case '*':
-                        max_repetitions_ = 1;
+                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
                         stack_.back() = states::expect_max_repetitions;                       
                         ++p_;
                         ++column_;
@@ -1137,7 +1142,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
-                        max_repetitions_ = 1;
+                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1628,7 +1633,7 @@ public:
                     case '*':
                         {
                             min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                            max_repetitions_ = 1;
+                            max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
                             number_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;                        
                         }
@@ -1745,7 +1750,7 @@ public:
                     case '*':
                         {
                             min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                            max_repetitions_ = 1;
+                            max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
                             number_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;
                         }
@@ -2290,6 +2295,8 @@ private:
         switch (parent())
         {
         case states::object:
+            min_repetitions_ = 1;
+            max_repetitions_ = 1;
             stack_.back() = states::expect_member_min_or_repeat_or_rule_or_name;
             break;
         case states::array:

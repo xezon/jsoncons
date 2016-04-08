@@ -18,6 +18,8 @@ using namespace jsoncons;
 using namespace jsoncons::jcr;
 
 BOOST_AUTO_TEST_SUITE(jcr_test_suite)
+
+#if 0
 BOOST_AUTO_TEST_CASE(test_jcr)
 {
     jcr_validator schema = jcr_validator::parse(R"(
@@ -622,23 +624,46 @@ BOOST_AUTO_TEST_CASE(test_name_pattern)
 
     BOOST_CHECK(schema.validate(val1));
 }
-
+#endif
 BOOST_AUTO_TEST_CASE(test_name_pattern1)
 {
     jcr_validator schema = jcr_validator::parse(R"(
     {
-        /file.*/ : string
+        */file.*/ : string
     }
     )");
 
     json val1 = json::parse(R"(
     {
         "file1-name"  : "file1.txt",
-        "file2-name"  : "file2.txt"
+        "file2-name"  : 10
+    }
+    )");
+    BOOST_CHECK(schema.validate(val1));
+}
+
+BOOST_AUTO_TEST_CASE(test_name_pattern2)
+{
+    jcr_validator schema = jcr_validator::parse(R"(
+    {
+        2*/file.*/ : string
     }
     )");
 
-    BOOST_CHECK(schema.validate(val1));
+    json val1 = json::parse(R"(
+    {
+        "file1-name"  : "file1.txt",
+        "file2-name"  : 10
+    }
+    )");
+    BOOST_CHECK(!schema.validate(val1));
+
+    json val2 = json::parse(R"(
+    {
+        "file1-name"  : "file1.txt"
+    }
+    )");
+    BOOST_CHECK(!schema.validate(val2));
 }
 
 BOOST_AUTO_TEST_SUITE_END()

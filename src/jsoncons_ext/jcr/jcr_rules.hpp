@@ -372,7 +372,7 @@ private:
         auto it = val.find(name_);
         if (it == val.members().end())
         {
-            return optional ? status::pass : status::fail;
+            return optional || min_repetitions_ == 0 ? status::pass : status::fail;
         }
         
         return rule_->validate(it->value(), false,rules, index);
@@ -423,20 +423,25 @@ private:
         auto end = val.members().end();
 
         status result = status::pass;
+        size_t count = 0;
         if (val.size() > 0)
         {
             result = status::fail;
-            while (it != end && result != status::pass)
+            while (it != end && count < max_repetitions_)
             {
                 if (std::regex_match(it->name(), pattern))
                 {
                     result = rule_->validate(it->value(),optional,rules,index);
+                    if (result != status::fail)
+                    {
+                        ++count;
+                    }
                 }
                 ++it;
             }
         }
         
-        return result;
+        return count < min_repetitions_ ? status::fail : status::pass;
     }
 };
 
