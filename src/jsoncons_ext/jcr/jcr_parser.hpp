@@ -876,6 +876,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
+                        max_repetitions_ = 1;
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1007,6 +1008,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
+                        max_repetitions_ = 1;
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1135,6 +1137,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
+                        max_repetitions_ = 1;
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1254,13 +1257,6 @@ public:
                             {
                                 auto repeating_rule_ptr = std::make_shared<repeat_array_item_rule<JsonT>>(min_repetitions_);
                                 array_rule_stack_.back().second->add_rule(sequence_, repeating_rule_ptr);
-                                stack_.back() = states::expect_repeating_rule;
-                            }
-                            break;
-                        case states::object:
-                            {
-                                auto repeating_rule_ptr = std::make_shared<repeat_member_rule<JsonT>>(min_repetitions_);
-                                object_rule_stack_.back().second->add_rule(sequence_, repeating_rule_ptr);
                                 stack_.back() = states::expect_repeating_rule;
                             }
                             break;
@@ -1632,6 +1628,7 @@ public:
                     case '*':
                         {
                             min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            max_repetitions_ = 1;
                             number_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;                        
                         }
@@ -1748,6 +1745,7 @@ public:
                     case '*':
                         {
                             min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            max_repetitions_ = 1;
                             number_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;
                         }
@@ -1799,13 +1797,6 @@ public:
                             {
                                 auto repeating_rule_ptr = std::make_shared<repeat_array_item_rule<JsonT>>(min_repetitions_,max_repeat);
                                 array_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr);
-                                stack_.back() = states::expect_max_or_repeating_rule;
-                            }
-                            break;
-                        case states::object:
-                            {
-                                auto repeating_rule_ptr = std::make_shared<repeat_member_rule<JsonT>>(min_repetitions_,max_repeat);
-                                object_rule_stack_.back().second->add_rule(sequence_,repeating_rule_ptr);
                                 stack_.back() = states::expect_max_or_repeating_rule;
                             }
                             break;

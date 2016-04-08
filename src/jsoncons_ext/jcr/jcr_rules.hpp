@@ -364,12 +364,6 @@ public:
     {
         rule_ = rule_ptr;
     }
-
-    status validate1(const JsonT& val, size_t min_repeat, size_t max_repeat,
-                       bool optional, const name_rule_map& rules, size_t index) const override
-    {
-        return rule_->validate1(val,min_,max_,optional,rules,index);
-    }
 };
 
 template <class JsonT>
