@@ -40,7 +40,7 @@ public:
     typedef rule<JsonT> rule_type;
     typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
 private:
-    virtual status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const = 0;
+    virtual status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const = 0;
 
 public:
 
@@ -50,12 +50,12 @@ public:
 
     bool validate(const JsonT& val, const name_rule_map& rules) const 
     {
-        return do_validate(val,false,rules,0) == status::pass ? true : false;
+        return do_validate(val,rules,0) == status::pass ? true : false;
     }
 
-    status validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const 
+    status validate(const JsonT& val, const name_rule_map& rules, size_t index) const 
     {
-        return do_validate(val,optional,rules, index);
+        return do_validate(val,rules, index);
     }
     virtual ~rule()
     {
@@ -79,7 +79,7 @@ public:
     typedef typename JsonT::string_type string_type;
     typedef typename JsonT::char_type char_type;
 private:
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_string())
         {
@@ -151,7 +151,7 @@ public:
     {
     }
 private:
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_object() ? status::pass : status::fail;
     }
@@ -174,10 +174,10 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
-        return rule1_->validate(val,optional,rules, index) == status::pass
-        && rule2_->validate(val,optional,rules, index) == status::pass 
+        return rule1_->validate(val,rules, index) == status::pass
+        && rule2_->validate(val,rules, index) == status::pass 
         ? status::pass : status::fail;
     }
 };
@@ -195,7 +195,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_integer() || val.is_uinteger() ? status::pass : status::fail;
     }
@@ -214,7 +214,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_double() ? status::pass : status::fail;
     }
@@ -233,7 +233,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_bool() ? status::pass : status::fail;
     }
@@ -252,7 +252,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return status::pass;
     }
@@ -283,7 +283,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_string() && val.as_string() == s_ ? status::pass : status::fail;
     }
@@ -315,7 +315,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_string())
         {
@@ -356,14 +356,14 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         auto it = rules.find(name_);
         if (it == rules.end())
         {
             return status::fail;
         }
-        status result = it->second->validate(val,optional,rules, index);
+        status result = it->second->validate(val,rules, index);
         return min_repetitions_ == 0 && result == status::name_not_found ? status::pass : result;
     }
 };
@@ -390,9 +390,9 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
-        return base_rule_->validate(val,optional,rules, index);
+        return base_rule_->validate(val,rules, index);
     }
 };
 
@@ -426,7 +426,7 @@ public:
 private:
 
     status do_validate(const JsonT& val,
-                       bool optional, const name_rule_map& rules, size_t index) const override
+                       const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
         {
@@ -435,10 +435,10 @@ private:
         auto it = val.find(name_);
         if (it == val.members().end())
         {
-            return optional || min_repetitions_ == 0 ? status::pass : status::name_not_found;
+            return min_repetitions_ == 0 ? status::pass : status::name_not_found;
         }
         
-        return rule_->validate(it->value(), false,rules, index);
+        return rule_->validate(it->value(), rules, index);
     }
 };
 
@@ -474,7 +474,7 @@ public:
 private:
 
     status do_validate(const JsonT& val,
-                       bool optional, const name_rule_map& rules, size_t index) const override
+                       const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_object())
         {
@@ -494,7 +494,7 @@ private:
             {
                 if (std::regex_match(it->name(), pattern))
                 {
-                    result = rule_->validate(it->value(),optional,rules,index);
+                    result = rule_->validate(it->value(),rules,index);
                     if (result != status::fail)
                     {
                         ++count;
@@ -511,29 +511,6 @@ private:
         {
             return status::pass;
         }
-    }
-};
-
-template <class JsonT>
-class optional_rule : public rule<JsonT>
-{
-    typedef typename JsonT::string_type string_type;
-    typedef typename string_type::value_type char_type;
-    typedef typename string_type::allocator_type string_allocator;
-    typedef rule<JsonT> rule_type;
-    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
-
-    std::shared_ptr<rule<JsonT>> rule_;
-public:
-    optional_rule(std::shared_ptr<rule<JsonT>> rule)
-        : rule_(rule)
-    {
-    }
-private:
-
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
-    {
-        return rule_->validate(val, true,rules, index);
     }
 };
 
@@ -580,13 +557,13 @@ public:
 
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         if (index >= max_)
         {
             return status::fail;
         }
-        status result = rule_->validate(val, optional,rules, index);
+        status result = rule_->validate(val,rules, index);
         if (result == status::fail)
         {
             return status::fail;
@@ -617,14 +594,14 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         auto it = rules.find(name_);
         if (it == rules.end())
         {
             return status::fail;
         }
-        return it->second->validate(val,optional,rules, index);
+        return it->second->validate(val,rules, index);
     }
 };
 
@@ -641,7 +618,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_string() ? status::pass : status::fail;
     }
@@ -660,7 +637,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.is_null() ? status::pass : status::fail;
     }
@@ -682,7 +659,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.template is<T>() && val.template as<T>() == value_ ? status::pass : status::fail;
     }
@@ -704,7 +681,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.template is<T>() && val.template as<T>() >= from_ ? status::pass : status::fail;
     }
@@ -726,7 +703,7 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         return val.template is<T>() && val.template as<T>() <= to_ ? status::pass : status::fail;
     }
@@ -765,12 +742,12 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         status result = status::pass;
         for (auto element : members_)
         {
-            result = element->validate(val, optional,rules, index);
+            result = element->validate(val,rules, index);
             if (sequence_ && (result == status::fail || result == status::name_not_found))
             {
                 return status::fail;
@@ -828,7 +805,7 @@ public:
 
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         if (!val.is_array())
         {
@@ -845,7 +822,7 @@ private:
             size_t index = 0;
             do
             {
-                result = elements_[i]->validate(val[j], optional,rules, index);
+                result = elements_[i]->validate(val[j],rules, index);
                 if (sequence_ && result == status::fail)
                 {
                     return result;
@@ -898,12 +875,12 @@ public:
     }
 private:
 
-    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    status do_validate(const JsonT& val, const name_rule_map& rules, size_t index) const override
     {
         status result = status::pass;
         if (index < elements_.size())
         {
-            result = elements_[index]->validate(val,optional,rules, index);
+            result = elements_[index]->validate(val,rules, index);
             if (sequence_ && result == status::fail)
             {
                 return result;
