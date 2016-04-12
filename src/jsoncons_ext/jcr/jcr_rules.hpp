@@ -25,7 +25,7 @@ namespace jsoncons { namespace jcr {
 
 enum class status
 {
-    pass, fail, may_repeat, must_repeat
+    pass, fail, name_not_found, may_repeat, must_repeat
 };
 
 template <class JsonT>
@@ -361,9 +361,38 @@ private:
         auto it = rules.find(name_);
         if (it == rules.end())
         {
-            return min_repetitions_ == 0 ? status::pass : status::fail;
+            return status::fail;
         }
-        return it->second->validate(val,optional,rules, index);
+        status result = it->second->validate(val,optional,rules, index);
+        return min_repetitions_ == 0 && result == status::name_not_found ? status::pass : result;
+    }
+};
+
+template <class JsonT>
+class member_value_rule : public member_rule<JsonT>
+{
+    typedef typename JsonT::string_type string_type;
+    typedef typename string_type::value_type char_type;
+    typedef typename string_type::allocator_type string_allocator;
+    typedef rule<JsonT> rule_type;
+    typedef std::map<string_type,std::shared_ptr<rule_type>> name_rule_map;
+
+    std::shared_ptr<rule_type> base_rule_;
+    size_t min_repetitions_;
+    size_t max_repetitions_;
+public:
+    member_value_rule(std::shared_ptr<rule_type> base_rule,
+                      size_t min_repetitions, size_t max_repetitions)
+        : base_rule_(base_rule), 
+          min_repetitions_(min_repetitions),
+          max_repetitions_(max_repetitions)
+    {
+    }
+private:
+
+    status do_validate(const JsonT& val, bool optional, const name_rule_map& rules, size_t index) const override
+    {
+        return base_rule_->validate(val,optional,rules, index);
     }
 };
 
@@ -406,7 +435,7 @@ private:
         auto it = val.find(name_);
         if (it == val.members().end())
         {
-            return optional || min_repetitions_ == 0 ? status::pass : status::fail;
+            return optional || min_repetitions_ == 0 ? status::pass : status::name_not_found;
         }
         
         return rule_->validate(it->value(), false,rules, index);
@@ -474,8 +503,14 @@ private:
                 ++it;
             }
         }
-        
-        return count < min_repetitions_ ? status::fail : status::pass;
+        if (count < min_repetitions_)
+        {
+            return (count < min_repetitions_ && result != status::fail) ? status::name_not_found : status::fail;
+        }
+        else
+        {
+            return status::pass;
+        }
     }
 };
 
@@ -736,9 +771,9 @@ private:
         for (auto element : members_)
         {
             result = element->validate(val, optional,rules, index);
-            if (sequence_ && result == status::fail)
+            if (sequence_ && (result == status::fail || result == status::name_not_found))
             {
-                return result;
+                return status::fail;
             }
             else if (!sequence_ && result == status::pass)
             {

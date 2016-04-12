@@ -639,6 +639,7 @@ BOOST_AUTO_TEST_CASE(test_name_pattern1)
     }
     )");
     BOOST_CHECK(schema.validate(val1));
+
 }
 
 BOOST_AUTO_TEST_CASE(test_name_pattern2)

@@ -532,11 +532,11 @@ public:
                     auto it = rule_map_.find(string_buffer_);
                     if (it != rule_map_.end())
                     {
-                        rule_ptr = it->second;
+                        rule_ptr = std::make_shared<member_value_rule<JsonT>>(it->second,min_repetitions_,max_repetitions_);
                     }
                     else
                     {
-                        rule_ptr = std::make_shared<jcr_rule_name<JsonT>>(string_buffer_,min_repetitions_,max_repetitions_);
+                        rule_ptr = std::make_shared<member_target_rule<JsonT>>(string_buffer_,min_repetitions_,max_repetitions_);
                     }
                     end_rule(sequence_,rule_ptr);
                 }
@@ -1134,8 +1134,9 @@ public:
                     default:
                         if (('a' <=*p_ && *p_ <= 'z') || ('A' <=*p_ && *p_ <= 'Z'))
                         {
-                            string_buffer_.push_back(*p_);
-                            stack_.back() = states::rule_name;
+                            //string_buffer_.push_back(*p_);
+                            //stack_.back() = states::rule_name;
+                            parse_member_rule();
                         }
                         else
                         {
