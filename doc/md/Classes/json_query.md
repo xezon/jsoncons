@@ -13,6 +13,8 @@ Returns a `json` array of `json` values selected from a root `json` structure.
 [JsonPath](http://goessner.net/articles/JsonPath/) is a creation of Stefan Goessner. JSONPath expressions refer to a JSON text in the same way as XPath expressions refer to an XML document. 
 
 Stefan Goessner's javascript implemention returns `false` in case of no match, but in a note he suggests an alternative is to return an empty array. The `jsoncons` implementation takes that alternative and returns an empty array in case of no match.
+
+The [Jayway JsonPath Evaluator](http://jsonpath.herokuapp.com/) page allows you to experiment with `JsonPath` online.
     
 ### Stefan Goessner's JsonPath
 

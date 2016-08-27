@@ -26,7 +26,7 @@ BOOST_AUTO_TEST_CASE(test_query_set)
     json val2 = json::object{{"first", 1},{"second", 2}};
     std::vector<json*> v = {&val1,&val2};
     
-    json_query_set<json> qs(std::move(v));
+    json_query_set<json> qs(v);
 
     std::cout << pretty_print(qs) << std::endl;
 
