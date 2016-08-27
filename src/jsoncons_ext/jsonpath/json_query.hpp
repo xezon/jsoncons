@@ -488,6 +488,7 @@ public:
                     break;
                 case ',':
                     select_values(buffer_);
+                    state_ = states::left_bracket;
                     break;
                 case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
                     start_ = start_*10 + static_cast<size_t>(*p_-'0');
@@ -539,7 +540,6 @@ public:
                                 select_values(*(stack_.back()[i]), index.as_string());
                             }
                         }
-                        recursive_descent_ = false;
                         buffer_.clear();
                         state_ = states::expect_comma_or_right_bracket;
                     }
@@ -867,7 +867,6 @@ public:
                 select_values(*(stack_.back()[i]), name);
             }
         }
-        recursive_descent_ = false;
         buffer_.clear();
     }
 
