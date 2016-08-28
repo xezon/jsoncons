@@ -1441,7 +1441,7 @@ public:
                     }
                     else
                     {
-                        json_char_traits<char_type, sizeof(char_type)>::append_codepoint_to_string(cp_, string_buffer_);
+                        json_text_traits<char_type>::append_codepoint_to_string(cp_, string_buffer_);
                         stack_.back() = states::string;
                     }
                 }
@@ -1507,7 +1507,7 @@ public:
                 {
                     append_second_codepoint(*p_);
                     uint32_t cp = 0x10000 + ((cp_ & 0x3FF) << 10) + (cp2_ & 0x3FF);
-                    json_char_traits<char_type, sizeof(char_type)>::append_codepoint_to_string(cp, string_buffer_);
+                    json_text_traits<char_type>::append_codepoint_to_string(cp, string_buffer_);
                     stack_.back() = states::string;
                 }
                 ++p_;
