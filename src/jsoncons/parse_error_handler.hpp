@@ -60,7 +60,7 @@ private:
 
 typedef parse_exception json_parse_exception;
 
-template<typename CharT>
+template<class CharT>
 class basic_parsing_context
 {
 public:
@@ -95,7 +95,7 @@ private:
 typedef basic_parsing_context<char> parsing_context;
 typedef basic_parsing_context<wchar_t> wparsing_context;
 
-template <typename CharT>
+template <class CharT>
 class basic_parse_error_handler
 {
 public:
@@ -103,16 +103,14 @@ public:
     {
     }
 
-    void warning(std::error_code ec,
-                 const basic_parsing_context<CharT>& context) throw (parse_exception) 
-    {
-        do_warning(ec,context);
-    }
-
     void error(std::error_code ec,
                const basic_parsing_context<CharT>& context) throw (parse_exception) 
     {
-        do_error(ec,context);
+        if (do_error(ec,context))
+        {
+            throw parse_exception(ec,context.line_number(),context.column_number());
+        }
+        // else attempt recovery
     }
 
     void fatal_error(std::error_code ec,
@@ -123,20 +121,17 @@ public:
     }
 
 private:
-    virtual void do_warning(std::error_code,
-                            const basic_parsing_context<CharT>& context) throw (parse_exception) = 0;
-
-    virtual void do_error(std::error_code,
-                          const basic_parsing_context<CharT>& context) throw (parse_exception) = 0;
+    virtual bool do_error(std::error_code,
+                          const basic_parsing_context<CharT>& context) = 0;
 
     virtual void do_fatal_error(std::error_code,
-                                const basic_parsing_context<CharT>& context) throw (parse_exception)
+                                const basic_parsing_context<CharT>& context)
     {
         (void)context;
     }
 };
 
-template <typename CharT>
+template <class CharT>
 class basic_default_parse_error_handler : public basic_parse_error_handler<CharT>
 {
 public:
@@ -146,16 +141,10 @@ public:
         return instance;
     }
 private:
-    virtual void do_warning(std::error_code,
-                            const basic_parsing_context<CharT>& context) throw (parse_exception) 
+    virtual bool do_error(std::error_code,
+                          const basic_parsing_context<CharT>&) 
     {
-        (void)context;
-    }
-
-    virtual void do_error(std::error_code ec,
-                          const basic_parsing_context<CharT>& context) throw (parse_exception)
-    {
-        throw parse_exception(ec,context.line_number(),context.column_number());
+        return true;
     }
 };
 

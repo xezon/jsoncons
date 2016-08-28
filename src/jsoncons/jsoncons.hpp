@@ -34,7 +34,7 @@ public:
     virtual const char* what() const JSONCONS_NOEXCEPT = 0;
 };
 
-template <typename Base>
+template <class Base>
 class json_exception_0 : public Base, public virtual json_exception
 {
 public:
@@ -53,7 +53,7 @@ private:
     std::string message_;
 };
 
-template <typename Base>
+template <class Base>
 class json_exception_1 : public Base, public virtual json_exception
 {
 public:
@@ -99,72 +99,41 @@ private:
     throw jsoncons::json_exception_0<std::runtime_error>("assertion '" #x "' failed at " __FILE__ ":" \
             JSONCONS_STR(__LINE__)); }
 
-// json_char_traits
+// json_text_traits
 
 const uint16_t min_lead_surrogate = 0xD800;
 const uint16_t max_lead_surrogate = 0xDBFF;
 const uint16_t min_trail_surrogate = 0xDC00;
 const uint16_t max_trail_surrogate = 0xDFFF;
 
-template <typename CharT>
-struct json_literals
+template <class CharT>
+struct json_text_traits
 {
 };
 
 template <>
-struct json_literals<char>
+struct json_text_traits<char>
 {
-    static std::pair<const char*,size_t> null_literal() 
+    static const std::pair<const char*,size_t>& null_literal() 
     {
-        static const char* value = "null";
-        return std::pair<const char*,size_t>(value,4);
+        static const std::pair<const char*,size_t> value = {"null",4};
+        return value;
     }
 
-    static std::pair<const char*,size_t> true_literal() 
+    static const std::pair<const char*,size_t>& true_literal() 
     {
-        static const char* value = "true";
-        return std::pair<const char*,size_t>(value,4);
+        static const std::pair<const char*,size_t> value = {"true",4};
+        return value;
     }
 
-    static std::pair<const char*,size_t> false_literal() 
+    static const std::pair<const char*,size_t>& false_literal() 
     {
-        static const char* value = "false";
-        return std::pair<const char*,size_t>(value,5);
-    }
-};
-
-template <>
-struct json_literals<wchar_t> 
-{
-    static std::pair<const wchar_t*,size_t> null_literal() 
-    {
-        static const wchar_t* value = L"null";
-        return std::pair<const wchar_t*,size_t>(value,4);
+        static const std::pair<const char*,size_t> value = {"false",5};
+        return value;
     }
 
-    static std::pair<const wchar_t*,size_t> true_literal() 
-    {
-        static const wchar_t* value = L"true";
-        return std::pair<const wchar_t*,size_t>(value,4);
-    }
-
-    static std::pair<const wchar_t*,size_t> false_literal() 
-    {
-        static const wchar_t* value = L"false";
-        return std::pair<const wchar_t*,size_t>(value,5);
-    }
-};
-
-template <typename CharT,size_t Size>
-struct json_char_traits
-{
-};
-
-template <>
-struct json_char_traits<char,1>
-{
     static uint32_t convert_char_to_codepoint(const char*& it, 
-                                              const char*)
+                                              const char* end)
     {
         char c = *it;
         uint32_t u(c >= 0 ? c : 256 + c );
@@ -172,13 +141,13 @@ struct json_char_traits<char,1>
         if (u < 0x80)
         {
         }
-        else if ((u >> 5) == 0x6)
+        else if ((u >> 5) == 0x6 && (end-it) > 1)
         {
             c = *(++it);
             u = (c >= 0 ? c : 256 + c );
             cp = ((cp << 6) & 0x7ff) + (u & 0x3f);
         }
-        else if ((u >> 4) == 0xe)
+        else if ((u >> 4) == 0xe && (end-it) > 2)
         {
             c = *(++it);
             u = (c >= 0 ? c : 256 + c );
@@ -187,7 +156,7 @@ struct json_char_traits<char,1>
             u = (c >= 0 ? c : 256 + c );
             cp += (u) & 0x3f;
         }
-        else if ((u >> 3) == 0x1e)
+        else if ((u >> 3) == 0x1e && (end-it) > 3)
         {
             c = *(++it);
             u = (c >= 0 ? c : 256 + c );
@@ -233,8 +202,13 @@ struct json_char_traits<char,1>
 
 };
 
+template <class CharT,size_t Size>
+struct json_wchar_traits
+{
+};
+
 template <>
-struct json_char_traits<wchar_t,2> // assume utf16
+struct json_wchar_traits<wchar_t,2> // assume utf16
 {
     static void append_codepoint_to_string(uint32_t cp, std::wstring& s)
     {
@@ -249,10 +223,10 @@ struct json_char_traits<wchar_t,2> // assume utf16
         }
     }
 
-    static uint32_t convert_char_to_codepoint(const wchar_t*& it, const wchar_t*)
+    static uint32_t convert_char_to_codepoint(const wchar_t*& it, const wchar_t* end)
     {
         uint32_t cp = (0xffff & *it);
-        if ((cp >= min_lead_surrogate && cp <= max_lead_surrogate)) // surrogate pair
+        if ((cp >= min_lead_surrogate && cp <= max_lead_surrogate) && (end-it) > 1) // surrogate pair
         {
             uint32_t trail_surrogate = 0xffff & *(++it);
             cp = (cp << 10) + trail_surrogate + 0x10000u - (min_lead_surrogate << 10) - min_trail_surrogate;
@@ -262,7 +236,7 @@ struct json_char_traits<wchar_t,2> // assume utf16
 };
 
 template <>
-struct json_char_traits<wchar_t,4> // assume utf32
+struct json_wchar_traits<wchar_t,4> // assume utf32
 {
     static void append_codepoint_to_string(uint32_t cp, std::wstring& s)
     {
@@ -280,6 +254,38 @@ struct json_char_traits<wchar_t,4> // assume utf32
     {
         uint32_t cp = static_cast<uint32_t>(*it);
         return cp;
+    }
+};
+
+template <>
+struct json_text_traits<wchar_t> 
+{
+    static const std::pair<const wchar_t*,size_t>& null_literal() 
+    {
+        static const std::pair<const wchar_t*,size_t> value = {L"null",4};
+        return value;
+    }
+
+    static const std::pair<const wchar_t*,size_t>& true_literal() 
+    {
+        static const std::pair<const wchar_t*,size_t> value = {L"true",4};
+        return value;
+    }
+
+    static const std::pair<const wchar_t*,size_t>& false_literal() 
+    {
+        static const std::pair<const wchar_t*,size_t> value = {L"false",5};
+        return value;
+    }
+
+    static void append_codepoint_to_string(uint32_t cp, std::wstring& s)
+    {
+        json_wchar_traits<wchar_t,sizeof(wchar_t)>::append_codepoint_to_string(cp,s);
+    }
+
+    static uint32_t convert_char_to_codepoint(const wchar_t*& it, const wchar_t* end)
+    {
+        return json_wchar_traits<wchar_t,sizeof(wchar_t)>::convert_char_to_codepoint(it, end);
     }
 };
 
@@ -303,7 +309,7 @@ bool is_non_ascii_character(uint32_t c)
     return c >= 0x80;
 }
 
-template <typename T>
+template <class T>
 struct type_wrapper
 {
     typedef T* pointer_type;
@@ -313,7 +319,7 @@ struct type_wrapper
     typedef const T& const_reference;
 };
 
-template <typename T>
+template <class T>
 struct type_wrapper<const T>
 {
     typedef T* pointer_type;
@@ -323,7 +329,7 @@ struct type_wrapper<const T>
     typedef const T& const_reference;
 };
 
-template <typename T>
+template <class T>
 struct type_wrapper<T&>
 {
     typedef T* pointer_type;
@@ -333,7 +339,7 @@ struct type_wrapper<T&>
     typedef const T& const_reference;
 };
 
-template <typename T>
+template <class T>
 struct type_wrapper<const T&>
 {
     typedef T* pointer_type;

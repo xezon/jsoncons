@@ -1,6 +1,6 @@
 // Copyright 2013 Daniel Parker
 // Distributed under Boost license
-
+#define JSONCONS_NO_DEPRECATED
 #ifdef __linux__
 #define BOOST_TEST_DYN_LINK
 #endif
@@ -20,13 +20,72 @@ BOOST_AUTO_TEST_SUITE(json_array_test_suite)
 
 BOOST_AUTO_TEST_CASE(test_initializer_list_of_integers)
 {
-    json arr = {0,1,2,3};
+    json arr = json::array{0,1,2,3};
     BOOST_CHECK(arr.is_array());
     BOOST_CHECK(arr.size() == 4);
     for (size_t i = 0; i < arr.size(); ++i)
     {
         BOOST_CHECK_EQUAL(i,arr[i].as<size_t>());
     }
+}
+
+BOOST_AUTO_TEST_CASE(test_assignment_to_initializer_list)
+{
+    json arr = json::array({0,1,2,3});
+
+    arr = json::array{0,1,2,3};
+    BOOST_CHECK(arr.is_array());
+    BOOST_CHECK(arr.size() == 4);
+    for (size_t i = 0; i < arr.size(); ++i)
+    {
+        BOOST_CHECK_EQUAL(i,arr[i].as<size_t>());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_assignment_to_initializer_list2)
+{
+    json val;
+    val["data"]["id"] = json::array{0,1,2,3,4,5,6,7};
+    val["data"]["item"] = json::array{json::array{2},
+                                      json::array{4,5,2,3},
+                                      json::array{4},
+                                      json::array{4,5,2,3},
+                                      json::array{2},
+                                      json::array{4,5,3},
+                                      json::array{2},
+                                      json::array{4,3}};
+
+    BOOST_CHECK(val["data"]["item"][0][0] == json(2));
+    BOOST_CHECK(val["data"]["item"][1][0] == json(4));
+    BOOST_CHECK(val["data"]["item"][2][0] == json(4));
+    BOOST_CHECK(val["data"]["item"][3][0] == json(4));
+    BOOST_CHECK(val["data"]["item"][4][0] == json(2));
+    BOOST_CHECK(val["data"]["item"][5][0] == json(4));
+    BOOST_CHECK(val["data"]["item"][6][0] == json(2));
+    BOOST_CHECK(val["data"]["item"][7][0] == json(4));
+    BOOST_CHECK(val["data"]["item"][7][1] == json(3));
+}
+
+BOOST_AUTO_TEST_CASE(test_assignment_to_initializer_list3)
+{
+    json val;
+    val["data"]["id"] = json::array{0,1,2,3,4,5,6,7};
+    val["data"]["item"] = json::array{json::object{{"first",1},{"second",2}}};
+
+    std::cout << val << std::endl;
+}
+
+BOOST_AUTO_TEST_CASE(test_assign_initializer_list_of_object)
+{
+    json arr = json::array();
+
+    json transaction;
+    transaction["Debit"] = 10000;
+
+    arr = json::array{transaction};
+    BOOST_CHECK(arr.is_array());
+    BOOST_CHECK(arr.size() == 1);
+    BOOST_CHECK_EQUAL(arr[0], transaction);
 }
 
 BOOST_AUTO_TEST_CASE(test_initializer_list_of_objects)
@@ -39,7 +98,7 @@ BOOST_AUTO_TEST_CASE(test_initializer_list_of_objects)
     book2["author"] = "Jones";
     book2["title"] = "New Things";
 
-    json arr = {book1, book2};
+    json arr = json::array{book1, book2};
     BOOST_CHECK(arr.is_array());
     BOOST_CHECK(arr.size() == 2);
 
@@ -154,9 +213,10 @@ BOOST_AUTO_TEST_CASE(test_reserve_array_capacity)
     BOOST_CHECK(cities.size() == 3);
 }
 
+
 BOOST_AUTO_TEST_CASE(test_one_dim_array)
 {
-    basic_json<char,std::allocator<char>> a = basic_json<char,std::allocator<char>>::make_array<1>(10,0);
+    basic_json<char,json_traits<char>,std::allocator<char>> a = basic_json<char,json_traits<char>,std::allocator<char>>::make_array<1>(10,0);
     BOOST_CHECK(a.size() == 10);
     BOOST_CHECK(a[0].as_integer() == 0);
     a[1] = 1;
@@ -226,5 +286,23 @@ BOOST_AUTO_TEST_CASE(test_assign_vector)
     BOOST_CHECK_EQUAL(val[2].as<std::string>(), std::string("Montreal"));
 
 }
+
+BOOST_AUTO_TEST_CASE(test_assign_vector_of_bool)
+{
+    std::vector<bool> vec;
+    vec.push_back(true);
+    vec.push_back(false);
+    vec.push_back(true);
+
+    json val;
+    val = vec;
+
+    BOOST_CHECK(val.size() == 3);
+    BOOST_CHECK_EQUAL(val[0].as<bool>(), true);
+    BOOST_CHECK_EQUAL(val[1].as<bool>(), false);
+    BOOST_CHECK_EQUAL(val[2].as<bool>(), true);
+
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 

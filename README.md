@@ -1,14 +1,16 @@
 # jsoncons: a C++ library for json construction
 
-jsoncons is a C++ library for the construction of [JavaScript Object Notation (JSON)](http://www.json.org). It supports parsing a JSON file or string into a `json` value, building a `json` value in C++ code, and serializing a `json` value to a file or string. It also provides an API for generating json read and write events in code, somewhat analogously to SAX processing in the XML world. Consult the wiki for the latest [documentation and tutorials](https://github.com/danielaparker/jsoncons/wiki) and [roadmap](https://github.com/danielaparker/jsoncons/wiki/Roadmap). 
+jsoncons is a C++ library for the construction of [JavaScript Object Notation (JSON)](http://www.json.org). It supports parsing a JSON file or string into a `json` value, building a `json` value in C++ code, and serializing a `json` value to a file or string. It also provides an API for generating json read and write events in code, somewhat analogously to SAX processing in the XML world. 
 
-jsoncons uses some features that are new to C++ 11, including [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2013, MS VC++ 2015, and recent versions of clang and gcc.
+jsoncons uses some features that are new to C++ 11, including [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, and recent versions of clang. Note that `std::regex` isn't fully implemented in GCC 4.8., so `jsoncons_ext/jsonpath` regular expression filters aren't supported.
 
 The [code repository](https://github.com/danielaparker/jsoncons) and [releases](https://github.com/danielaparker/jsoncons/releases) are on github. It is distributed under the [Boost Software License](http://www.boost.org/users/license.html)
 
 The library has a number of features, which are listed below:
 
 - Uses the standard C++ input/output streams library
+- Supports converting to and from the standard library sequence and associative containers
+- Supports object members sorted alphabetically by name or in original order
 - Implements parsing and serializing JSON text in UTF-8 for narrow character strings and streams
 - Supports UTF16 (UTF32) encodings with size 2 (size 4) wide characters
 - Correctly handles surrogate pairs in \uXXXX escape sequences
@@ -18,27 +20,26 @@ The library has a number of features, which are listed below:
 - Supports Nan, Inf and -Inf replacement
 - Supports reading a sequence of JSON texts from a stream
 - Supports optional escaping of non-ascii UTF-8 octets
-- Allows extensions to the types accepted by the json class accessors and modifiers
-- Supports storing "any" values in a json object or array, with specialized serialization
+- Allows extensions to the types accepted by the json class constructors, accessors and modifiers
 - Supports reading (writing) JSON values from (to) CSV files
+- Supports serializing JSON values to [JSONx](http://www.ibm.com/support/knowledgecenter/SS9H2Y_7.5.0/com.ibm.dp.doc/json_jsonx.html) (XML)
 - Passes all tests from [JSON_checker](http://www.json.org/JSON_checker/) except `fail1.json`, which is allowed in [RFC7159](http://www.ietf.org/rfc/rfc7159.txt)
 - Handles JSON texts of arbitrarily large depth of nesting, a limit can be set if desired
 - Supports [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/)
 
-As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the [deprecated list](https://github.com/danielaparker/jsoncons/wiki/deprecated) for the status of old names. The deprecated names can be suppressed by defining macro JSONCONS_NO_DEPRECATED, which is recommended for new code.
+As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the [deprecated list](https://github.com/danielaparker/jsoncons/wiki/deprecated) for the status of old names. The deprecated names can be suppressed by defining macro `JSONCONS_NO_DEPRECATED`, which is recommended for new code.
 
-What's new on master
+## Note
+The `json` initializer-list constructor has been removed, it gives inconsistent results when an initializer has zero elements, or one element of the type being initialized (`json`). Please replace
 
-- Going forward, support for VC++ 2010 has been dropped - VC++ 2013 or later is required.  
+`json j = {1,2,3}` with `json j = json::array{1,2,3}`, and 
 
-- The deprecated `json` member constants `null`, `an_object`, and `an_array` have been removed, they're incompatible with stateful allocators (see the deprecated list for alternatives.)
+`json j = {{1,2,3},{4,5,6}}` with `json j = json::array{json::array{1,2,3},json::array{4,5,6}}`
 
-- Added `json` `std::initializer_list` constructor for constructing arrays, e.g.
+Initializer-list constructors are now supported in `json::object` as well as `json::array`, e.g.
 ```c++
-    json image_formats = {"JPEG","PSD","TIFF","DNG"};
-``` 
-
-- When parsing fractional numbers in text, floating point number precision is retained, and made available to serialization to preserve round-trip. The default output precision has been changed from 15 to 16.
+json j = json::object{{"first",1},{"second",json::array{1,2,3}}};
+```
 
 ## Benchmarks
 
@@ -50,7 +51,7 @@ The jsoncons library is header-only: it consists solely of header files containi
 
 To install the jsoncons library, download the zip file, unpack the release, under `src` find the directory `jsoncons`, and copy it to your `include` directory. If you wish to use extensions, copy the `jsoncons_ext` directory as well. 
 
-For a quick guide, see the article [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons).
+For a quick guide, see the article [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons). Consult the wiki for the latest [documentation and tutorials](https://github.com/danielaparker/jsoncons/wiki) and [roadmap](https://github.com/danielaparker/jsoncons/wiki/Roadmap). 
 
 ## Building the test suite and examples with CMake
 
@@ -63,6 +64,24 @@ Instructions for building the test suite with CMake may be found in
 Instructions for building the examples with CMake may be found in
 
     jsoncons/examples/build/cmake/README.txt
+
+## About jsoncons::basic_json
+
+The jsoncons library provides a `basic_json` class template, which is the generalization of a `json` value for different character types, different policies for ordering name-value pairs, etc.
+```c++
+typedef basic_json<char,
+                   JsonTraits = json_traits<char>,
+                   Allocator = std::allocator<char>> json;
+```
+The library includes four instantiations of `basic_json`:
+
+- [json](https://github.com/danielaparker/jsoncons/wiki/json) constructs a narrow character json value that sorts name-value members alphabetically
+
+- [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) constructs a narrow character json value that retains the original name-value insertion order
+
+- [wjson](https://github.com/danielaparker/jsoncons/wiki/wjson) constructs a wide character json value that sorts name-value members alphabetically
+
+- [wojson](https://github.com/danielaparker/jsoncons/wiki/wojson) constructs a wide character json value that retains the original name-value insertion order
 
 ## Examples
 
@@ -125,10 +144,6 @@ The examples below illustrate the use of the [json](https://github.com/danielapa
 
     // Construct a booklist array
 
-    // The short way:
-    // json booklist = {book3, book4, book1, book2};
-
-    // The long way:
     json booklist = json::array();
 
     // For efficiency, reserve memory, to avoid reallocations
@@ -151,7 +166,7 @@ The examples below illustrate the use of the [json](https://github.com/danielapa
 
 ```c++
     //Loop through the booklist elements using a range-based for loop    
-    for (auto book : booklist.elements())
+    for (const auto& book : booklist.elements())
     {
         std::cout << book["title"].as<std::string>()
                   << ","
@@ -162,7 +177,7 @@ The examples below illustrate the use of the [json](https://github.com/danielapa
     json& book = booklist[1];
 
     //Loop through the book's name-value pairs using a range-based for loop    
-    for (auto member : book.members())
+    for (const auto& member : book.members())
     {
         std::cout << member.name()
                   << ","
@@ -362,10 +377,6 @@ Result:
 
     // Construct a booklist array
 
-    // The short way:
-    // wjson booklist = {book3, book4, book1, book2};
-
-    // The long way:    
     wjson booklist = wjson::array();
 
     // For efficiency, reserve memory, to avoid reallocations
@@ -387,7 +398,7 @@ Result:
 ```
 ```c++
     //Loop through the booklist elements using a range-based for loop    
-    for (auto book : booklist.elements())
+    for (const auto& book : booklist.elements())
     {
         std::wcout << book[L"title"].as<std::wstring>()
                    << L","
@@ -398,7 +409,7 @@ Result:
     wjson& book = booklist[1];
 
     //Loop through the book's name-value pairs using a range-based for loop    
-    for (auto member : book.members())
+    for (const auto& member : book.members())
     {
         std::wcout << member.name()
                    << L","
@@ -438,7 +449,7 @@ Result:
 ```
 ```c++
     // Serialize the booklist to a file
-    std::wofstream os(L"booklist2.json");
+    std::wofstream os("booklist2.json");
     os << pretty_print(booklist);
 ```
 ### wjson query

@@ -263,7 +263,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter_category_eq_reference)
 
 BOOST_AUTO_TEST_CASE(test_jsonpath_filter3)
 {
-	jsonpath_fixture fixture;
+    jsonpath_fixture fixture;
 
     json root = json::parse(jsonpath_fixture::store_text());
 
@@ -280,7 +280,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter3)
             expected.add(books[i]);
         }
     }
-	//std::cout << pretty_print(result) << std::endl;
+    //std::cout << pretty_print(result) << std::endl;
     //std::cout << pretty_print(expected) << std::endl;
 
     BOOST_CHECK_EQUAL(expected,result);
@@ -290,7 +290,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter3)
 
 BOOST_AUTO_TEST_CASE(test_jsonpath_book_isbn)
 {
-	jsonpath_fixture fixture;
+    jsonpath_fixture fixture;
 
     json root = json::parse(jsonpath_fixture::store_text());
 
@@ -311,7 +311,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_book_isbn)
 
 BOOST_AUTO_TEST_CASE(test_jsonpath_book_empty_isbn)
 {
-	jsonpath_fixture fixture;
+    jsonpath_fixture fixture;
 
     json root = json::parse(jsonpath_fixture::store_text_empty_isbn());
 
@@ -332,7 +332,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_book_empty_isbn)
 
 BOOST_AUTO_TEST_CASE(test_jsonpath_filter4)
 {
-	jsonpath_fixture fixture;
+    jsonpath_fixture fixture;
 
     json root = json::parse(jsonpath_fixture::store_text());
 
@@ -348,7 +348,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter4)
             expected.add(books[i]);
         }
     }
-	//std::cout << pretty_print(result) << std::endl;
+    //std::cout << pretty_print(result) << std::endl;
     //std::cout << pretty_print(expected) << std::endl;
 
     BOOST_CHECK_EQUAL(expected,result);
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_array_length)
 
     json result = json_query(root,"$..book.length");
 
-	//std::cout << pretty_print(result) << std::endl;
+    //std::cout << pretty_print(result) << std::endl;
 
     BOOST_CHECK_EQUAL(1,result.size());
     BOOST_CHECK_EQUAL(root["store"]["book"].size(),result[0].as<size_t>());
@@ -522,6 +522,10 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_tests2)
     BOOST_CHECK_EQUAL(expected6,result6);
 }
 
+#if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ < 9)
+// GCC 4.8 has broken regex support: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53631
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(test_jsonpath_store_book_regex, 3)
+#endif
 BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_regex)
 {
     json root = json::parse(jsonpath_fixture::store_text());
@@ -577,6 +581,136 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_everything_in_store)
     BOOST_CHECK_EQUAL(expected,result);
 }
 
+BOOST_AUTO_TEST_CASE(test_jsonpath_last_of_two_arrays)
+{
+    json val = json::parse(R"(
+{ "store": {
+    "book": [ 
+          { "author": "Nigel Rees"
+          },
+          { "author": "Evelyn Waugh"
+          },
+          { "author": "Herman Melville"
+          }
+        ]
+    },
+    "Roman": {
+    "book": [ 
+          { "author": "Tolstoy L"
+          },
+          { "author": "Tretyakovskiy R"
+          },
+          { "author": "Kulik M"
+          }
+        ]
+    }  
+}
+    )");
+
+    json expected = json::parse(R"(
+[
+    { "author": "Kulik M"},
+    { "author": "Herman Melville"}
+]
+    )");
+
+    json result = json_query(val, "$..book[(@.length - 1)]");
+
+    BOOST_CHECK_EQUAL(expected,result);
+}
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_next_to_last_of_two_arrays)
+{
+    json val = json::parse(R"(
+{ "store": {
+    "book": [ 
+          { "author": "Nigel Rees"
+          },
+          { "author": "Evelyn Waugh"
+          },
+          { "author": "Herman Melville"
+          }
+        ]
+    },
+    "Roman": {
+    "book": [ 
+          { "author": "Tolstoy L"
+          },
+          { "author": "Tretyakovskiy R"
+          },
+          { "author": "Kulik M"
+          }
+        ]
+    }  
+}
+    )");
+
+    json expected = json::parse(R"(
+[
+    { "author": "Tretyakovskiy R"},
+    { "author": "Evelyn Waugh"}
+]
+    )");
+
+    json result = json_query(val, "$..book[(@.length - 2)]");
+
+    BOOST_CHECK_EQUAL(expected,result);
+
+    json expected2 = json::parse(R"(
+[
+    "Tolstoy L",
+    "Nigel Rees"
+]
+    )");
+    std::string path2 = "$..[0].author";
+    json result2 = json_query(val, path2);
+    BOOST_CHECK_EQUAL(expected2,result2);
+
+}
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_aggregation)
+{
+    json val = json::parse(R"(
+{
+  "firstName": "John",
+  "lastName" : "doe",
+  "age"      : 26,
+  "address"  : {
+    "streetAddress": "naist street",
+    "city"         : "Nara",
+    "postalCode"   : "630-0192"
+  },
+  "phoneNumbers": [
+    {
+      "type"  : "iPhone",
+      "number": "0123-4567-8888"
+    },
+    {
+      "type"  : "home",
+      "number": "0123-4567-8910"
+    }
+  ]
+}
+    )");
+
+    json expected = json::parse(R"(
+["John","doe"]
+)");
+
+    json result2 = json_query(val, "$['firstName','lastName']");
+    BOOST_CHECK_EQUAL(expected, result2);
+
+    json result3 = json_query(val, "$[\"firstName\",\"lastName\"]");
+    BOOST_CHECK_EQUAL(expected, result3);
+
+    json expected4 = json::parse(R"(
+["John","Nara"]
+)");
+    std::string path4 = "$..['firstName','city']";
+
+    json result4 = json_query(val, path4);
+    BOOST_CHECK_EQUAL(expected4, result4);
+}
 BOOST_AUTO_TEST_SUITE_END()
 
 

@@ -48,23 +48,23 @@ BOOST_AUTO_TEST_CASE(test_object_key_proxy)
     b["key2"] = json();
     b["key2"]["key3"] = std::move(a);
 
-	BOOST_CHECK(a.is_null());
+    BOOST_CHECK(a.is_null());
 }
 
 BOOST_AUTO_TEST_CASE(test_count)
 {
-	json a;
-	a["key1"] = "value1";
-	a["key2"] = "value2";
+    json a;
+    a["key1"] = "value1";
+    a["key2"] = "value2";
 
-	BOOST_CHECK_EQUAL(1, a.count("key1"));
-	BOOST_CHECK_EQUAL(1, a.count("key2"));
-	BOOST_CHECK_EQUAL(0, a.count("key3"));
+    BOOST_CHECK_EQUAL(1, a.count("key1"));
+    BOOST_CHECK_EQUAL(1, a.count("key2"));
+    BOOST_CHECK_EQUAL(0, a.count("key3"));
 
-	json b = json::parse(
-		"{\"key1\":\"a value\",\"key1\":\"another value\"}"
-		);
-	BOOST_CHECK_EQUAL(2, b.count("key1"));
+    json b = json::parse(
+        "{\"key1\":\"a value\",\"key1\":\"another value\"}"
+        );
+    BOOST_CHECK_EQUAL(2, b.count("key1"));
 }
 
 BOOST_AUTO_TEST_CASE(test_find)
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE(test_find)
     json::object_iterator it3 =  obj.find("key4");
     BOOST_CHECK(it3 != obj.members().end());
     BOOST_CHECK_EQUAL("value4",it3->value().as_cstring());
-	BOOST_CHECK_EQUAL("value4", it3->value().as<const char*>());
+    BOOST_CHECK_EQUAL("value4", it3->value().as<const char*>());
 }
 
 BOOST_AUTO_TEST_CASE(test_as)
@@ -119,12 +119,15 @@ BOOST_AUTO_TEST_CASE(test_as)
     short_val = parent["child"]["field2"].as<short>();
     BOOST_CHECK_EQUAL(short_val,1);
 
-    json::object x = parent["child"].as<json::object>();
+    //json::object x = parent["child"].as<json::object>();
+    // Compile time error, "as<Json::object> not supported"
 
     json empty;
     BOOST_CHECK(empty.is_object());
     BOOST_CHECK(empty.empty());
-    json::object y = empty.as<json::object>();
+
+    //json::object y = empty.as<json::object>();
+    // Compile time error, "as<Json::object> not supported"
 }
 
 BOOST_AUTO_TEST_CASE(test_is)
@@ -237,7 +240,7 @@ BOOST_AUTO_TEST_CASE(test_is_type)
     BOOST_CHECK(obj["false"].is_bool());
     BOOST_CHECK(obj["false"].is<bool>());
 
-    obj["null1"] = json::null_type();
+    obj["null1"] = json::null();
     BOOST_CHECK(obj["null1"].is_null());
 
     obj["object"] = json();
@@ -272,6 +275,18 @@ BOOST_AUTO_TEST_CASE(test_as_vector_of_double)
     BOOST_CHECK_CLOSE(v[3],3.1,0.0000000001);
 }
 
+BOOST_AUTO_TEST_CASE(test_as_vector_of_bool)
+{
+    std::string s("[true,false,true]");
+    json val = json::parse(s);
+
+    std::vector<bool> v = val.as<std::vector<bool>>(); 
+    BOOST_CHECK(v.size() == 3);
+    BOOST_CHECK_EQUAL(v[0],true);
+    BOOST_CHECK_EQUAL(v[1],false);
+    BOOST_CHECK_EQUAL(v[2],true);
+}
+
 BOOST_AUTO_TEST_CASE(test_as_vector_of_string)
 {
     std::string s("[\"Hello\",\"World\"]");
@@ -292,17 +307,6 @@ BOOST_AUTO_TEST_CASE(test_as_vector_of_char)
     BOOST_CHECK(v.size() == 2);
     BOOST_CHECK(v[0] == 20);
     BOOST_CHECK(v[1] == 30);
-}
-
-BOOST_AUTO_TEST_CASE(test_as_vector_of_bool)
-{
-    std::string s("[true,false]");
-    json val = json::parse(s);
-
-    std::vector<bool> v = val.as<std::vector<bool>>(); 
-    BOOST_CHECK(v.size() == 2);
-    BOOST_CHECK(v[0]);
-    BOOST_CHECK(!v[1]);
 }
 
 BOOST_AUTO_TEST_CASE(test_as_vector_of_int)

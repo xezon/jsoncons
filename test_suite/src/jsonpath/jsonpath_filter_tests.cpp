@@ -73,7 +73,6 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter)
     BOOST_CHECK_EQUAL(json(1), result3);
 
 }
-
 BOOST_AUTO_TEST_CASE(test_jsonpath_filter_exclaim)
 {
     size_t line = 1;
@@ -95,9 +94,12 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter_exclaim)
     BOOST_CHECK_EQUAL(json(true),result2);
 }
 
+
 BOOST_AUTO_TEST_CASE(test_jsonpath_index_expression)
 {
     json root = json::parse(jsonpath_filter_fixture::store_text());
+    std::cout << pretty_print(root) << std::endl;
+    std::cout << "$..book[(@.length-1)]" << std::endl;
 
     json result = json_query(root,"$..book[(@.length-1)]");
 
@@ -164,6 +166,10 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_filter_uni)
     BOOST_CHECK_EQUAL(json(0),result1);
 }
 
+#if defined(__GNUC__) && (__GNUC__ == 4 && __GNUC_MINOR__ < 9)
+// GCC 4.8 has broken regex support: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53631
+BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES(test_jsonpath_filter_regex, 2)
+#endif
 BOOST_AUTO_TEST_CASE(test_jsonpath_filter_regex)
 {
     size_t line = 1;

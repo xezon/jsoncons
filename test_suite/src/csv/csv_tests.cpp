@@ -32,39 +32,39 @@ BOOST_AUTO_TEST_CASE(csv_test_empty_values)
     json_deserializer handler;
 
     csv_parameters params;
-    params.assume_header(true);
-    params.column_types({"boolean","integer","float","string"});
+    params.assume_header(true)
+          .column_types({"boolean","integer","float","string"});
 
     csv_reader reader(is,handler,params);
     reader.read();
     json val = handler.get_result();
     std::cout << pretty_print(val) << std::endl; 
 
-    BOOST_CHECK(val[0]["bool-f"] == null_type());
+    BOOST_CHECK(val[0]["bool-f"].is_null());
     BOOST_CHECK(val[0]["bool-f"].is<null_type>());
-    BOOST_CHECK(val[0]["int-f"] == null_type());
+    BOOST_CHECK(val[0]["int-f"].is_null());
     BOOST_CHECK(val[0]["int-f"].is<null_type>());
-    BOOST_CHECK(val[0]["float-f"] == null_type());
+    BOOST_CHECK(val[0]["float-f"].is_null());
     BOOST_CHECK(val[0]["float-f"].is<null_type>());
-    BOOST_CHECK(val[0]["string-f"] == "");
+    BOOST_CHECK(val[0]["string-f"].as<std::string>() == "");
     BOOST_CHECK(val[0]["string-f"].is<std::string>());
 
-    BOOST_CHECK(val[1]["bool-f"] == true);
+    BOOST_CHECK(val[1]["bool-f"] .as<bool>()== true);
     BOOST_CHECK(val[1]["bool-f"].is<bool>());
-    BOOST_CHECK(val[1]["int-f"] == 12);
+    BOOST_CHECK(val[1]["int-f"] .as<int>()== 12);
     BOOST_CHECK(val[1]["int-f"].is<int>());
-    BOOST_CHECK(val[1]["float-f"] == 24.7);
+    BOOST_CHECK(val[1]["float-f"] .as<double>()== 24.7);
     BOOST_CHECK(val[1]["float-f"].is<double>());
-    BOOST_CHECK(val[1]["string-f"] == "test string");
+    BOOST_CHECK(val[1]["string-f"].as<std::string>() == "test string");
     BOOST_CHECK(val[1]["string-f"].is<std::string>());
 
-    BOOST_CHECK(val[0]["bool-f"] == null_type());
+    BOOST_CHECK(val[0]["bool-f"].is_null());
     BOOST_CHECK(val[0]["bool-f"].is<null_type>());
-    BOOST_CHECK(val[0]["int-f"] == null_type());
+    BOOST_CHECK(val[0]["int-f"].is_null());
     BOOST_CHECK(val[0]["int-f"].is<null_type>());
-    BOOST_CHECK(val[0]["float-f"] == null_type());
+    BOOST_CHECK(val[0]["float-f"].is_null());
     BOOST_CHECK(val[0]["float-f"].is<null_type>());
-    BOOST_CHECK(val[0]["string-f"] == "");
+    BOOST_CHECK(val[0]["string-f"] .as<std::string>() == "");
     BOOST_CHECK(val[0]["string-f"].is<std::string>());
 }
 
@@ -80,40 +80,40 @@ BOOST_AUTO_TEST_CASE(csv_test_empty_values_with_defaults)
     json_deserializer handler;
 
     csv_parameters params;
-    params.assume_header(true);
-    params.column_types({"boolean","integer","float","string"});
-    params.column_defaults({"false","0","0.0","\"\""});
+    params.assume_header(true) 
+          .column_types({"boolean","integer","float","string"})
+          .column_defaults({"false","0","0.0","\"\""});
 
     csv_reader reader(is,handler,params);
     reader.read();
     json val = handler.get_result();
     std::cout << pretty_print(val) << std::endl; 
 
-    BOOST_CHECK(val[0]["bool-f"] == false);
+    BOOST_CHECK(val[0]["bool-f"].as<bool>() == false);
     BOOST_CHECK(val[0]["bool-f"].is<bool>());
-    BOOST_CHECK(val[0]["int-f"] == 0);
+    BOOST_CHECK(val[0]["int-f"] .as<int>()== 0);
     BOOST_CHECK(val[0]["int-f"].is<int>());
-    BOOST_CHECK(val[0]["float-f"] == 0.0);
+    BOOST_CHECK(val[0]["float-f"].as<double>() == 0.0);
     BOOST_CHECK(val[0]["float-f"].is<double>());
-    BOOST_CHECK(val[0]["string-f"] == "");
+    BOOST_CHECK(val[0]["string-f"] .as<std::string>() == "");
     BOOST_CHECK(val[0]["string-f"].is<std::string>());
 
-    BOOST_CHECK(val[1]["bool-f"] == true);
+    BOOST_CHECK(val[1]["bool-f"] .as<bool>()== true);
     BOOST_CHECK(val[1]["bool-f"].is<bool>());
-    BOOST_CHECK(val[1]["int-f"] == 12);
+    BOOST_CHECK(val[1]["int-f"] .as<int>()== 12);
     BOOST_CHECK(val[1]["int-f"].is<int>());
-    BOOST_CHECK(val[1]["float-f"] == 24.7);
+    BOOST_CHECK(val[1]["float-f"] .as<double>()== 24.7);
     BOOST_CHECK(val[1]["float-f"].is<double>());
-    BOOST_CHECK(val[1]["string-f"] == "test string");
+    BOOST_CHECK(val[1]["string-f"].as<std::string>() == "test string");
     BOOST_CHECK(val[1]["string-f"].is<std::string>());
 
-    BOOST_CHECK(val[2]["bool-f"] == false);
+    BOOST_CHECK(val[2]["bool-f"].as<bool>() == false);
     BOOST_CHECK(val[2]["bool-f"].is<bool>());
-    BOOST_CHECK(val[2]["int-f"] == 0);
+    BOOST_CHECK(val[2]["int-f"] .as<int>()== 0);
     BOOST_CHECK(val[2]["int-f"].is<int>());
-    BOOST_CHECK(val[2]["float-f"] == 0.0);
+    BOOST_CHECK(val[2]["float-f"].as<double>() == 0.0);
     BOOST_CHECK(val[2]["float-f"].is<double>());
-    BOOST_CHECK(val[2]["string-f"] == "");
+    BOOST_CHECK(val[2]["string-f"].as<std::string>() == "");
     BOOST_CHECK(val[2]["string-f"].is<std::string>());
 }
 
@@ -129,40 +129,40 @@ BOOST_AUTO_TEST_CASE(csv_test_empty_values_with_empty_defaults)
     json_deserializer handler;
 
     csv_parameters params;
-    params.assume_header(true);
-    params.column_types({"boolean","integer","float","string"});
-    params.column_defaults({"","","",""});
+    params.assume_header(true)
+          .column_types({"boolean","integer","float","string"})
+          .column_defaults({"","","",""});
 
     csv_reader reader(is,handler,params);
     reader.read();
     json val = handler.get_result();
     std::cout << pretty_print(val) << std::endl; 
 
-    BOOST_CHECK(val[0]["bool-f"] == null_type());
+    BOOST_CHECK(val[0]["bool-f"].is_null());
     BOOST_CHECK(val[0]["bool-f"].is<null_type>());
-    BOOST_CHECK(val[0]["int-f"] == null_type());
+    BOOST_CHECK(val[0]["int-f"].is_null());
     BOOST_CHECK(val[0]["int-f"].is<null_type>());
-    BOOST_CHECK(val[0]["float-f"] == null_type());
+    BOOST_CHECK(val[0]["float-f"].is_null());
     BOOST_CHECK(val[0]["float-f"].is<null_type>());
-    BOOST_CHECK(val[0]["string-f"] == "");
+    BOOST_CHECK(val[0]["string-f"] .as<std::string>() == "");
     BOOST_CHECK(val[0]["string-f"].is<std::string>());
 
-    BOOST_CHECK(val[1]["bool-f"] == true);
+    BOOST_CHECK(val[1]["bool-f"] .as<bool>() == true);
     BOOST_CHECK(val[1]["bool-f"].is<bool>());
-    BOOST_CHECK(val[1]["int-f"] == 12);
+    BOOST_CHECK(val[1]["int-f"] .as<int>()== 12);
     BOOST_CHECK(val[1]["int-f"].is<int>());
-    BOOST_CHECK(val[1]["float-f"] == 24.7);
+    BOOST_CHECK(val[1]["float-f"] .as<double>()== 24.7);
     BOOST_CHECK(val[1]["float-f"].is<double>());
-    BOOST_CHECK(val[1]["string-f"] == "test string");
+    BOOST_CHECK(val[1]["string-f"].as<std::string>() == "test string");
     BOOST_CHECK(val[1]["string-f"].is<std::string>());
 
-    BOOST_CHECK(val[0]["bool-f"] == null_type());
+    BOOST_CHECK(val[0]["bool-f"].is_null());
     BOOST_CHECK(val[0]["bool-f"].is<null_type>());
-    BOOST_CHECK(val[0]["int-f"] == null_type());
+    BOOST_CHECK(val[0]["int-f"].is_null());
     BOOST_CHECK(val[0]["int-f"].is<null_type>());
-    BOOST_CHECK(val[0]["float-f"] == null_type());
+    BOOST_CHECK(val[0]["float-f"].is_null());
     BOOST_CHECK(val[0]["float-f"].is<null_type>());
-    BOOST_CHECK(val[0]["string-f"] == "");
+    BOOST_CHECK(val[0]["string-f"] .as<std::string>() == "");
     BOOST_CHECK(val[0]["string-f"].is<std::string>());
 }
 
@@ -302,8 +302,8 @@ BOOST_AUTO_TEST_CASE(csv_test1_array_3cols_trim)
     json_deserializer handler;
 
     csv_parameters params;
-    params.trim(true);
-    params.unquoted_empty_value_is_null(true);
+    params.trim(true)
+          .unquoted_empty_value_is_null(true);
 
     csv_reader reader(is,handler,params);
     reader.read();
@@ -314,8 +314,8 @@ BOOST_AUTO_TEST_CASE(csv_test1_array_3cols_trim)
     BOOST_CHECK(val[1].size()==3);
     BOOST_CHECK(val[2].size()==3);
     BOOST_CHECK(val[0][0]==json("a"));
-    BOOST_CHECK(val[0][1]==json::null_type());
-    BOOST_CHECK(val[0][2]==json::null_type());
+    BOOST_CHECK(val[0][1]==json::null());
+    BOOST_CHECK(val[0][2]==json::null());
     BOOST_CHECK(val[1][0]==json("1"));
     BOOST_CHECK(val[1][1]==json("2"));
     BOOST_CHECK(val[1][2]==json("3"));
@@ -403,8 +403,8 @@ BOOST_AUTO_TEST_CASE(csv_test1_object_3cols_header)
     json_deserializer handler;
 
     csv_parameters params;
-    params.column_names({"x","y","z"});
-    params.header_lines(1);
+    params.column_names({"x","y","z"})
+          .header_lines(1);
 
     csv_reader reader(is,handler,params);
     reader.read();
@@ -429,9 +429,9 @@ BOOST_AUTO_TEST_CASE(csv_test1_object_3cols_bool)
     json_deserializer handler;
 
     csv_parameters params;
-    params.column_names({"x","y","z"});
-    params.column_types({"boolean","boolean","boolean"});
-    params.header_lines(1);
+    params.column_names({"x","y","z"})
+          .column_types({"boolean","boolean","boolean"})
+          .header_lines(1);
 
     csv_reader reader(is,handler,params);
     reader.read();
@@ -617,8 +617,8 @@ BOOST_AUTO_TEST_CASE(read_comma_delimited_file_header)
     json_deserializer handler;
 
     csv_parameters params;
-    params.column_names({"Country Code","Name"});
-    params.header_lines(1);
+    params.column_names({"Country Code","Name"})
+          .header_lines(1);
 
     csv_reader reader(is,handler,params);
     reader.read();
@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE(serialize_comma_delimited_file)
 
     csv_serializer serializer(std::cout);
 
-    countries.to_stream(serializer);
+    countries.write(serializer);
 }
 
 BOOST_AUTO_TEST_CASE(test_tab_delimited_file)
@@ -649,8 +649,8 @@ BOOST_AUTO_TEST_CASE(test_tab_delimited_file)
 
     json_deserializer handler;
     csv_parameters params;
-    params.field_delimiter('\t');
-    params.assume_header(true);
+    params.field_delimiter('\t')
+          .assume_header(true);
 
     csv_reader reader(is,handler,params);
     reader.read();
@@ -674,7 +674,7 @@ BOOST_AUTO_TEST_CASE(serialize_tab_delimited_file)
 
     csv_serializer serializer(std::cout,params);
 
-    employees.to_stream(serializer);
+    employees.write(serializer);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

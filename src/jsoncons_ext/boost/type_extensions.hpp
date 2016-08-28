@@ -17,11 +17,12 @@
 
 namespace jsoncons 
 {
-    template <typename JsonT>
-    class json_type_traits<JsonT,boost::gregorian::date>
+    template <class Json>
+    struct json_type_traits<Json,boost::gregorian::date>
     {
-    public:
-        static bool is(const JsonT& val) JSONCONS_NOEXCEPT
+        static const bool is_assignable = true;
+
+        static bool is(const Json& val) JSONCONS_NOEXCEPT
         {
             if (!val.is_string())
             {
@@ -30,7 +31,7 @@ namespace jsoncons
             std::string s = val.template as<std::string>();
             try
             {
-                boost::gregorian::date_from_iso_string(s);
+                boost::gregorian::from_simple_string(s);
                 return true;
             }
             catch (...)
@@ -39,15 +40,15 @@ namespace jsoncons
             }
         }
 
-        static boost::gregorian::date as(const JsonT& val)
+        static boost::gregorian::date as(const Json& val)
         {
             std::string s = val.template as<std::string>();
             return boost::gregorian::from_simple_string(s);
         }
 
-        static void assign(JsonT& lhs, boost::gregorian::date val)
+        static void assign(Json& lhs, boost::gregorian::date val)
         {
-            lhs = to_iso_extended_string(val);
+            lhs.assign_string(to_iso_extended_string(val));
         }
     };
 }

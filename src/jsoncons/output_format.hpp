@@ -15,13 +15,16 @@
 #include <cstdlib>
 #include <limits>
 #include <cwchar>
+#include "jsoncons/jsoncons.hpp"
 
 namespace jsoncons {
 
-template <typename CharT>
+enum class block_options {next_line,same_line};
+
+template <class CharT>
 class buffered_ostream;
 
-template <typename CharT>
+template <class CharT>
 class basic_output_format
 {
     int indent_;
@@ -34,6 +37,10 @@ class basic_output_format
     std::basic_string<CharT> neg_inf_replacement_;
     bool escape_all_non_ascii_;
     bool escape_solidus_;
+    block_options object_array_block_option_;
+    block_options array_array_block_option_;
+    block_options object_object_block_option_;
+    block_options array_object_block_option_;
 public:
     static const size_t default_indent = 4;
 
@@ -46,15 +53,63 @@ public:
         replace_nan_(true),
         replace_pos_inf_(true),
         replace_neg_inf_(true),
-        nan_replacement_(json_literals<CharT>::null_literal().first),
-        pos_inf_replacement_(json_literals<CharT>::null_literal().first),
-        neg_inf_replacement_(json_literals<CharT>::null_literal().first),
+        nan_replacement_(json_text_traits<CharT>::null_literal().first),
+        pos_inf_replacement_(json_text_traits<CharT>::null_literal().first),
+        neg_inf_replacement_(json_text_traits<CharT>::null_literal().first),
         escape_all_non_ascii_(false),
-        escape_solidus_(false)
+        escape_solidus_(false),
+        object_array_block_option_(block_options::same_line),
+        array_array_block_option_(block_options::next_line),
+        object_object_block_option_(block_options::same_line),
+        array_object_block_option_(block_options::next_line)
     {
     }
 
 //  Accessors
+
+    block_options object_array_block_option()
+    {
+        return object_array_block_option_;
+    }
+
+    basic_output_format<CharT>& object_array_block_option(block_options value)
+    {
+        object_array_block_option_ = value;
+        return *this;
+    }
+
+    block_options object_object_block_option()
+    {
+        return object_object_block_option_;
+    }
+
+    basic_output_format<CharT>& object_object_block_option(block_options value)
+    {
+        object_object_block_option_ = value;
+        return *this;
+    }
+
+    block_options array_array_block_option()
+    {
+        return array_array_block_option_;
+    }
+
+    basic_output_format<CharT>& array_array_block_option(block_options value)
+    {
+        array_array_block_option_ = value;
+        return *this;
+    }
+
+    block_options array_object_block_option()
+    {
+        return array_object_block_option_;
+    }
+
+    basic_output_format<CharT>& array_object_block_option(block_options value)
+    {
+        array_object_block_option_ = value;
+        return *this;
+    }
 
     int indent() const
     {
@@ -99,64 +154,75 @@ public:
 
 //  Modifiers
 
-    void precision(uint8_t prec)
+    basic_output_format<CharT>& precision(uint8_t prec)
     {
         precision_ = prec;
+        return *this;
     }
 
-    void escape_all_non_ascii(bool value)
+    basic_output_format<CharT>& escape_all_non_ascii(bool value)
     {
         escape_all_non_ascii_ = value;
+        return *this;
     }
 
-    void escape_solidus(bool value)
+    basic_output_format<CharT>& escape_solidus(bool value)
     {
         escape_solidus_ = value;
+        return *this;
     }
 
-    void replace_nan(bool replace)
+    basic_output_format<CharT>& replace_nan(bool replace)
     {
         replace_nan_ = replace;
+        return *this;
     }
 
-    void replace_inf(bool replace)
+    basic_output_format<CharT>& replace_inf(bool replace)
     {
         replace_pos_inf_ = replace;
         replace_neg_inf_ = replace;
+        return *this;
     }
 
-    void replace_pos_inf(bool replace)
+    basic_output_format<CharT>& replace_pos_inf(bool replace)
     {
         replace_pos_inf_ = replace;
+        return *this;
     }
 
-    void replace_neg_inf(bool replace)
+    basic_output_format<CharT>& replace_neg_inf(bool replace)
     {
         replace_neg_inf_ = replace;
+        return *this;
     }
 
-    void nan_replacement(const std::basic_string<CharT>& replacement)
+    basic_output_format<CharT>& nan_replacement(const std::basic_string<CharT>& replacement)
     {
         nan_replacement_ = replacement;
+        return *this;
     }
 
-    void pos_inf_replacement(const std::basic_string<CharT>& replacement)
+    basic_output_format<CharT>& pos_inf_replacement(const std::basic_string<CharT>& replacement)
     {
         pos_inf_replacement_ = replacement;
+        return *this;
     }
 
-    void neg_inf_replacement(const std::basic_string<CharT>& replacement)
+    basic_output_format<CharT>& neg_inf_replacement(const std::basic_string<CharT>& replacement)
     {
         neg_inf_replacement_ = replacement;
+        return *this;
     }
 
-    void indent(int value)
+    basic_output_format<CharT>& indent(int value)
     {
         indent_ = value;
+        return *this;
     }
 };
 
-template<typename CharT>
+template<class CharT>
 void escape_string(const CharT* s,
                    size_t length,
                    const basic_output_format<CharT>& format,
@@ -207,7 +273,7 @@ void escape_string(const CharT* s,
             else if (is_control_character(u) || format.escape_all_non_ascii())
             {
                 // convert utf8 to codepoint
-                uint32_t cp = json_char_traits<CharT, sizeof(CharT)>::convert_char_to_codepoint(it, end);
+                uint32_t cp = json_text_traits<CharT>::convert_char_to_codepoint(it, end);
                 if (is_non_ascii_character(cp) || is_control_character(u))
                 {
                     if (cp > 0xFFFF)

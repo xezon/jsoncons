@@ -15,7 +15,7 @@
 
 namespace jsoncons {
 
-template <typename CharT>
+template <class CharT>
 class basic_json_input_output_adapter : public basic_json_input_handler<CharT>
 {
 public:
@@ -41,60 +41,60 @@ private:
         writer_->end_json();
     }
 
-    void do_begin_object(const basic_parsing_context<CharT>& context) override
+    void do_begin_object(const basic_parsing_context<CharT>&) override
     {
         writer_->begin_object();
     }
 
-    void do_end_object(const basic_parsing_context<CharT>& context) override
+    void do_end_object(const basic_parsing_context<CharT>&) override
     {
         writer_->end_object();
     }
 
-    void do_begin_array(const basic_parsing_context<CharT>& context) override
+    void do_begin_array(const basic_parsing_context<CharT>&) override
     {
         writer_->begin_array();
     }
 
-    void do_end_array(const basic_parsing_context<CharT>& context) override
+    void do_end_array(const basic_parsing_context<CharT>&) override
     {
         writer_->end_array();
     }
 
     void do_name(const CharT* name, size_t length, 
-                 const basic_parsing_context<CharT>& context) override
+                 const basic_parsing_context<CharT>&) override
     {
         writer_->name(name, length);
     }
 
     void do_string_value(const CharT* value, size_t length, 
-                         const basic_parsing_context<CharT>& context) override
+                         const basic_parsing_context<CharT>&) override
     {
         writer_->value(value, length);
     }
 
-    void do_integer_value(int64_t value, const basic_parsing_context<CharT>& context) override
+    void do_integer_value(int64_t value, const basic_parsing_context<CharT>&) override
     {
         writer_->value(value);
     }
 
     void do_uinteger_value(uint64_t value, 
-                                 const basic_parsing_context<CharT>& context) override
+                                 const basic_parsing_context<CharT>&) override
     {
         writer_->value(value);
     }
 
-    void do_double_value(double value, uint8_t precision, const basic_parsing_context<CharT>& context) override
+    void do_double_value(double value, uint8_t precision, const basic_parsing_context<CharT>&) override
     {
         writer_->value(value, precision);
     }
 
-    void do_bool_value(bool value, const basic_parsing_context<CharT>& context) override
+    void do_bool_value(bool value, const basic_parsing_context<CharT>&) override
     {
         writer_->value(value);
     }
 
-    void do_null_value(const basic_parsing_context<CharT>& context) override
+    void do_null_value(const basic_parsing_context<CharT>&) override
     {
         writer_->value(null_type());
     }
@@ -102,7 +102,7 @@ private:
     basic_json_output_handler<CharT>* writer_;
 };
 
-template <typename CharT>
+template <class CharT>
 class basic_json_filter : public basic_json_input_handler<CharT>
 {
 public:
@@ -216,12 +216,12 @@ private:
 };
 
 // Filters out begin_json and end_json events
-template <typename CharT>
-class basic_begin_end_json_filter : public basic_json_filter<CharT>
+template <class CharT>
+class basic_json_body_filter : public basic_json_filter<CharT>
 {
 public:
-    basic_begin_end_json_filter(basic_json_input_handler<CharT>& handler)
-        : json_filter(handler)
+    basic_json_body_filter(basic_json_input_handler<CharT>& handler)
+        : basic_json_filter<CharT>(handler)
     {
     }
 private:
@@ -234,7 +234,7 @@ private:
     }
 };
 
-template <typename CharT>
+template <class CharT>
 class basic_json_output_input_adapter : public basic_json_output_handler<CharT>
 {
 public:

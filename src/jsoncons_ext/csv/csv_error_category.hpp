@@ -4,21 +4,21 @@
 
 // See https://github.com/danielaparker/jsoncons for latest version
 
-#ifndef JSONCONS_CSV_CSV_TEXT_ERROR_CATEGORY_HPP
-#define JSONCONS_CSV_CSV_TEXT_ERROR_CATEGORY_HPP
+#ifndef JSONCONS_CSV_CSV_ERROR_CATEGORY_HPP
+#define JSONCONS_CSV_CSV_ERROR_CATEGORY_HPP
 
 #include "jsoncons/jsoncons.hpp"
 #include <system_error>
 
 namespace jsoncons { namespace csv {
 
-namespace csv_parser_errc 
-{
-    const int unexpected_eof = 0;
-    const int expected_quote = 1;
-    const int invalid_csv_text = 2;
-    const int invalid_state = 3;
-}
+    enum class csv_parser_errc : int
+    {
+        unexpected_eof = 1,
+        expected_quote = 2,
+        invalid_csv_text = 3,
+        invalid_state = 4
+    };
 
 class csv_error_category_impl
    : public std::error_category
@@ -30,7 +30,7 @@ public:
     }
     virtual std::string message(int ev) const
     {
-        switch (ev)
+        switch (static_cast<csv_parser_errc>(ev))
         {
         case csv_parser_errc::unexpected_eof:
             return "Unexpected end of file";
@@ -51,5 +51,19 @@ const std::error_category& csv_error_category()
   return instance;
 }
 
+inline 
+std::error_code make_error_code(csv_parser_errc result)
+{
+    return std::error_code(static_cast<int>(result),csv_error_category());
+}
+
 }}
+
+namespace std {
+    template<>
+    struct is_error_code_enum<jsoncons::csv::csv_parser_errc> : public true_type
+    {
+    };
+}
+
 #endif

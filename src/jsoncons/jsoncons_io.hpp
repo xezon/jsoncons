@@ -17,6 +17,7 @@
 #include <cstdlib>
 #include <cmath>
 #include <cstdarg>
+#include <locale.h>
 #include <limits> // std::numeric_limits
 #include "jsoncons_config.hpp"
 #include "ovectorstream.hpp"
@@ -24,7 +25,7 @@
 namespace jsoncons
 {
 
-template <typename CharT>
+template <class CharT>
 class buffered_ostream
 {
     static const size_t default_buffer_length = 16384;
@@ -91,12 +92,12 @@ public:
 
 #ifdef _MSC_VER
 
-template <typename CharT>
+template <class CharT>
 class float_printer
 {
     uint8_t precision_;
 public:
-    float_printer(int precision)
+    float_printer(uint8_t precision)
         : precision_(precision)
     {
     }
@@ -152,7 +153,7 @@ public:
             for(;;) 
             {
                 i = decimal_point / k;
-                os.put(i + '0');
+                os.put(static_cast<CharT>(i) + '0');
                 if (--j <= 0)
                     break;
                 decimal_point -= i*k;
@@ -199,7 +200,7 @@ public:
 
 #else
 
-template <typename CharT>
+template <class CharT>
 class float_printer
 {
     jsoncons::basic_ovectorstream<CharT> vs_;
@@ -251,7 +252,7 @@ public:
 #endif
 
 // string_to_float only requires narrow char
-#ifdef _MSC_VER
+#if defined(_MSC_VER)
 class float_reader
 {
 private:
@@ -266,7 +267,7 @@ public:
         _free_locale(locale_);
     }
 
-    double read(const char* s, size_t length)
+    double read(const char* s, size_t)
     {
         const char *begin = s;
         char *end = nullptr;
@@ -281,7 +282,36 @@ public:
     float_reader(const float_reader& fr) = delete;
     float_reader& operator=(const float_reader& fr) = delete;
 };
+#elif defined(ANDROID) || defined(__ANDROID__)
+class float_reader
+{
+private:
+    locale_t locale_;
+public:
+    float_reader()
+    {
+        locale_ = newlocale(LC_ALL_MASK, "C", (locale_t) 0);
+    }
+    ~float_reader()
+    {
+        free(locale_);
+    }
 
+    double read(const char* s, size_t length)
+    {
+        const char *begin = s;
+        char *end = nullptr;
+        double val = strtod_l(begin, &end, locale_);
+        if (begin == end)
+        {
+            throw std::invalid_argument("Invalid float value");
+        }
+        return val;
+    }
+
+    float_reader(const float_reader& fr) = delete;
+    float_reader& operator=(const float_reader& fr) = delete;
+};
 #else
 class float_reader
 {

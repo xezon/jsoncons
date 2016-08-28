@@ -12,19 +12,21 @@
 
 namespace jsoncons { namespace jsonpath {
 
-namespace jsonpath_parser_errc 
+enum class jsonpath_parser_errc 
 {
-    const int expected_root = 0;
-    const int expected_right_bracket = 1;
-    const int expected_name = 2;
-    const int expected_separator = 3;
-    const int invalid_filter = 4;
-    const int invalid_filter_expected_slash = 5;
-    const int invalid_filter_unbalanced_paren = 6;
-    const int invalid_filter_unsupported_operator = 7;
-    const int invalid_filter_expected_right_brace = 8;
-    const int invalid_filter_expected_primary = 9;
-}
+    expected_root = 1,
+    expected_right_bracket = 2,
+    expected_name = 3,
+    expected_separator = 4,
+    invalid_filter = 5,
+    invalid_filter_expected_slash = 6,
+    invalid_filter_unbalanced_paren = 7,
+    invalid_filter_unsupported_operator = 8,
+    invalid_filter_expected_right_brace = 9,
+    invalid_filter_expected_primary = 10,
+    expected_index = 11,
+    expected_left_bracket_token = 12
+};
 
 class jsonpath_error_category_impl
    : public std::error_category
@@ -36,7 +38,7 @@ public:
     }
     virtual std::string message(int ev) const
     {
-        switch (ev)
+        switch (static_cast<jsonpath_parser_errc>(ev))
         {
         case jsonpath_parser_errc::expected_root:
             return "Expected $";
@@ -44,6 +46,8 @@ public:
             return "Expected ]";
         case jsonpath_parser_errc::expected_name:
             return "Expected a name following a dot";
+        case jsonpath_parser_errc::expected_index:
+            return "Expected index";
         case jsonpath_parser_errc::expected_separator:
             return "Expected dot or left bracket separator";
         case jsonpath_parser_errc::invalid_filter:
@@ -58,6 +62,8 @@ public:
             return "Invalid path filter, expected right brace }";
         case jsonpath_parser_errc::invalid_filter_expected_primary:
             return "Invalid path filter, expected primary expression.";
+        case jsonpath_parser_errc::expected_left_bracket_token:
+            return "Expected ?,',\",0-9,*";
         default:
             return "Unknown jsonpath parser error";
         }
@@ -71,5 +77,19 @@ const std::error_category& jsonpath_error_category()
   return instance;
 }
 
+inline 
+std::error_code make_error_code(jsonpath_parser_errc result)
+{
+    return std::error_code(static_cast<int>(result),jsonpath_error_category());
+}
+
 }}
+
+namespace std {
+    template<>
+    struct is_error_code_enum<jsoncons::jsonpath::jsonpath_parser_errc> : public true_type
+    {
+    };
+}
+
 #endif

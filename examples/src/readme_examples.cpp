@@ -259,7 +259,7 @@ void example3()
 
     //Loop through the booklist elements using a range-based for loop    
 #if !defined(JSONCONS_NO_FOR_RANGE)
-    for (auto book : booklist.elements())
+    for (const auto& book : booklist.elements())
     {
         std::wcout << book[L"title"].as<std::wstring>()
                    << L","
@@ -272,7 +272,7 @@ void example3()
 
     //Loop through the book members using a range-based for loop    
 #if !defined(JSONCONS_NO_FOR_RANGE)
-    for(auto member : book.members())
+    for(const auto& member : book.members())
     {
         std::wcout << member.name()
                    << L","
@@ -311,7 +311,7 @@ void example3()
     book[L"ratings"].erase(L"*");
 
     // Serialize the booklist to a file
-    std::wofstream os(L"booklist2.json");
+    std::wofstream os("booklist2.json");
     os << pretty_print(booklist);
 }
 

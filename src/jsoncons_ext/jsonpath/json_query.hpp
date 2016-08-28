@@ -19,7 +19,7 @@
 
 namespace jsoncons { namespace jsonpath {
 
-    template<typename CharT>
+    template<class CharT>
     bool try_string_to_index(const CharT *s, size_t length, size_t* value)
     {
         static const size_t max_value = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
@@ -56,7 +56,7 @@ namespace jsoncons { namespace jsonpath {
         return true;
     }
 
-    template <typename CharT>
+    template <class CharT>
     struct json_jsonpath_traits
     {
     };
@@ -75,24 +75,24 @@ namespace jsoncons { namespace jsonpath {
 
 // here
 
-template<class JsonT>
-JsonT json_query(const JsonT& root, const typename JsonT::char_type* path, size_t length)
+template<class Json>
+Json json_query(const Json& root, const typename Json::char_type* path, size_t length)
 {
-    jsonpath_evaluator<JsonT> evaluator;
+    jsonpath_evaluator<Json> evaluator;
     evaluator.evaluate(root,path,length);
     return evaluator.get_values();
 }
 
-template<class JsonT>
-JsonT json_query(const JsonT& root, const typename JsonT::string_type& path)
+template<class Json>
+Json json_query(const Json& root, const typename Json::string_type& path)
 {
     return json_query(root,path.data(),path.length());
 }
 
-template<class JsonT>
-JsonT json_query(const JsonT& root, const typename JsonT::char_type* path)
+template<class Json>
+Json json_query(const Json& root, const typename Json::char_type* path)
 {
-    return json_query(root,path,std::char_traits<typename JsonT::char_type>::length(path));
+    return json_query(root,path,std::char_traits<typename Json::char_type>::length(path));
 }
 
 enum class states 
@@ -100,28 +100,28 @@ enum class states
     start,
     cr,
     lf,
-    expect_separator,
-    expect_unquoted_name,
+    expect_dot_or_left_bracket,
+    expect_unquoted_name_or_left_bracket,
     unquoted_name,
-    single_quoted_name,
-    double_quoted_name,
+    left_bracket_single_quoted_string,
+    left_bracket_double_quoted_string,
     left_bracket,
     left_bracket_start,
     left_bracket_end,
     left_bracket_end2,
     left_bracket_step,
     left_bracket_step2,
-    expect_right_bracket,
+    expect_comma_or_right_bracket,
     dot
 };
 
-template<class JsonT>
-class jsonpath_evaluator : private basic_parsing_context<typename JsonT::char_type>
+template<class Json>
+class jsonpath_evaluator : private basic_parsing_context<typename Json::char_type>
 {
 private:
-    typedef typename JsonT::char_type char_type;
-    typedef typename JsonT::string_type string_type;
-    typedef const JsonT* cjson_ptr;
+    typedef typename Json::char_type char_type;
+    typedef typename Json::string_type string_type;
+    typedef const Json* cjson_ptr;
     typedef std::vector<cjson_ptr> node_set;
 
     basic_parse_error_handler<char_type> *err_handler_;
@@ -137,13 +137,12 @@ private:
     std::vector<node_set> stack_;
     bool recursive_descent_;
     std::vector<cjson_ptr> nodes_;
-    std::vector<std::shared_ptr<JsonT>> temp_;
+    std::vector<std::shared_ptr<Json>> temp_;
     size_t line_;
     size_t column_;
     const char_type* begin_input_;
     const char_type* end_input_;
     const char_type* p_;
-    states pre_line_break_state_;
 
     void transfer_nodes()
     {
@@ -157,9 +156,9 @@ public:
     {
     }
 
-    JsonT get_values() const
+    Json get_values() const
     {
-        JsonT result = JsonT::make_array();
+        Json result = Json::make_array();
 
         if (stack_.size() > 0)
         {
@@ -172,16 +171,16 @@ public:
         return result;
     }
 
-    void evaluate(const JsonT& root, const string_type& path)
+    void evaluate(const Json& root, const string_type& path)
     {
         evaluate(root,path.data(),path.length());
     }
-    void evaluate(const JsonT& root, const char_type* path)
+    void evaluate(const Json& root, const char_type* path)
     {
         evaluate(root,path,std::char_traits<char_type>::length(path));
     }
 
-    void evaluate(const JsonT& root, const char_type* path, size_t length)
+    void evaluate(const Json& root, const char_type* path, size_t length)
     {
         begin_input_ = path;
         end_input_ = path + length;
@@ -204,37 +203,9 @@ public:
         {
             switch (state_)
             {
-            case states::cr:
-                ++line_;
-                column_ = 1;
-                switch (*p_)
-                {
-                case '\n':
-                    state_ = pre_line_break_state_;
-                    ++p_;
-                    ++column_;
-                    break;
-                default:
-                    state_ = pre_line_break_state_;
-                    break;
-                }
-                break;
-            case states::lf:
-                ++line_;
-                column_ = 1;
-                state_ = pre_line_break_state_;
-                break;
             case states::start: 
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case ' ':case '\t':
                     ++p_;
                     ++column_;
@@ -245,11 +216,11 @@ public:
                         node_set v;
                         v.push_back(std::addressof(root));
                         stack_.push_back(v);
-                        state_ = states::expect_separator;
+                        state_ = states::expect_dot_or_left_bracket;
                     }
                     break;
                 default:
-                    err_handler_->fatal_error(std::error_code(jsonpath_parser_errc::expected_root, jsonpath_error_category()), *this);
+                    err_handler_->fatal_error(jsonpath_parser_errc::expected_root, *this);
                     break;
                 };
                 ++p_;
@@ -262,33 +233,30 @@ public:
                     recursive_descent_ = true;
                     ++p_;
                     ++column_;
-                    state_ = states::expect_unquoted_name;
+                    state_ = states::expect_unquoted_name_or_left_bracket;
                     break;
                 default:
-                    state_ = states::expect_unquoted_name;
+                    state_ = states::expect_unquoted_name_or_left_bracket;
                     break;
                 }
                 break;
-            case states::expect_unquoted_name:
+            case states::expect_unquoted_name_or_left_bracket:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case '.':
-                    err_handler_->fatal_error(std::error_code(jsonpath_parser_errc::expected_name, jsonpath_error_category()), *this);
+                    err_handler_->fatal_error(jsonpath_parser_errc::expected_name, *this);
                     ++p_;
                     ++column_;
                     break;
                 case '*':
                     end_all();
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
+                    ++p_;
+                    ++column_;
+                    break;
+                case '[':
+                    state_ = states::left_bracket;
                     ++p_;
                     ++column_;
                     break;
@@ -297,17 +265,9 @@ public:
                     break;
                 }
                 break;
-            case states::expect_separator: 
+            case states::expect_dot_or_left_bracket: 
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case ' ':case '\t':
                     ++p_;
                     ++column_;
@@ -319,34 +279,26 @@ public:
                     state_ = states::left_bracket;
                     break;
                 default:
-                    err_handler_->fatal_error(std::error_code(jsonpath_parser_errc::expected_separator, jsonpath_error_category()), *this);
+                    err_handler_->fatal_error(jsonpath_parser_errc::expected_separator, *this);
                     break;
                 };
                 ++p_;
                 ++column_;
                 break;
-            case states::expect_right_bracket:
+            case states::expect_comma_or_right_bracket:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case ',':
                     state_ = states::left_bracket;
                     break;
                 case ']':
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
                     break;
                 case ' ':case '\t':
                     break;
                 default:
-                    err_handler_->fatal_error(std::error_code(jsonpath_parser_errc::expected_right_bracket, jsonpath_error_category()), *this);
+                    err_handler_->fatal_error(jsonpath_parser_errc::expected_right_bracket, *this);
                     break;
                 }
                 ++p_;
@@ -355,14 +307,6 @@ public:
             case states::left_bracket_step:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case '-':
                     positive_step_ = false;
                     state_ = states::left_bracket_step2;
@@ -374,7 +318,7 @@ public:
                 case ']':
                     end_array_slice();
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
                     break;
                 }
                 ++p_;
@@ -383,21 +327,13 @@ public:
             case states::left_bracket_step2:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
                     step_ = step_*10 + static_cast<size_t>(*p_-'0');
                     break;
                 case ']':
                     end_array_slice();
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
                     break;
                 }
                 ++p_;
@@ -406,14 +342,6 @@ public:
             case states::left_bracket_end:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case '-':
                     positive_end_ = false;
                     state_ = states::left_bracket_end2;
@@ -430,7 +358,7 @@ public:
                 case ']':
                     end_array_slice();
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
                     break;
                 }
                 ++p_;
@@ -439,14 +367,6 @@ public:
             case states::left_bracket_end2:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case ':':
                     step_ = 0;
                     state_ = states::left_bracket_step;
@@ -458,7 +378,7 @@ public:
                 case ']':
                     end_array_slice();
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
                     break;
                 }
                 ++p_;
@@ -467,29 +387,24 @@ public:
             case states::left_bracket_start:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case ':':
                     step_ = 1;
                     end_undefined_ = true;
                     state_ = states::left_bracket_end;
                     break;
                 case ',':
-                    find_elements();
+                    select_values(buffer_);
+                    state_ = states::left_bracket;
                     break;
                 case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
                     start_ = start_*10 + static_cast<size_t>(*p_-'0');
+                    buffer_.clear();
+                    buffer_.push_back(*p_);
                     break;
                 case ']':
-                    find_elements();
+                    select_values(buffer_);
                     transfer_nodes();
-                    state_ = states::expect_separator;
+                    state_ = states::expect_dot_or_left_bracket;
                     break;
                 }
                 ++p_;
@@ -498,51 +413,45 @@ public:
             case states::left_bracket:
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case ' ':case '\t':
                     ++p_;
                     ++column_;
                     break;
                 case '(':
                     {
-                        if (stack_.back().size() == 1)
+                        jsonpath_filter_parser<Json> parser(&p_,&line_,&column_);
+                        parser.parse(p_,end_input_);
+                        for (size_t i = 0; i < stack_.back().size(); ++i)
                         {
-                            jsonpath_filter_parser<JsonT> parser(&p_,&line_,&column_);
-                            parser.parse(p_,end_input_);
-                            auto index = parser.eval(*(stack_.back()[0]));
+                            auto index = parser.eval(*(stack_.back()[i]));
                             if (index.template is<size_t>())
                             {
                                 start_ = index. template as<size_t>();
-                                find_elements();
+                                cjson_ptr p = stack_.back()[i];
+                                if (p->is_array() && start_ < p->size())
+                                {
+                                    nodes_.push_back(std::addressof((*p)[start_]));
+                                }
                             }
                             else if (index.is_string())
                             {
-                                find(index.as_string());
+                                select_values(*(stack_.back()[i]), index.as_string());
                             }
                         }
-                        else
-                        {
-                            ++p_;
-                            ++column_;
-                        }
+                        buffer_.clear();
+                        state_ = states::expect_comma_or_right_bracket;
                     }
                     break;
                 case '?':
                     {
-                        jsonpath_filter_parser<JsonT> parser(&p_,&line_,&column_);
+                        jsonpath_filter_parser<Json> parser(&p_,&line_,&column_);
                         parser.parse(p_,end_input_);
                         nodes_.clear();
                         for (size_t j = 0; j < stack_.back().size(); ++j)
                         {
                             accept(*(stack_.back()[j]),parser);
                         }
+                        state_ = states::expect_comma_or_right_bracket;
                     }
                     break;
                     
@@ -550,11 +459,6 @@ public:
                     step_ = 1;
                     end_undefined_ = true;
                     state_ = states::left_bracket_end;
-                    ++p_;
-                    ++column_;
-                    break;
-                case ',':
-                    find_elements();
                     ++p_;
                     ++column_;
                     break;
@@ -566,61 +470,44 @@ public:
                     break;
                 case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
                     start_ = static_cast<size_t>(*p_-'0');
+                    buffer_.clear();
+                    buffer_.push_back(*p_);
                     state_ = states::left_bracket_start;
-                    ++p_;
-                    ++column_;
-                    break;
-                case ']':
-                    //find_elements();
-                    transfer_nodes();
-                    state_ = states::expect_separator;
                     ++p_;
                     ++column_;
                     break;
                 case '*':
                     end_all();
-                    //transfer_nodes();
-                    state_ = states::expect_right_bracket;
+                    state_ = states::expect_comma_or_right_bracket;
                     ++p_;
                     ++column_;
                     break;
                 case '\'':
-                    state_ = states::single_quoted_name;
+                    state_ = states::left_bracket_single_quoted_string;
                     ++p_;
                     ++column_;
                     break;
                 case '\"':
-                    state_ = states::double_quoted_name;
+                    state_ = states::left_bracket_double_quoted_string;
                     ++p_;
                     ++column_;
                     break;
                 default:
-                    ++p_;
-                    ++column_;
+                    err_handler_->fatal_error(jsonpath_parser_errc::expected_left_bracket_token, *this);
                     break;
                 }
                 break;
             case states::unquoted_name: 
                 switch (*p_)
                 {
-                case '\r':
-                    pre_line_break_state_ = state_;
-                    state_ = states::cr;
-                    break;
-                case '\n':
-                    pre_line_break_state_ = state_;
-                    state_ = states::lf;
-                    break;
                 case '[':
-                    find(buffer_);
-                    buffer_.clear();
+                    select_values(buffer_);
                     transfer_nodes();
                     start_ = 0;
                     state_ = states::left_bracket;
                     break;
                 case '.':
-                    find(buffer_);
-                    buffer_.clear();
+                    select_values(buffer_);
                     transfer_nodes();
                     state_ = states::dot;
                     break;
@@ -633,13 +520,12 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::single_quoted_name: 
+            case states::left_bracket_single_quoted_string: 
                 switch (*p_)
                 {
                 case '\'':
-                    find(buffer_);
-                    buffer_.clear();
-                    state_ = states::expect_right_bracket;
+                    select_values(buffer_);
+                    state_ = states::expect_comma_or_right_bracket;
                     break;
                 case '\\':
                     buffer_.push_back(*p_);
@@ -657,13 +543,12 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::double_quoted_name: 
+            case states::left_bracket_double_quoted_string: 
                 switch (*p_)
                 {
                 case '\"':
-                    find(buffer_);
-                    buffer_.clear();
-                    state_ = states::expect_right_bracket;
+                    select_values(buffer_);
+                    state_ = states::expect_comma_or_right_bracket;
                     break;
                 case '\\':
                     buffer_.push_back(*p_);
@@ -691,8 +576,7 @@ public:
         {
         case states::unquoted_name: 
             {
-                find(buffer_);
-                buffer_.clear();
+                select_values(buffer_);
                 transfer_nodes();
             }
             break;
@@ -701,8 +585,8 @@ public:
         }
     }
 
-    void accept(const JsonT& val,
-                jsonpath_filter_parser<JsonT>& filter)
+    void accept(const Json& val,
+                jsonpath_filter_parser<Json>& filter)
     {
         if (val.is_object())
         {
@@ -749,19 +633,6 @@ public:
                 }
             }
 
-        }
-        start_ = 0;
-    }
-
-    void find_elements()
-    {
-        for (size_t i = 0; i < stack_.back().size(); ++i)
-        {
-            cjson_ptr p = stack_.back()[i];
-            if (p->is_array() && start_ < p->size())
-            {
-                nodes_.push_back(std::addressof((*p)[start_]));
-            }
         }
         start_ = 0;
     }
@@ -839,19 +710,19 @@ public:
         }
     }
 
-    void find(const string_type& name)
+    void select_values(const string_type& name)
     {
         if (name.length() > 0)
         {
             for (size_t i = 0; i < stack_.back().size(); ++i)
             {
-                find1(*(stack_.back()[i]), name);
+                select_values(*(stack_.back()[i]), name);
             }
-            recursive_descent_ = false;
         }
+        buffer_.clear();
     }
 
-    void find1(const JsonT& context_val, const string_type& name)
+    void select_values(const Json& context_val, const string_type& name)
     {
         if (context_val.is_object())
         {
@@ -865,16 +736,17 @@ public:
                 {
                     if (it->value().is_object() || it->value().is_array())
                     {
-                        find1(it->value(), name);
+                        select_values(it->value(), name);
                     }
                 }
             }
         }
         else if (context_val.is_array())
         {
-            size_t index = 0;
-            if (try_string_to_index(name.data(),name.size(),&index))
+            size_t pos = 0;
+            if (try_string_to_index(name.data(),name.size(),&pos))
             {
+                size_t index = positive_start_ ? pos : context_val.size() - pos;
                 if (index < context_val.size())
                 {
                     nodes_.push_back(std::addressof(context_val[index]));
@@ -882,7 +754,7 @@ public:
             }
             else if (name == json_jsonpath_traits<char_type>::length_literal() && context_val.size() > 0)
             {
-                auto q = std::make_shared<JsonT>(context_val.size());
+                auto q = std::make_shared<Json>(context_val.size());
                 temp_.push_back(q);
                 nodes_.push_back(q.get());
             }
@@ -892,7 +764,7 @@ public:
                 {
                     if (it->is_object() || it->is_array())
                     {
-                        find1(*it, name);
+                        select_values(*it, name);
                     }
                 }
             }

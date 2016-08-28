@@ -130,12 +130,12 @@ BOOST_AUTO_TEST_CASE(example)
 
 BOOST_AUTO_TEST_CASE(test_null)
 {
-    json nullval = json::null_type();
+    json nullval = json::null();
     BOOST_CHECK(nullval.is_null());
     BOOST_CHECK(nullval.is<json::null_type>());
 
     json obj;
-    obj["field"] = json::null_type();
+    obj["field"] = json::null();
     std::cout << obj << std::endl;
 }
 
@@ -190,7 +190,7 @@ BOOST_AUTO_TEST_CASE(test_serialize)
     std::ostringstream os;
 
     json_serializer serializer(os, true);
-    o.to_stream(serializer);
+    o.write(serializer);
     std::cout << os.str() << std::endl;
 }
 
@@ -321,7 +321,7 @@ BOOST_AUTO_TEST_CASE(test_uHHHH)
     std::ostringstream os;
     output_format format;
     format.escape_all_non_ascii(true);
-    arr.to_stream(os, format);
+    arr.write(os, format);
     std::string outputStr = os.str();
     std::cout << "Output:   " << os.str() << std::endl;
 
