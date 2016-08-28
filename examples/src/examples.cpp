@@ -52,7 +52,7 @@ void first_example_b()
             json& book = books[i];
             string author = book["author"].as<std::string>();
             string title = book["title"].as<std::string>();
-            string price = book.get("price", "N/A").as<std::string>();
+            string price = book.get_with_default("price", "N/A");
             std::cout << author << ", " << title << ", " << price << std::endl;
         }
         catch (const json_exception& e)

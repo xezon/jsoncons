@@ -195,7 +195,7 @@ The examples below illustrate the use of the [json](https://github.com/danielapa
         // book has a member "author"
     }
 
-    book.get("author", "author unknown").as<std::string>();
+    std::string author = book.get_with_default("author", "author unknown");
     // Returns author if found, otherwise "author unknown"
 
     try
@@ -427,7 +427,7 @@ Result:
         // book has a member "author"
     }
 
-    book.get(L"author", L"author unknown").as<std::wstring>();
+    std::wstring author = book.get_with_default(L"author", L"author unknown");
     // Returns author if found, otherwise "author unknown"
 
     try
