@@ -132,20 +132,68 @@ struct json_text_traits<char>
         return value;
     }
 
-    static uint32_t convert_char_to_codepoint(const char*& it, 
-                                              const char* end)
+    static size_t codepoint_count(const char* it, 
+                                  const char* end)
+    {
+        size_t count = 0;
+        const char* p = it;
+        while (p < end)
+        {
+            p += codepoint_length(p,end);
+            ++count;
+        }
+        return count;
+    }
+
+    static uint32_t codepoint_at(const char* it, 
+                                 const char* end,
+                                 size_t index)
+    {
+        uint32_t cp = 0;
+        const char* p = it;
+        size_t count = 0;
+        while (p < end && count <= index)
+        {
+            cp = char_sequence_to_codepoint(p,end,&p);
+            ++count;
+        }
+        return cp;
+    }
+
+    static std::pair<const char*,size_t> char_sequence_at(const char* it, 
+                                                          const char* end,
+                                                          size_t index)
+    {
+        const char* p = it;
+        size_t count = 0;
+        
+        while (p < end && count < index)
+        {
+            size_t length = codepoint_length(p,end);
+            p += length;
+            ++count;
+        }
+        size_t len = codepoint_length(p,end);
+        return (count == index) ? std::make_pair(p,len) : std::make_pair(it,static_cast<size_t>(0));
+    }
+
+    static uint32_t char_sequence_to_codepoint(const char* it, 
+                                               const char* end,
+                                               const char** stop)
     {
         char c = *it;
         uint32_t u(c >= 0 ? c : 256 + c );
         uint32_t cp = u;
         if (u < 0x80)
         {
+            *stop = it + 1;
         }
         else if ((u >> 5) == 0x6 && (end-it) > 1)
         {
             c = *(++it);
             u = (c >= 0 ? c : 256 + c );
             cp = ((cp << 6) & 0x7ff) + (u & 0x3f);
+            *stop = it + 1;
         }
         else if ((u >> 4) == 0xe && (end-it) > 2)
         {
@@ -155,6 +203,7 @@ struct json_text_traits<char>
             c = *(++it);
             u = (c >= 0 ? c : 256 + c );
             cp += (u) & 0x3f;
+            *stop = it + 1;
         }
         else if ((u >> 3) == 0x1e && (end-it) > 3)
         {
@@ -167,11 +216,38 @@ struct json_text_traits<char>
             c = *(++it);
             u = (c >= 0 ? c : 256 + c );
             cp += (u) & 0x3f;
+            *stop = it + 1;
         }
         else
         {
+            *stop = it;
         }
         return cp;
+    }
+
+    static size_t codepoint_length(const char* it, 
+                                   const char* end)
+    {
+        size_t length = 0;
+        char c = *it;
+        uint32_t u(c >= 0 ? c : 256 + c );
+        if (u < 0x80)
+        {
+            length = 1;
+        }
+        else if ((u >> 5) == 0x6 && (end-it) > 1)
+        {
+            length = 2;
+        }
+        else if ((u >> 4) == 0xe && (end-it) > 2)
+        {
+            length = 3;
+        }
+        else if ((u >> 3) == 0x1e && (end-it) > 3)
+        {
+            length = 4;
+        }
+        return length;
     }
 
     static void append_codepoint_to_string(uint32_t cp, std::string& s)
@@ -223,15 +299,36 @@ struct json_wchar_traits<wchar_t,2> // assume utf16
         }
     }
 
-    static uint32_t convert_char_to_codepoint(const wchar_t*& it, const wchar_t* end)
+    static uint32_t char_sequence_to_codepoint(const wchar_t* it, const wchar_t* end, const wchar_t** stop)
     {
         uint32_t cp = (0xffff & *it);
         if ((cp >= min_lead_surrogate && cp <= max_lead_surrogate) && (end-it) > 1) // surrogate pair
         {
             uint32_t trail_surrogate = 0xffff & *(++it);
             cp = (cp << 10) + trail_surrogate + 0x10000u - (min_lead_surrogate << 10) - min_trail_surrogate;
+            *stop = it + 1;
+        }
+        else if (end > it)
+        {
+            *stop = it+1;
+        }
+        else
+        {
+            *stop = it;
         }
         return cp;
+    }
+
+    static size_t codepoint_length(const wchar_t* it, const wchar_t* end)
+    {
+        size_t length = 1;
+
+        uint32_t cp = (0xffff & *it);
+        if ((cp >= min_lead_surrogate && cp <= max_lead_surrogate) && (end-it) > 1) // surrogate pair
+        {
+            length = 2;
+        }
+        return length;
     }
 };
 
@@ -250,10 +347,16 @@ struct json_wchar_traits<wchar_t,4> // assume utf32
         }
     }
 
-    static uint32_t convert_char_to_codepoint(const wchar_t*& it, const wchar_t*)
+    static uint32_t char_sequence_to_codepoint(const wchar_t* it, const wchar_t*, const wchar_t** stop)
     {
         uint32_t cp = static_cast<uint32_t>(*it);
+        *stop = it + 1;
         return cp;
+    }
+
+    static size_t codepoint_length(const wchar_t* it, const wchar_t* end)
+    {
+        return (end > it) ? 1 : 0;
     }
 };
 
@@ -278,14 +381,64 @@ struct json_text_traits<wchar_t>
         return value;
     }
 
+    static size_t codepoint_count(const wchar_t* it, 
+                                  const wchar_t* end)
+    {
+        size_t count = 0;
+        const wchar_t* p = it;
+        while (p < end)
+        {
+            p += codepoint_length(p,end);
+            ++count;
+        }
+        return count;
+    }
+
+    static std::pair<const wchar_t*,size_t> char_sequence_at(const wchar_t* it, 
+                                                             const wchar_t* end,
+                                                             size_t index)
+    {
+        const wchar_t* p = it;
+        size_t count = 0;
+
+        while (p < end && count < index)
+        {
+            size_t length = codepoint_length(p,end);
+            p += length;
+            ++count;
+        }
+        size_t len = codepoint_length(p,end);
+        return (count == index) ? std::make_pair(p,len) : std::make_pair(it,static_cast<size_t>(0));
+    }
+
+    static uint32_t codepoint_at(const wchar_t* it, 
+                                 const wchar_t* end,
+                                 size_t index)
+    {
+        uint32_t cp = 0;
+        const wchar_t* p = it;
+        size_t count = 0;
+        while (p < end && count <= index)
+        {
+            cp = char_sequence_to_codepoint(p,end,&p);
+            ++count;
+        }
+        return cp;
+    }
+
     static void append_codepoint_to_string(uint32_t cp, std::wstring& s)
     {
         json_wchar_traits<wchar_t,sizeof(wchar_t)>::append_codepoint_to_string(cp,s);
     }
 
-    static uint32_t convert_char_to_codepoint(const wchar_t*& it, const wchar_t* end)
+    static uint32_t char_sequence_to_codepoint(const wchar_t* it, const wchar_t* end, const wchar_t** stop)
     {
-        return json_wchar_traits<wchar_t,sizeof(wchar_t)>::convert_char_to_codepoint(it, end);
+        return json_wchar_traits<wchar_t,sizeof(wchar_t)>::char_sequence_to_codepoint(it, end, stop);
+    }
+
+    static size_t codepoint_length(const wchar_t* it, const wchar_t* end)
+    {
+        return json_wchar_traits<wchar_t, sizeof(wchar_t)>::codepoint_length(it, end);
     }
 };
 

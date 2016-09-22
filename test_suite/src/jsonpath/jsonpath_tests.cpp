@@ -11,6 +11,7 @@
 #include <utility>
 #include <ctime>
 #include <new>
+#include <codecvt>
 #include "jsoncons/json.hpp"
 #include "jsoncons_ext/jsonpath/json_query.hpp"
 
@@ -110,6 +111,22 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_bicycle)
     expected.add(fixture.book());
     expected.add(fixture.bicycle());
     BOOST_CHECK_EQUAL(expected,result);
+
+    //    std::cout << pretty_print(result) << std::endl;
+}
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_union)
+{
+    jsonpath_fixture fixture;
+
+    json root = json::parse(jsonpath_fixture::store_text());
+
+    json result = json_query(root,"$['store']..['author','title']");
+    std::cout << pretty_print(result) << std::endl;
+    //json expected = json::array();
+    //expected.add(fixture.book());
+    //expected.add(fixture.bicycle());
+    //BOOST_CHECK_EQUAL(expected,result);
 
     //    std::cout << pretty_print(result) << std::endl;
 }
@@ -711,6 +728,149 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_aggregation)
     json result4 = json_query(val, path4);
     BOOST_CHECK_EQUAL(expected4, result4);
 }
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_aggregation2)
+{
+    json val = json::parse(R"(
+{ "store": {
+    "book": [ 
+          { "author": "Nigel Rees"
+          },
+          { "author": "Evelyn Waugh"
+          },
+          { "author": "Herman Melville"
+          }
+        ]
+    }  
+}
+    )");
+
+    json result = json_query(val, "$..book[(@.length - 1),(@.length - 2)]");
+
+    json expected = json::parse(R"(
+[{"author": "Herman Melville"},{"author": "Evelyn Waugh"}]
+)");
+    BOOST_CHECK_EQUAL(expected, result);
+}
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_aggregation3)
+{
+    json val = json::parse(R"(
+{
+  "firstName": "John",
+  "lastName" : "doe",
+  "age"      : 26,
+  "address"  : {
+    "streetAddress": "naist street",
+    "city"         : "Nara",
+    "postalCode"   : "630-0192"
+  },
+  "phoneNumbers": [
+    {
+      "type"  : "iPhone",
+      "number": "0123-4567-8888"
+    },
+    {
+      "type"  : "home",
+      "number": "0123-4567-8910"
+    }
+  ]
+}
+    )");
+
+    json expected2 = json::parse(R"(
+["iPhone","0123-4567-8888","home","0123-4567-8910"]
+)");
+
+    json result2 = json_query(val, "$..[('type'),('number')]");
+    BOOST_CHECK_EQUAL(expected2, result2);
+}
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_string_indexation)
+{
+    json val;
+    val["about"] = "I\xe2\x82\xacJ";
+
+    json expected1 = json::array(1,"I");
+    json result1 = json_query(val, "$..about[0]");
+    BOOST_CHECK_EQUAL(expected1, result1);
+
+    json expected2 = json::array(1,"\xe2\x82\xac");
+    json result2 = json_query(val, "$..about[1]");
+    BOOST_CHECK_EQUAL(expected2, result2);
+
+    json expected3 = json::array(1,"J");
+    json result3 = json_query(val, "$..about[2]");
+    BOOST_CHECK_EQUAL(expected3, result3);
+
+    json expected4 = json::array(1,3);
+    json result4 = json_query(val, "$..about.length");
+    BOOST_CHECK_EQUAL(expected4, result4);
+}
+
+BOOST_AUTO_TEST_CASE(test_union_array_elements)
+{
+    json val = json::parse(R"(
+{ "store": {
+    "book": [ 
+          { "author": "Nigel Rees"
+          },
+          { "author": "Evelyn Waugh"
+          },
+          { "author": "Herman Melville"
+          }
+        ]
+    },
+  "Roman": {
+    "book": [ 
+          { "author": "Tolstoy L"
+          },
+          { "author": "Tretyakovskiy R"
+          },
+          { "author": "Kulik M"
+          }
+        ]
+    }  
+}
+    )");
+
+    json expected1 = json::parse(R"(
+[
+    { "author": "Kulik M"},
+    { "author": "Herman Melville"}
+]
+    )");
+    json result1 = json_query(val, "$..book[-1]");
+    BOOST_CHECK_EQUAL(expected1,result1);
+
+    json expected2 = json::parse(R"(
+[
+    {
+        "author": "Kulik M"
+    },
+    {
+        "author": "Tolstoy L"
+    },
+    {
+        "author": "Herman Melville"
+    },
+    {
+        "author": "Nigel Rees"
+    }
+]
+    )");
+    json result2 = json_query(val, "$..book[-1,-3]");
+    BOOST_CHECK_EQUAL(expected2,result2);
+
+    json expected3 = expected2;
+    json result3 = json_query(val, "$..book[-1,(@.length - 3)]");
+    BOOST_CHECK_EQUAL(expected3,result3);
+
+    json expected4 = expected2;
+    json result4 = json_query(val, "$..book[(@.length - 1),-3]");
+    BOOST_CHECK_EQUAL(expected4,result4);
+}
+
 BOOST_AUTO_TEST_SUITE_END()
 
 

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Using json any</title>
+<title>line_split_kind</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <style type="text/css">
 /* GitHub stylesheet for MarkdownPad (http://markdownpad.com) */
@@ -468,138 +468,9 @@ vertical-align:1px;
 </style>
 </head>
 <body>
-<p>jsoncons provides a class json::any that can contain a value of <br>
-any type as long as that type supports copy construction and <br>
-assignment.</p>
+<pre><code>jsoncons::line_split_kind
 
-<pre><code>#include "jsoncons/json.hpp"
-#include &lt;boost/numeric/ublas/matrix.hpp&gt;
-
-using jsoncons::json;
-using jsoncons::pretty_print;
-using boost::numeric::ublas::matrix;
-</code></pre>
-
-<h3>Inserting a boost matrix into a json object</h3>
-
-<p>This allows you, for example, to insert a boost matrix into a <code>json</code> object, <br>
-and to retrieve it back cast to the appropriate type. You do so by wrapping it in<br>
-a json::any value, like this:</p>
-
-<pre><code>json obj;
-
-matrix&lt;double&gt; A(2,2);
-A(0,0) = 1;
-A(0,1) = 2;
-A(1,0) = 3;
-A(1,1) = 4;
-
-obj.set("A",json::any(A));
-
-matrix&lt;double&gt;&amp; B = obj["A"].any_cast&lt;matrix&lt;double&gt;&gt;();
-</code></pre>
-
-<h3>Serializing a json <code>any</code> value</h3>
-
-<p>By default, if you write the json object containing your boost matrix to a stream</p>
-
-<pre><code>std::cout &lt;&lt; obj &lt;&lt; std::endl;
-</code></pre>
-
-<p>the output is</p>
-
-<pre><code>{"A":null}
-</code></pre>
-
-<p>You can, however, implement a function template specialization of <code>serialize</code> in <br>
-the <code>jsoncons</code> namespace, in a header file, like this:</p>
-
-<pre><code>#ifndef MY_ANY_SPECIALIZATIONS_HPP
-#define MY_ANY_SPECIALIZATIONS_HPP
-
-#include "jsoncons/json.hpp"
-#include &lt;boost/numeric/ublas/matrix.hpp&gt;
-
-namespace jsoncons {
-
-template&lt;&gt; inline 
-void serialize(json_output_handler&amp; os, const boost::numeric::ublas::matrix&lt;double&gt;&amp; A)
-{
-    os.begin_array();
-    for (size_t i = 0; i &lt; A.size1(); ++i)
-    {
-        os.begin_array();
-        for (size_t j = 0; j &lt; A.size2(); ++j)
-        {
-            os.value(A(i, j));
-        }
-        os.end_array();
-    }
-    os.end_array();
-}
-
-}
-
-#endif
-</code></pre>
-
-<p>You'll need to include this header file in every file that inserts a boost matrix into a <code>json</code> value.</p>
-
-<p>Now when you write the json object to the stream, the output is</p>
-
-<pre><code>{"A":[[1,2],[3,4]]}
-</code></pre>
-
-<p>or with pretty printing</p>
-
-<pre><code>std::cout &lt;&lt; pretty_print(obj) &lt;&lt; std::endl;
-</code></pre>
-
-<p>the output becomes    </p>
-
-<pre><code>{
-    "A":
-    [
-        [1,2],
-        [3,4]
-    ]
-}
-</code></pre>
-
-<h3>Adding a boost matrix to a json array</h3>
-
-<p>You can also add a json <code>any</code> value to a <code>json</code> array, like this. </p>
-
-<pre><code>json arr = json::array();
-matrix&lt;double&gt; A(2,2);
-A(0,0) = 1;
-A(0,1) = 2;
-A(1,0) = 3;
-A(1,1) = 4;
-matrix&lt;double&gt; B(2,2);
-B(0,0) = 5;
-B(0,1) = 6;
-B(1,0) = 7;
-B(1,1) = 8;
-
-arr.add(json::any(A));
-arr.add(json::any(B));
-
-std::cout &lt;&lt; pretty_print(arr) &lt;&lt; std::endl;
-</code></pre>
-
-<p>The output is</p>
-
-<pre><code>[
-    [
-        [1,2],
-        [3,4]
-    ],
-    [
-        [5,6],
-        [7,8]
-    ]
-]
+enum class line_split_kind{same_line,new_line,multi_line};
 </code></pre>
 </body>
 </html>

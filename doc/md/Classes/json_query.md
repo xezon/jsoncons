@@ -7,8 +7,8 @@ Returns a `json` array of `json` values selected from a root `json` structure.
     #include "jsoncons/jsonpath/json_query.hpp"
 
     template<Json>
-    basic_json<Json> json_query(const Json& root, 
-                                 const typename Json::string_type& path);
+    Json json_query(const Json& root, 
+                    const typename Json::string_type& path);
 
 [JsonPath](http://goessner.net/articles/JsonPath/) is a creation of Stefan Goessner. JSONPath expressions refer to a JSON text in the same way as XPath expressions refer to an XML document. 
 
@@ -148,6 +148,7 @@ JSONPath |Result|Notes
 `$..*`                  |Everything in the store.
 `$.store.book[ ?((@.author == 'Nigel Rees') || (@.author == 'Evelyn Waugh')) ].title`|The titles of all books by Nigel Rees and Evelyn Waugh
 `$.store.book[?(@.author =~ /Evelyn.*?/)]`|All books whose author's name starts with Evelyn
-`$.store.book[ ?((@.author =~ /evelyn.*?/i))]`|All books whose author's name starts with Evelyn, evelyn etc.|`i` indicates case insensitive
-`$.store.book[ ?(!(@.author =~ /Evelyn.*?/))]`|All books whose author's name does not start with Evelyn
+`$.store.book[?((@.author =~ /evelyn.*?/i))]`|All books whose author's name starts with Evelyn, evelyn etc.|`i` indicates case insensitive
+`$.store.book[?(!(@.author =~ /Evelyn.*?/))]`|All books whose author's name does not start with Evelyn
+`$['store']['book']..['author','title']`|All authors and titles of books in the store
 
