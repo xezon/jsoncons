@@ -192,13 +192,51 @@ for (const auto& member : book.members())
 ```
 See [Arrays](https://github.com/danielaparker/jsoncons/wiki/Arrays) for details
 
-### Convert from and to standard library containers
+### Convert from and to standard library sequence containers
 
 ```c++
 std::vector<int> v = {1,2,3,4};
 json j(v);
 std::deque<int> d = j.as<std::deque<int>();
 ```
+
+### Convert from and to standard library associative containers
+
+```c++
+std::map<std::string, int> m{{"one", 1}, 
+                             {"two", 2}, 
+                             {"three", 3}};
+json j(m);
+std::unordered_map<std::string, int> um = j.as<std::unordered_map<std::string, int>>();
+```
+
+### multimap containers too
+
+```c++
+std::multimap<std::string, int> mm{{"one", 1}, 
+                                   {"two", 1}, 
+                                   {"three", 0}, 
+                                   {"three", 1}};
+json j(mm); // two entries for key "three"
+std::cout << "(1) " << j << "\n\n";
+std::cout << "(2) " << j.count("three") << "\n\n";
+std::cout << "(3)" << "\n";
+for (auto member: j.members("three"))
+{
+    std::cout << member.value().as<int>() << "\n";
+}
+```
+Output:
+```
+(1) {"one":1,"three":0,"three":1,"two":1}
+
+(2) 2
+
+(3)
+0
+1
+```
+Note that [rfc7159](https://tools.ietf.org/html/rfc7159) _discourages_ duplicate names - "The names within an object SHOULD be unique" - but does not forbid them. 
 
 ### Convert from and to user defined types (and standard library containers of user defined types)
 

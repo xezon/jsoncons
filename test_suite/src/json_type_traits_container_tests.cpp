@@ -250,17 +250,33 @@ BOOST_AUTO_TEST_CASE(test_from_stl_container)
     BOOST_CHECK_EQUAL(2.3, j_umap["two"].as<double>());
     BOOST_CHECK_EQUAL(3.4, j_umap["three"].as<double>());
 
-    std::multimap<std::string, bool> a_mmap{ {"one", true}, {"two", true}, {"three", false}, {"three", true} };
-    json j_mmap(a_mmap); // one entry for key "three"
-    BOOST_CHECK_EQUAL(true, j_mmap.find("one")->value().as<bool>());
-    BOOST_CHECK_EQUAL(true, j_mmap.find("two")->value().as<bool>());
-    BOOST_CHECK_EQUAL(true, j_mmap.find("three")->value().as<bool>());
+    std::multimap<std::string, int> a_mmap{ {"one", 1}, {"two", 1}, {"three", 0}, {"three", 1} };
+    json j_mmap(a_mmap); // two entries for name "three"
+    BOOST_CHECK_EQUAL(1, j_mmap.find("one")->value().as<int>());
+    BOOST_CHECK_EQUAL(1, j_mmap.find("two")->value().as<int>());
+    std::vector<int> threes;
+    for (auto three : j_mmap.members("three"))
+    {
+        threes.push_back(three.value().as<int>());
+    }
+    std::sort(threes.begin(),threes.end());
+    BOOST_CHECK(threes.size() == 2);
+    BOOST_CHECK_EQUAL(0, threes[0]);
+    BOOST_CHECK_EQUAL(1, threes[1]);
 
-    std::unordered_multimap<std::string, bool> a_ummap { {"one", true}, {"two", true}, /*{"three", false},*/ {"three", true} };
-    json j_ummap(a_ummap); // two entries for key "three"
-    BOOST_CHECK_EQUAL(true, j_ummap.find("one")->value().as<bool>());
-    BOOST_CHECK_EQUAL(true, j_ummap.find("two")->value().as<bool>());
-    BOOST_CHECK_EQUAL(true, j_ummap.find("three")->value().as<bool>());
+    std::unordered_multimap<std::string, int> a_ummap{ {"one", 1}, {"two", 1}, {"three", 0}, {"three", 1} };
+    json j_ummap(a_ummap); // two entries for name "three"
+    BOOST_CHECK_EQUAL(1, j_ummap.find("one")->value().as<int>());
+    BOOST_CHECK_EQUAL(1, j_ummap.find("two")->value().as<int>());
+    std::vector<int> uthrees;
+    for (auto three : j_ummap.members("three"))
+    {
+        uthrees.push_back(three.value().as<int>());
+    }
+    std::sort(uthrees.begin(),uthrees.end());
+    BOOST_CHECK(uthrees.size() == 2);
+    BOOST_CHECK_EQUAL(0, uthrees[0]);
+    BOOST_CHECK_EQUAL(1, uthrees[1]);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

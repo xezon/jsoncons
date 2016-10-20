@@ -1001,9 +1001,19 @@ public:
             return evaluate().members();
         }
 
+        object_range members(const string_type& name)
+        {
+            return evaluate().members(name);
+        }
+
         const_object_range members() const
         {
             return evaluate().members();
+        }
+
+        const_object_range members(const string_type& name) const
+        {
+            return evaluate().members(name);
         }
 
         array_range elements()
@@ -1348,6 +1358,17 @@ public:
 
         {
             evaluate().set(std::forward<string_type&&>(name),std::forward<json_type&&>(value));
+        }
+
+        void insert(const string_type& name, const json_type& value)
+        {
+            evaluate().insert(name,value);
+        }
+
+        template <class T>
+        void insert(const string_type& name, T&& value)
+        {
+            evaluate().insert(name,std::forward<T&&>(value));
         }
 
         object_iterator set(object_iterator hint, const string_type& name, const json_type& value)
@@ -2943,6 +2964,39 @@ public:
         }
     }
 
+    void insert(const string_type& name, const json_type& value)
+    {
+        switch (var_.type_id())
+        {
+        case value_types::empty_object_t:
+            create_object_implicitly();
+        case value_types::object_t:
+            var_.object_data_cast()->value().insert(name, value);
+            break;
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
+            }
+        }
+    }
+
+    template <class T>
+    void insert(const string_type& name, T&& value)
+    {
+        switch (var_.type_id())
+        {
+        case value_types::empty_object_t:
+            create_object_implicitly();
+        case value_types::object_t:
+            var_.object_data_cast()->value().insert(name, std::forward<json_type&&>(value));
+            break;
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
+            }
+        }
+    }
+
     template <class T>
     void add(const T& value)
     {
@@ -3392,6 +3446,21 @@ public:
         }
     }
 
+    object_range members(const string_type& name)
+    {
+        static json_type empty_object = object();
+
+        switch (var_.type_id())
+        {
+        case value_types::empty_object_t:
+            return object_range(empty_object.members().begin(), empty_object.members().end());
+        case value_types::object_t:
+            return object_value().members(name.data(),name.length());
+        default:
+            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an object");
+        }
+    }
+
     const_object_range members() const
     {
         static const json_type empty_object = object();
@@ -3401,6 +3470,20 @@ public:
             return const_object_range(empty_object.members().begin(), empty_object.members().end());
         case value_types::object_t:
             return const_object_range(object_value().begin(),object_value().end());
+        default:
+            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an object");
+        }
+    }
+
+    const_object_range members(const string_type& name) const
+    {
+        static const json_type empty_object = object();
+        switch (var_.type_id())
+        {
+        case value_types::empty_object_t:
+            return const_object_range(empty_object.members().begin(), empty_object.members().end());
+        case value_types::object_t:
+            return object_value().members(name.data(),name.length());
         default:
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an object");
         }

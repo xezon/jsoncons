@@ -723,35 +723,36 @@ public:
         std::sort(members_.begin(),members_.end(),member_lt_member<value_type>());
     }
 
-    void insert(const value_type& value)
+    void insert(const string_type& name, const Json& value)
     {
         auto it = std::upper_bound(members_.begin(),
                                    members_.end(),
-                                   value.name().c_str(),
-                                   member_lt_string2<char_type,value_type>(value.name().length()));
+                                   name.c_str(),
+                                   member_lt_string2<char_type,value_type>(name.length()));
         if (it == members_.end())
         {
-            members_.push_back(value);
+            members_.push_back(value_type(name,value));
         }
         else
         {
-            members_.insert(it,value);
+            members_.insert(it,value_type(name,value));
         }
     }
 
-    void insert(value_type&& value)
+    template <class T>
+    void insert(const string_type& name, T&& value)
     {
         auto it = std::upper_bound(members_.begin(),
                                    members_.end(),
-                                   value.name().c_str(),
-                                   member_lt_string2<char_type,value_type>(value.name().length()));
+                                   name.c_str(),
+                                   member_lt_string2<char_type,value_type>(name.length()));
         if (it == members_.end())
         {
-            members_.push_back(std::forward<value_type&&>(value));
+            members_.emplace_back(name,std::forward<Json&&>(value));
         }
         else
         {
-            members_.insert(it,std::forward<value_type&&>(value));
+            members_.emplace(it,name,std::forward<Json&&>(value));
         }
     }
 
