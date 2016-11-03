@@ -3,9 +3,8 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
-#include "jsoncons/json.hpp"
-#include "jsoncons/json_serializer.hpp"
-#include "my_any_specializations.hpp"
+#include <jsoncons/json.hpp>
+#include <jsoncons/json_serializer.hpp>
 #include <sstream>
 #include <vector>
 #include <utility>

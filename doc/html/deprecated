@@ -468,7 +468,7 @@ vertical-align:1px;
 </style>
 </head>
 <body>
-<h1>Deprecated Features</h1>
+<h2>Deprecated Features</h2>
 
 <p>As the <code>jsoncons</code> library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. The deprecated names can be suppressed by defining macro JSONCONS_NO_DEPRECATED, which is recommended for new code.</p>
 
@@ -693,6 +693,39 @@ vertical-align:1px;
 <td>Construct from <code>json::array</code> with initializer-list</td>
 </tr>
 <tr>
+<td></td>
+<td>json_deserializer</td>
+<td><em>✓</em></td>
+<td>Use json_encoder`</td>
+</tr>
+<tr>
+<td></td>
+<td>wjson_deserializer</td>
+<td><em>✓</em></td>
+<td>Use <code>json_encoder&lt;wjson&gt;</code>
+</td>
+</tr>
+<tr>
+<td></td>
+<td>ojson_deserializer</td>
+<td><em>✓</em></td>
+<td>Use <code>json_encoder&lt;ojson&gt;</code>
+</td>
+</tr>
+<tr>
+<td></td>
+<td>wojson_deserializer</td>
+<td><em>✓</em></td>
+<td>Use <code>json_encoder&lt;wojson&gt;</code>
+</td>
+</tr>
+<tr>
+<td></td>
+<td>wojson</td>
+<td><em>✓</em></td>
+<td>Use owjson`</td>
+</tr>
+<tr>
 <td>json member types</td>
 <td>any</td>
 <td><em>✓</em></td>
@@ -718,19 +751,20 @@ vertical-align:1px;
 <td>Use assignment to <code>json::array()</code> or <code>json::make_array()</code> instead.</td>
 </tr>
 <tr>
-<td>json_deserializer</td>
+<td>json_encoder</td>
 <td>json&amp; root()</td>
 <td><em>✓</em></td>
 <td>json get_result()</td>
 </tr>
 <tr>
-<td>json_reader</td>
-<td>read()</td>
+<td>serialization</td>
+<td><code>output_format</code></td>
 <td><em>✓</em></td>
-<td>Use read_next()</td>
+<td>Use <code>serialization_options</code>
+</td>
 </tr>
 <tr>
-<td></td>
+<td>json_reader</td>
 <td>max_depth() const</td>
 <td><em>✓</em></td>
 <td>Use max_nesting_depth() const</td>
@@ -793,7 +827,13 @@ vertical-align:1px;
 <td>json_filter</td>
 <td>parent()</td>
 <td><em>✓</em></td>
-<td>Use input_handler()</td>
+<td>Use downstream_handler()</td>
+</tr>
+<tr>
+<td></td>
+<td>input_handler()</td>
+<td><em>✓</em></td>
+<td>Use downstream_handler()</td>
 </tr>
 <tr>
 <td>csv_parameters</td>

@@ -13,47 +13,67 @@
 #include <istream>
 #include <cstdlib>
 #include <memory>
-#include "jsoncons/json.hpp"
+#include <jsoncons/json.hpp>
 #include "jsonpath_filter.hpp"
 #include "jsonpath_error_category.hpp"
 
 namespace jsoncons { namespace jsonpath {
 
     template<class CharT>
-    bool try_string_to_index(const CharT *s, size_t length, size_t* value)
+    bool try_string_to_index(const CharT *s, size_t length, size_t* value, bool* positive)
     {
         static const size_t max_value = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
         static const size_t max_value_div_10 = max_value / 10;
 
+        size_t start = 0;
         size_t n = 0;
-        for (size_t i = 0; i < length; ++i)
+        if (length > 0)
         {
-            CharT c = s[i];
-            switch (c)
+            if (s[start] == '-')
             {
-            case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                {
-                    size_t x = c - '0';
-                    if (n > max_value_div_10)
-                    {
-                        return false;
-                    }
-                    n = n * 10;
-                    if (n > max_value - x)
-                    {
-                        return false;
-                    }
-
-                    n += x;
-                }
-                break;
-            default:
-                return false;
-                break;
+                *positive = false;
+                ++start;
+            }
+            else
+            {
+                *positive = true;
             }
         }
-        *value = n;
-        return true;
+        if (length > start)
+        {
+            for (size_t i = start; i < length; ++i)
+            {
+                CharT c = s[i];
+                switch (c)
+                {
+                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                    {
+                        size_t x = c - '0';
+                        if (n > max_value_div_10)
+                        {
+                            return false;
+                        }
+                        n = n * 10;
+                        if (n > max_value - x)
+                        {
+                            return false;
+                        }
+
+                        n += x;
+                    }
+                    break;
+                default:
+                    return false;
+                    break;
+                }
+            }
+            *value = n;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 
     template <class CharT>
@@ -78,7 +98,7 @@ namespace jsoncons { namespace jsonpath {
 template<class Json>
 Json json_query(const Json& root, const typename Json::char_type* path, size_t length)
 {
-    jsonpath_evaluator<Json> evaluator;
+    jsonpath_evaluator<Json,const Json&,const Json*> evaluator;
     evaluator.evaluate(root,path,length);
     return evaluator.get_values();
 }
@@ -93,6 +113,26 @@ template<class Json>
 Json json_query(const Json& root, const typename Json::char_type* path)
 {
     return json_query(root,path,std::char_traits<typename Json::char_type>::length(path));
+}
+
+template<class Json, class T>
+void json_replace(Json& root, const typename Json::char_type* path, size_t length, T&& new_value)
+{
+    jsonpath_evaluator<Json,Json&,Json*> evaluator;
+    evaluator.evaluate(root,path,length);
+    evaluator.replace(std::forward<T&&>(new_value));
+}
+
+template<class Json, class T>
+void json_replace(Json& root, const typename Json::string_type& path, T&& new_value)
+{
+    json_replace(root, path.data(), path.length(), std::forward<T&&>(new_value));
+}
+
+template<class Json, class T>
+void json_replace(Json& root, const typename Json::char_type* path, T&& new_value)
+{
+    json_replace(root,path,std::char_traits<typename Json::char_type>::length(path),std::forward<T&&>(new_value));
 }
 
 enum class states 
@@ -115,14 +155,17 @@ enum class states
     dot
 };
 
-template<class Json>
+template<class Json,
+         class JsonReference=const Json&,
+         class JsonPointer=const Json*>
 class jsonpath_evaluator : private basic_parsing_context<typename Json::char_type>
 {
 private:
     typedef typename Json::char_type char_type;
     typedef typename Json::string_type string_type;
-    typedef const Json* cjson_ptr;
-    typedef std::vector<cjson_ptr> node_set;
+    typedef JsonReference json_reference;
+    typedef JsonPointer json_pointer;
+    typedef std::vector<json_pointer> node_set;
 
     class selector
     {
@@ -130,7 +173,7 @@ private:
         virtual ~selector()
         {
         }
-        virtual void select(const Json& context, std::vector<cjson_ptr>& nodes, std::vector<std::shared_ptr<Json>>& temp_json_values) = 0;
+        virtual void select(json_reference context, std::vector<json_pointer>& nodes, std::vector<std::shared_ptr<Json>>& temp_json_values) = 0;
     };
 
     class expr_selector : public selector
@@ -143,7 +186,7 @@ private:
         {
         }
 
-        void select(const Json& context, std::vector<cjson_ptr>& nodes, std::vector<std::shared_ptr<Json>>& temp_json_values) override
+        void select(json_reference context, std::vector<json_pointer>& nodes, std::vector<std::shared_ptr<Json>>& temp_json_values) override
         {
             auto index = result_.eval(context);
             if (index.template is<size_t>())
@@ -156,8 +199,33 @@ private:
             }
             else if (index.is_string())
             {
-                name_selector selector(true,index.as_string());
+                name_selector selector(index.as_string(),true);
                 selector.select(context, nodes, temp_json_values);
+            }
+        }
+    };
+
+    class filter_selector : public selector
+    {
+    private:
+         jsonpath_filter_expr<Json> result_;
+    public:
+        filter_selector(const jsonpath_filter_expr<Json>& result)
+            : result_(result)
+        {
+        }
+
+        void select(json_reference context, std::vector<json_pointer>& nodes, std::vector<std::shared_ptr<Json>>&) override
+        {
+            if (context.is_array())
+            {
+                for (json_reference element : context.elements())
+                {
+                    if (result_.exists(element))
+                    {
+                        nodes.push_back(std::addressof(element));
+                    }
+                }
             }
         }
     };
@@ -165,16 +233,16 @@ private:
     class name_selector : public selector
     {
     private:
-        size_t positive_start_;
         string_type name_;
+        bool positive_start_;
     public:
-        name_selector(size_t positive_start, string_type name)
-            : positive_start_(positive_start), name_(name)
+        name_selector(string_type name, bool positive_start)
+            : name_(name), positive_start_(positive_start)
         {
         }
 
-        void select(const Json& context,
-            std::vector<cjson_ptr>& nodes,
+        void select(json_reference context,
+            std::vector<json_pointer>& nodes,
             std::vector<std::shared_ptr<Json>>& temp_json_values) override
         {
             if (context.is_object() && context.count(name_) > 0)
@@ -184,7 +252,7 @@ private:
             else if (context.is_array())
             {
                 size_t pos = 0;
-                if (try_string_to_index(name_.data(), name_.size(), &pos))
+                if (try_string_to_index(name_.data(), name_.size(), &pos, &positive_start_))
                 {
                     size_t index = positive_start_ ? pos : context.size() - pos;
                     if (index < context.size())
@@ -197,7 +265,7 @@ private:
             {
                 size_t pos = 0;
                 string_type s = context.as_string();
-                if (try_string_to_index(name_.data(), name_.size(), &pos))
+                if (try_string_to_index(name_.data(), name_.size(), &pos, &positive_start_))
                 {
                     size_t index = positive_start_ ? pos : s.size() - pos;
                     auto sequence = json_text_traits<char_type>::char_sequence_at(s.data(), s.data() + s.size(), index);
@@ -212,19 +280,108 @@ private:
         }
     };
 
+    class array_slice_selector : public selector
+    {
+    private:
+        size_t start_;
+        bool positive_start_;
+        size_t end_;
+        bool positive_end_;
+        bool undefined_end_;
+        size_t step_;
+        bool positive_step_;
+    public:
+        array_slice_selector(size_t start, bool positive_start, 
+                             size_t end, bool positive_end,
+                             size_t step, bool positive_step,
+                             bool undefined_end)
+            : start_(start), positive_start_(positive_start),
+              end_(end), positive_end_(positive_end),undefined_end_(undefined_end),
+              step_(step), positive_step_(positive_step) 
+        {
+        }
+
+        void select(json_reference context,
+            std::vector<json_pointer>& nodes,
+            std::vector<std::shared_ptr<Json>>&) override
+        {
+            if (positive_step_)
+            {
+                end_array_slice1(context,nodes);
+            }
+            else
+            {
+                end_array_slice2(context,nodes);
+            }
+        }
+
+        void end_array_slice1(json_reference context,
+                              std::vector<json_pointer>& nodes)
+        {
+            if (context.is_array())
+            {
+                size_t start = positive_start_ ? start_ : context.size() - start_;
+                size_t end;
+                if (!undefined_end_)
+                {
+                    end = positive_end_ ? end_ : context.size() - end_;
+                }
+                else
+                {
+                    end = context.size();
+                }
+                for (size_t j = start; j < end; j += step_)
+                {
+                    if (j < context.size())
+                    {
+                        nodes.push_back(std::addressof(context[j]));
+                    }
+                }
+            }
+        }
+
+        void end_array_slice2(json_reference context,
+                              std::vector<json_pointer>& nodes)
+        {
+            if (context.is_array())
+            {
+                size_t start = positive_start_ ? start_ : context.size() - start_;
+                size_t end;
+                if (!undefined_end_)
+                {
+                    end = positive_end_ ? end_ : context.size() - end_;
+                }
+                else
+                {
+                    end = context.size();
+                }
+
+                size_t j = end + step_ - 1;
+                while (j > (start+step_-1))
+                {
+                    j -= step_;
+                    if (j < context.size())
+                    {
+                        nodes.push_back(std::addressof(context[j]));
+                    }
+                }
+            }
+        }
+    };
+
     basic_parse_error_handler<char_type> *err_handler_;
     states state_;
     string_type buffer_;
     size_t start_;
-    size_t end_;
-    size_t step_;
     bool positive_start_;
+    size_t end_;
     bool positive_end_;
+    bool undefined_end_;
+    size_t step_;
     bool positive_step_;
-    bool end_undefined_;
     std::vector<node_set> stack_;
     bool recursive_descent_;
-    std::vector<cjson_ptr> nodes_;
+    std::vector<json_pointer> nodes_;
     std::vector<std::shared_ptr<Json>> temp_json_values_;
     size_t line_;
     size_t column_;
@@ -233,22 +390,17 @@ private:
     const char_type* p_;
     std::vector<std::shared_ptr<selector>> selectors_;
 
-    void transfer_nodes()
-    {
-        stack_.push_back(nodes_);
-        nodes_.clear();
-        recursive_descent_ = false;
-    }
-
 public:
     jsonpath_evaluator()
-        : state_(states::start), 
-          start_(0), end_(0), step_(0),
-          positive_start_(0),positive_end_(0), positive_step_(0),
-          end_undefined_(false), recursive_descent_(false),
+        : err_handler_(std::addressof(basic_default_parse_error_handler<char_type>::instance())),
+          state_(states::start),
+          start_(0), positive_start_(true), 
+          end_(0), positive_end_(true), undefined_end_(false),
+          step_(0), positive_step_(true),
+          recursive_descent_(false),
           line_(0), column_(0),
-          begin_input_(nullptr), end_input_(nullptr), p_(nullptr),
-          err_handler_(std::addressof(basic_default_parse_error_handler<char_type>::instance()))
+          begin_input_(nullptr), end_input_(nullptr),
+          p_(nullptr)
     {
     }
 
@@ -260,24 +412,38 @@ public:
         {
             for (size_t i = 0; i < stack_.back().size(); ++i)
             {
-                cjson_ptr p = stack_.back()[i];
+                json_pointer p = stack_.back()[i];
                 result.add(*p);
             }
         }
         return result;
     }
 
-    void evaluate(const Json& root, const string_type& path)
+    template <class T>
+    void replace(T&& new_value)
+    {
+        if (stack_.size() > 0)
+        {
+            for (size_t i = 0; i < stack_.back().size(); ++i)
+            {
+                *(stack_.back()[i]) = new_value;
+            }
+        }
+    }
+
+    void evaluate(json_reference root, const string_type& path)
     {
         evaluate(root,path.data(),path.length());
     }
-    void evaluate(const Json& root, const char_type* path)
+    void evaluate(json_reference root, const char_type* path)
     {
         evaluate(root,path,std::char_traits<char_type>::length(path));
     }
 
-    void evaluate(const Json& root, const char_type* path, size_t length)
+    void evaluate(json_reference root, const char_type* path, size_t length)
     {
+        states pre_line_break_state = states::start;
+
         begin_input_ = path;
         end_input_ = path + length;
         p_ = begin_input_;
@@ -285,26 +451,39 @@ public:
         line_ = 1;
         column_ = 1;
         state_ = states::start;
-        buffer_.clear();
-        start_ = 0;
-        end_ = 0;
-        step_ = 1;
+
         recursive_descent_ = false;
-        positive_start_ = true;
-        positive_end_ = true;
-        positive_step_ = true;
-        end_undefined_ = false;
+
+        clear_index();
 
         while (p_ < end_input_)
         {
             switch (state_)
             {
+            case states::cr:
+                ++line_;
+                column_ = 1;
+                switch (*p_)
+                {
+                case '\n':
+                    state_ = pre_line_break_state;
+                    ++p_;
+                    ++column_;
+                    break;
+                default:
+                    state_ = pre_line_break_state;
+                    break;
+                }
+                break;
+            case states::lf:
+                ++line_;
+                column_ = 1;
+                state_ = pre_line_break_state;
+                break;
             case states::start: 
                 switch (*p_)
                 {
                 case ' ':case '\t':
-                    ++p_;
-                    ++column_;
                     break;
                 case '$':
                 case '@':
@@ -357,6 +536,7 @@ public:
                     ++column_;
                     break;
                 default:
+                    buffer_.clear();
                     state_ = states::unquoted_name;
                     break;
                 }
@@ -365,8 +545,6 @@ public:
                 switch (*p_)
                 {
                 case ' ':case '\t':
-                    ++p_;
-                    ++column_;
                     break;
                 case '.':
                     state_ = states::dot;
@@ -401,117 +579,6 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::left_bracket_step:
-                switch (*p_)
-                {
-                case '-':
-                    positive_step_ = false;
-                    state_ = states::left_bracket_step2;
-                    break;
-                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                    step_ = static_cast<size_t>(*p_-'0');
-                    state_ = states::left_bracket_step2;
-                    break;
-                case ']':
-                    end_array_slice();
-                    transfer_nodes();
-                    state_ = states::expect_dot_or_left_bracket;
-                    break;
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::left_bracket_step2:
-                switch (*p_)
-                {
-                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                    step_ = step_*10 + static_cast<size_t>(*p_-'0');
-                    break;
-                case ']':
-                    end_array_slice();
-                    transfer_nodes();
-                    state_ = states::expect_dot_or_left_bracket;
-                    break;
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::left_bracket_end:
-                switch (*p_)
-                {
-                case '-':
-                    positive_end_ = false;
-                    state_ = states::left_bracket_end2;
-                    break;
-                case ':':
-                    step_ = 0;
-                    state_ = states::left_bracket_step;
-                    break;
-                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                    end_undefined_ = false;
-                    end_ = static_cast<size_t>(*p_-'0');
-                    state_ = states::left_bracket_end2;
-                    break;
-                case ']':
-                    end_array_slice();
-                    transfer_nodes();
-                    state_ = states::expect_dot_or_left_bracket;
-                    break;
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::left_bracket_end2:
-                switch (*p_)
-                {
-                case ':':
-                    step_ = 0;
-                    state_ = states::left_bracket_step;
-                    break;
-                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                    end_undefined_ = false;
-                    end_ = end_*10 + static_cast<size_t>(*p_-'0');
-                    break;
-                case ']':
-                    end_array_slice();
-                    transfer_nodes();
-                    state_ = states::expect_dot_or_left_bracket;
-                    break;
-                }
-                ++p_;
-                ++column_;
-                break;
-            case states::left_bracket_start:
-                switch (*p_)
-                {
-                case ':':
-                    step_ = 1;
-                    end_undefined_ = true;
-                    state_ = states::left_bracket_end;
-                    break;
-                case ',':
-                    //apply_unquoted_string(buffer_);
-                    selectors_.push_back(std::make_shared<name_selector>(positive_start_,buffer_));
-                    buffer_.clear();
-                    state_ = states::left_bracket;
-                    break;
-                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                    start_ = start_*10 + static_cast<size_t>(*p_-'0');
-                    buffer_.clear();
-                    buffer_.push_back(*p_);
-                    break;
-                case ']':
-                    //apply_unquoted_string(buffer_);
-                    selectors_.push_back(std::make_shared<name_selector>(positive_start_,buffer_));
-                    buffer_.clear();
-                    apply_selectors();
-                    transfer_nodes();
-                    state_ = states::expect_dot_or_left_bracket;
-                    break;
-                }
-                ++p_;
-                ++column_;
-                break;
             case states::left_bracket:
                 switch (*p_)
                 {
@@ -535,33 +602,13 @@ public:
                         auto result = parser.parse(p_,end_input_,&p_);
                         line_ = parser.line();
                         column_ = parser.column();
-                        nodes_.clear();
-                        for (size_t j = 0; j < stack_.back().size(); ++j)
-                        {
-                            accept(*(stack_.back()[j]),result);
-                        }
+                        selectors_.push_back(std::make_shared<filter_selector>(result));
                         state_ = states::expect_comma_or_right_bracket;
                     }
-                    break;
-                    
+                    break;                   
                 case ':':
-                    step_ = 1;
-                    end_undefined_ = true;
+                    clear_index();
                     state_ = states::left_bracket_end;
-                    ++p_;
-                    ++column_;
-                    break;
-                case '-':
-                    positive_start_ = false;
-                    state_ = states::left_bracket_start;
-                    ++p_;
-                    ++column_;
-                    break;
-                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
-                    start_ = static_cast<size_t>(*p_-'0');
-                    buffer_.clear();
-                    buffer_.push_back(*p_);
-                    state_ = states::left_bracket_start;
                     ++p_;
                     ++column_;
                     break;
@@ -582,9 +629,142 @@ public:
                     ++column_;
                     break;
                 default:
-                    err_handler_->fatal_error(jsonpath_parser_errc::expected_left_bracket_token, *this);
+                    clear_index();
+                    buffer_.push_back(*p_);
+                    state_ = states::left_bracket_start;
+                    ++p_;
+                    ++column_;
                     break;
                 }
+                break;
+            case states::left_bracket_start:
+                switch (*p_)
+                {
+                case ':':
+                    if (!try_string_to_index(buffer_.data(), buffer_.size(), &start_, &positive_start_))
+                    {
+                        err_handler_->fatal_error(jsonpath_parser_errc::expected_index, *this);
+                    }
+                    state_ = states::left_bracket_end;
+                    break;
+                case ',':
+                    selectors_.push_back(std::make_shared<name_selector>(buffer_,positive_start_));
+                    buffer_.clear();
+                    state_ = states::left_bracket;
+                    break;
+                case ']':
+                    selectors_.push_back(std::make_shared<name_selector>(buffer_,positive_start_));
+                    buffer_.clear();
+                    apply_selectors();
+                    transfer_nodes();
+                    state_ = states::expect_dot_or_left_bracket;
+                    break;
+                default:
+                    buffer_.push_back(*p_);
+                    break;
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::left_bracket_end:
+                switch (*p_)
+                {
+                case '-':
+                    positive_end_ = false;
+                    state_ = states::left_bracket_end2;
+                    break;
+                case ':':
+                    step_ = 0;
+                    state_ = states::left_bracket_step;
+                    break;
+                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                    undefined_end_ = false;
+                    end_ = static_cast<size_t>(*p_-'0');
+                    state_ = states::left_bracket_end2;
+                    break;
+                case ',':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    state_ = states::left_bracket;
+                    break;
+                case ']':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    apply_selectors();
+                    transfer_nodes();
+                    state_ = states::expect_dot_or_left_bracket;
+                    break;
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::left_bracket_end2:
+                switch (*p_)
+                {
+                case ':':
+                    step_ = 0;
+                    state_ = states::left_bracket_step;
+                    break;
+                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                    undefined_end_ = false;
+                    end_ = end_*10 + static_cast<size_t>(*p_-'0');
+                    break;
+                case ',':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    state_ = states::left_bracket;
+                    break;
+                case ']':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    apply_selectors();
+                    transfer_nodes();
+                    state_ = states::expect_dot_or_left_bracket;
+                    break;
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::left_bracket_step:
+                switch (*p_)
+                {
+                case '-':
+                    positive_step_ = false;
+                    state_ = states::left_bracket_step2;
+                    break;
+                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                    step_ = static_cast<size_t>(*p_-'0');
+                    state_ = states::left_bracket_step2;
+                    break;
+                case ',':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    state_ = states::left_bracket;
+                    break;
+                case ']':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    apply_selectors();
+                    transfer_nodes();
+                    state_ = states::expect_dot_or_left_bracket;
+                    break;
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::left_bracket_step2:
+                switch (*p_)
+                {
+                case '0':case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8':case '9':
+                    step_ = step_*10 + static_cast<size_t>(*p_-'0');
+                    break;
+                case ',':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    state_ = states::left_bracket;
+                    break;
+                case ']':
+                    selectors_.push_back(std::make_shared<array_slice_selector>(start_,positive_start_,end_,positive_end_,step_,positive_step_,undefined_end_));
+                    apply_selectors();
+                    transfer_nodes();
+                    state_ = states::expect_dot_or_left_bracket;
+                    break;
+                }
+                ++p_;
+                ++column_;
                 break;
             case states::unquoted_name: 
                 switch (*p_)
@@ -601,6 +781,21 @@ public:
                     state_ = states::dot;
                     break;
                 case ' ':case '\t':
+                    apply_unquoted_string(buffer_);
+                    transfer_nodes();
+                    state_ = states::expect_dot_or_left_bracket;
+                    break;
+                case '\r':
+                    apply_unquoted_string(buffer_);
+                    transfer_nodes();
+                    pre_line_break_state = states::expect_dot_or_left_bracket;
+                    state_= states::cr;
+                    break;
+                case '\n':
+                    apply_unquoted_string(buffer_);
+                    transfer_nodes();
+                    pre_line_break_state = states::expect_dot_or_left_bracket;
+                    state_= states::lf;
                     break;
                 default:
                     buffer_.push_back(*p_);
@@ -613,7 +808,7 @@ public:
                 switch (*p_)
                 {
                 case '\'':
-                    selectors_.push_back(std::make_shared<name_selector>(positive_start_,buffer_));
+                    selectors_.push_back(std::make_shared<name_selector>(buffer_,positive_start_));
                     buffer_.clear();
                     state_ = states::expect_comma_or_right_bracket;
                     break;
@@ -637,7 +832,7 @@ public:
                 switch (*p_)
                 {
                 case '\"':
-                    selectors_.push_back(std::make_shared<name_selector>(positive_start_,buffer_));
+                    selectors_.push_back(std::make_shared<name_selector>(buffer_,positive_start_));
                     buffer_.clear();
                     state_ = states::expect_comma_or_right_bracket;
                     break;
@@ -676,39 +871,23 @@ public:
         }
     }
 
-    void accept(const Json& val,
-                jsonpath_filter_expr<Json>& filter)
+    void clear_index()
     {
-        if (val.is_object())
-        {
-            if (recursive_descent_ && val.is_object())
-            {
-                for (auto it = val.members().begin(); it != val.members().end(); ++it)
-                {
-                    accept(it->value(),filter);
-                }
-            }
-            if (filter.exists(val))
-            {
-                nodes_.push_back(std::addressof(val));
-            }
-        }
-        else if (val.is_array())
-        {
-            for (auto it = val.elements().begin(); it != val.elements().end(); ++it)
-            {
-                accept(*it,filter);
-            }
-        }
+        buffer_.clear();
+        start_ = 0;
+        positive_start_ = true;
+        end_ = 0;
+        positive_end_ = true;
+        undefined_end_ = true;
+        step_ = 1;
+        positive_step_ = true;
     }
-
-   
 
     void end_all()
     {
         for (size_t i = 0; i < stack_.back().size(); ++i)
         {
-            cjson_ptr p = stack_.back()[i];
+            json_pointer p = stack_.back()[i];
             if (p->is_array())
             {
                 for (auto it = p->elements().begin(); it != p->elements().end(); ++it)
@@ -728,82 +907,6 @@ public:
         start_ = 0;
     }
 
-    void end_array_slice()
-    {
-        if (positive_step_)
-        {
-            end_array_slice1();
-        }
-        else
-        {
-            end_array_slice2();
-        }
-        start_ = 0;
-        end_ = 0;
-        step_ = 1;
-        positive_start_ = positive_end_ = positive_step_ = true;
-        end_undefined_ = true;
-    }
-
-    void end_array_slice1()
-    {
-        for (size_t i = 0; i < stack_.back().size(); ++i)
-        {
-            cjson_ptr p = stack_.back()[i];
-            if (p->is_array())
-            {
-                size_t start = positive_start_ ? start_ : p->size() - start_;
-                size_t end;
-                if (!end_undefined_)
-                {
-                    end = positive_end_ ? end_ : p->size() - end_;
-                }
-                else
-                {
-                    end = p->size();
-                }
-                for (size_t j = start; j < end; j += step_)
-                {
-                    if (j < p->size())
-                    {
-                        nodes_.push_back(std::addressof((*p)[j]));
-                    }
-                }
-            }
-        }
-    }
-
-    void end_array_slice2()
-    {
-        for (size_t i = 0; i < stack_.back().size(); ++i)
-        {
-            cjson_ptr p = stack_.back()[i];
-            if (p->is_array())
-            {
-                size_t start = positive_start_ ? start_ : p->size() - start_;
-                size_t end;
-                if (!end_undefined_)
-                {
-                    end = positive_end_ ? end_ : p->size() - end_;
-                }
-                else
-                {
-                    end = p->size();
-                }
-
-                size_t j = end + step_ - 1;
-                while (j > (start+step_-1))
-                {
-                    j -= step_;
-                    if (j < p->size())
-                    {
-                        nodes_.push_back(std::addressof((*p)[j]));
-                    }
-                }
-            }
-        }
-    }
-
     void apply_unquoted_string(const string_type& name)
     {
         if (name.length() > 0)
@@ -816,17 +919,17 @@ public:
         buffer_.clear();
     }
 
-    void apply_unquoted_string(const Json& context_val, const string_type& name)
+    void apply_unquoted_string(json_reference context, const string_type& name)
     {
-        if (context_val.is_object())
+        if (context.is_object())
         {
-            if (context_val.count(name) > 0)
+            if (context.count(name) > 0)
             {
-                nodes_.push_back(std::addressof(context_val.at(name)));
+                nodes_.push_back(std::addressof(context.at(name)));
             }
             if (recursive_descent_)
             {
-                for (auto it = context_val.members().begin(); it != context_val.members().end(); ++it)
+                for (auto it = context.members().begin(); it != context.members().end(); ++it)
                 {
                     if (it->value().is_object() || it->value().is_array())
                     {
@@ -835,26 +938,26 @@ public:
                 }
             }
         }
-        else if (context_val.is_array())
+        else if (context.is_array())
         {
             size_t pos = 0;
-            if (try_string_to_index(name.data(),name.size(),&pos))
+            if (try_string_to_index(name.data(),name.size(),&pos, &positive_start_))
             {
-                size_t index = positive_start_ ? pos : context_val.size() - pos;
-                if (index < context_val.size())
+                size_t index = positive_start_ ? pos : context.size() - pos;
+                if (index < context.size())
                 {
-                    nodes_.push_back(std::addressof(context_val[index]));
+                    nodes_.push_back(std::addressof(context[index]));
                 }
             }
-            else if (name == json_jsonpath_traits<char_type>::length_literal() && context_val.size() > 0)
+            else if (name == json_jsonpath_traits<char_type>::length_literal() && context.size() > 0)
             {
-                auto temp = std::make_shared<Json>(context_val.size());
+                auto temp = std::make_shared<Json>(context.size());
                 temp_json_values_.push_back(temp);
                 nodes_.push_back(temp.get());
             }
             if (recursive_descent_)
             {
-                for (auto it = context_val.elements().begin(); it != context_val.elements().end(); ++it)
+                for (auto it = context.elements().begin(); it != context.elements().end(); ++it)
                 {
                     if (it->is_object() || it->is_array())
                     {
@@ -863,11 +966,11 @@ public:
                 }
             }
         }
-        else if (context_val.is_string())
+        else if (context.is_string())
         {
-            string_type s = context_val.as_string();
+            string_type s = context.as_string();
             size_t pos = 0;
-            if (try_string_to_index(name.data(),name.size(),&pos))
+            if (try_string_to_index(name.data(),name.size(),&pos, &positive_start_))
             {
                 auto sequence = json_text_traits<char_type>::char_sequence_at(s.data(), s.data() + s.size(), pos);
                 if (sequence.second > 0)
@@ -899,17 +1002,17 @@ public:
         }
     }
 
-    void apply_selectors(const Json& context_val)
+    void apply_selectors(json_reference context)
     {
         for (const auto& selector : selectors_)
         {
-            selector->select(context_val,nodes_,temp_json_values_);
+            selector->select(context,nodes_,temp_json_values_);
         }
         if (recursive_descent_)
         {
-            if (context_val.is_object())
+            if (context.is_object())
             {
-                for (auto it = context_val.members().begin(); it != context_val.members().end(); ++it)
+                for (auto it = context.members().begin(); it != context.members().end(); ++it)
                 {
                     if (it->value().is_object() || it->value().is_array())
                     {
@@ -917,9 +1020,9 @@ public:
                     }
                 }
             }
-            else if (context_val.is_array())
+            else if (context.is_array())
             {
-                for (auto it = context_val.elements().begin(); it != context_val.elements().end(); ++it)
+                for (auto it = context.elements().begin(); it != context.elements().end(); ++it)
                 {
                     if (it->is_object() || it->is_array())
                     {
@@ -928,6 +1031,13 @@ public:
                 }
             }
         }
+    }
+
+    void transfer_nodes()
+    {
+        stack_.push_back(nodes_);
+        nodes_.clear();
+        recursive_descent_ = false;
     }
 
     size_t do_line_number() const override

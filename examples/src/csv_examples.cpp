@@ -2,68 +2,90 @@
 // Distributed under Boost license
 
 #include <string>
-#include "jsoncons/json.hpp"
-#include "jsoncons_ext/csv/csv_reader.hpp"
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/csv/csv_reader.hpp>
+#include <jsoncons_ext/csv/csv_serializer.hpp>
 
-using jsoncons::json;
-using jsoncons::pretty_print;
-using jsoncons::output_format;
-using jsoncons::json_deserializer;
-using jsoncons::csv::csv_reader;
-using jsoncons::csv::csv_parameters;
-using std::string;
+using namespace jsoncons;
+using namespace jsoncons::csv;
 
 void read_csv_file1()
 {
-    string text = "employee-no,employee-name,dept,salary\n00000001,\"Smith,Matthew\",sales,150000.00\n00000002,\"Brown,Sarah\",sales,89000.00";
+    std::string text = R"(employee-no,employee-name,dept,salary
+00000001,\"Smith,Matthew\",sales,150000.00
+00000002,\"Brown,Sarah\",sales,89000.00
+)";
 
     std::istringstream is(text);
 
-    json_deserializer handler;
+    json_encoder<json> encoder;
 
     csv_parameters params;
     params.assume_header(true)
           .column_types({ "string","string","string","float" });
-    csv_reader reader(is,handler,params);
+    csv_reader reader(is,encoder,params);
     reader.read();
-    json val = handler.get_result();
+    json val = encoder.get_result();
 
     std::cout << pretty_print(val) << std::endl;
 }
 
-void read_csv_file2()
+void read_write_csv_tasks()
 {
-    string text = 
-"project_id, task_name, task_start, task_finish\n"
-"4001,task1,01/01/2003,01/31/2003\n"
-"4001,task2,02/01/2003,02/28/2003\n"
-"4001,task3,03/01/2003,03/31/2003\n"
-"4002,task1,04/01/2003,04/30/2003\n"
-"4002,task2,05/01/2003,";
+    std::ifstream is("input/tasks.csv");
 
-    std::istringstream is(text);
-
-    json_deserializer handler;
-
+    json_encoder<ojson> encoder;
     csv_parameters params;
     params.assume_header(true)
           .trim(true)
           .ignore_empty_values(true) 
           .column_types({"integer","string","string","string"});
-    csv_reader reader(is,handler,params);
+    csv_reader reader(is,encoder,params);
     reader.read();
-    json val = handler.get_result();
+    ojson tasks = encoder.get_result();
 
-    std::cout << pretty_print(val) << std::endl;
+    std::cout << "(1)\n";
+    std::cout << pretty_print(tasks) << "\n\n";
+
+    std::cout << "(2)\n";
+    csv_serializer serializer(std::cout);
+    tasks.write(serializer);
 }
 
-void read_csv_file()
+void serialize_array_of_arrays_to_comma_delimited()
 {
+    std::string in_file = "input/countries.json";
+    std::ifstream is(in_file);
+
+    json countries;
+    is >> countries;
+
+    csv_serializer serializer(std::cout);
+    countries.write(serializer);
+}
+
+void serialize_to_tab_delimited_file()
+{
+    std::string in_file = "input/employees.json";
+    std::ifstream is(in_file);
+
+    json employees;
+    is >> employees;
+
+    csv_parameters params;
+    params.field_delimiter('\t');
+    csv_serializer serializer(std::cout,params);
+
+    employees.write(serializer);
+}
+
+void csv_examples()
+{
+    std::cout << "\nCSV examples\n\n";
     read_csv_file1();
-    read_csv_file2();
-}
-
-void write_csv_file()
-{
+    read_write_csv_tasks();
+    serialize_array_of_arrays_to_comma_delimited();
+    serialize_to_tab_delimited_file();
+    std::cout << std::endl;
 }
 

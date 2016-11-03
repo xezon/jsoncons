@@ -15,12 +15,64 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <system_error>
-#include "jsoncons/jsoncons.hpp"
-#include "jsoncons/json_input_handler.hpp"
-#include "jsoncons/parse_error_handler.hpp"
-#include "jsoncons/json_error_category.hpp"
+#include <jsoncons/json_text_traits.hpp>
+#include <jsoncons/json_input_handler.hpp>
+#include <jsoncons/parse_error_handler.hpp>
+#include <jsoncons/json_error_category.hpp>
 
 namespace jsoncons {
+
+template<class CharT> inline
+bool try_string_to_uinteger(const CharT *s, size_t length, uint64_t& result)
+{
+    static const uint64_t max_value = std::numeric_limits<uint64_t>::max JSONCONS_NO_MACRO_EXP();
+    static const uint64_t max_value_div_10 = max_value / 10;
+    uint64_t n = 0;
+    for (size_t i = 0; i < length; ++i)
+    {
+        uint64_t x = s[i] - '0';
+        if (n > max_value_div_10)
+        {
+            return false;
+        }
+        n = n * 10;
+        if (n > max_value - x)
+        {
+            return false;
+        }
+
+        n += x;
+    }
+    result = n;
+    return true;
+}
+
+template<class CharT> inline
+bool try_string_to_integer(bool has_neg, const CharT *s, size_t length, int64_t& result)
+{
+    static const int64_t max_value = std::numeric_limits<int64_t>::max JSONCONS_NO_MACRO_EXP();
+    static const int64_t max_value_div_10 = max_value / 10;
+
+    int64_t n = 0;
+    const CharT* end = s+length; 
+    for (const CharT* p = s; p < end; ++p)
+    {
+        int64_t x = *p - '0';
+        if (n > max_value_div_10)
+        {
+            return false;
+        }
+        n = n * 10;
+        if (n > max_value - x)
+        {
+            return false;
+        }
+
+        n += x;
+    }
+    result = has_neg ? -n : n;
+    return true;
+}
 
 enum class states 
 {
@@ -54,7 +106,8 @@ enum class states
     minus, 
     zero,  
     integer,
-    fraction,
+    fraction1,
+    fraction2,
     exp1,
     exp2,
     exp3,
@@ -261,6 +314,11 @@ public:
 
     void check_done(const CharT* input, size_t start, size_t length)
     {
+        JSONCONS_ASSERT(stack_.size() >= 1);
+        if (stack_.back() != states::done)
+        {
+            err_handler_->error(json_parser_errc::unexpected_eof, *this);
+        }
         index_ = start;
         for (; index_ < length; ++index_)
         {
@@ -365,11 +423,22 @@ public:
 
     void parse(const CharT* const input, size_t start, size_t length)
     {
-        begin_input_ = input + start;
         end_input_ = input + length;
+
+        if (start == 0)
+        {
+            index_ = json_text_traits<CharT>::skip_bom(input,length);
+            column_ = index_+1;
+            begin_input_ = input + index_;
+        }
+        else
+        {
+            index_ = start;
+            begin_input_ = input + start;
+        }
         p_ = begin_input_;
 
-        index_ = start;
+        index_ = (start == 0) ? json_text_traits<CharT>::skip_bom(input,length) : start;
         while ((p_ < end_input_) && (stack_.back() != states::done))
         {
             switch (*p_)
@@ -927,7 +996,12 @@ public:
                     case '.':
                         precision_ = static_cast<uint8_t>(number_buffer_.length());
                         number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::fraction;
+                        stack_.back() = states::fraction1;
+                        break;
+                    case 'e':case 'E':
+                        precision_ = static_cast<uint8_t>(number_buffer_.length());
+                        number_buffer_.push_back(static_cast<char>(*p_));
+                        stack_.back() = states::exp1;
                         break;
                     case ',':
                         end_integer_value();
@@ -980,13 +1054,14 @@ public:
                     case '.':
                         precision_ = static_cast<uint8_t>(number_buffer_.length());
                         number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::fraction;
+                        stack_.back() = states::fraction1;
                         break;
                     case ',':
                         end_integer_value();
                         begin_member_or_element();
                         break;
                     case 'e':case 'E':
+                        precision_ = static_cast<uint8_t>(number_buffer_.length());
                         number_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp1;
                         break;
@@ -998,7 +1073,25 @@ public:
                 ++p_;
                 ++column_;
                 break;
-            case states::fraction: 
+            case states::fraction1: 
+                {
+                    switch (*p_)
+                    {
+                    case '0': 
+                    case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
+                        ++precision_;
+                        number_buffer_.push_back(static_cast<char>(*p_));
+                        stack_.back() = states::fraction2;
+                        break;
+                    default:
+                        err_handler_->error(json_parser_errc::invalid_number, *this);
+                        break;
+                    }
+                }
+                ++p_;
+                ++column_;
+                break;
+            case states::fraction2: 
                 {
                     switch (*p_)
                     {
@@ -1030,7 +1123,7 @@ public:
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                         ++precision_;
                         number_buffer_.push_back(static_cast<char>(*p_));
-                        stack_.back() = states::fraction;
+                        stack_.back() = states::fraction2;
                         break;
                     case ',':
                         end_fraction_value();
@@ -1291,6 +1384,7 @@ public:
     void end_parse()
     {
         JSONCONS_ASSERT(stack_.size() >= 2);
+        
         if (parent() == states::root)
         {
             switch (stack_.back())
@@ -1299,7 +1393,7 @@ public:
             case states::integer:
                 end_integer_value();
                 break;
-            case states::fraction:
+            case states::fraction2:
             case states::exp3:
                 end_fraction_value();
                 break;

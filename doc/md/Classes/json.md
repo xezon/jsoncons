@@ -10,8 +10,9 @@ The `json` class is an instantiation of the `basic_json` class template that use
 The `jsoncons` library will always rebind the supplied allocator from the template parameter to internal data structures.
 
 ### Header
-
-    #include "jsoncons/json.hpp"
+```c++
+#include <jsoncons/json.hpp>
+```
 
 ### Member types
 
@@ -19,7 +20,7 @@ Member type                         |Definition
 ------------------------------------|------------------------------
 `json_type`|json type
 `allocator_type`|Allocator type
-`string_allocator`|String allocator type
+`char_allocator`|String allocator type
 `array_allocator`|Array allocator type
 `object_allocator`|Object allocator type
 `string_type`|Default `string_type` is `std::string`
@@ -96,10 +97,10 @@ Constructs a copy of val
     json(const json& val, const allocator_type& allocator)
 Copy with allocator
 
-    json(json&& val)
+    json(json&& val) noexcept
 Acquires the contents of val, leaving val a `null` value
 
-    json(json&& val, const allocator_type& allocator)
+    json(json&& val, const allocator_type& allocator) 
 Move with allocator
 
     template <class T>
@@ -124,7 +125,7 @@ Destroys all values and deletes all memory allocated for strings, arrays, and ob
 ### Assignment operator
 
     json& operator=(const json& rhs)
-    json& operator=(json&& rhs)
+    json& operator=(json&& rhs) noexcept
 Assigns a new `json` value to a `json` variable, replacing it's current contents.
 
     template <class T>
@@ -166,6 +167,9 @@ Resizes a json array so that it contains `n` elements.
 Resizes a json array so that it contains `n` elements that are initialized to `val`. 
 
 ### Accessors
+
+    bool has_name(const string_type& name) const
+Returns `true` if an object has a member with the given `name`, otherwise `false`.    
 
     size_t count(const string_type& name) const
 Returns the number of object members that match `name`.    
@@ -275,7 +279,9 @@ Make `get_with_default` do the right thing for string literals.
 Attempts to convert the json value to the template value type using [json_type_traits](json_type_traits).
 
     as<bool>
-Returns `false` if value is `false` or `null`, if value is a zero length string, or if value is a zero length array or object. Everything else returns `true`.
+Returns `true` if value is `bool` and `true`, or if value is integral and non-zero, or if value is floating point and non-zero, or if value is string and parsed value evaluates as `true`. 
+Returns `false` if value is `bool` and `false`, or if value is integral and zero, or if value is floating point and zero, or if value is string and parsed value evaluates as `false`. 
+Otherwise throws `std::runtime_exception`
 
     as<double>
 If value is double, returns value, if value is signed or unsigned integer, casts to double, if value is `null`, returns `NaN`, otherwise throws.
@@ -295,7 +301,7 @@ If value is double, returns value, if value is signed or unsigned integer, casts
 Return integer value if value has integral type, performs cast if value has double type, returns 1 or 0 if value has bool type, otherwise throws.
 
     string_type as<string_type>() const noexcept
-    string_type as<string_type>(const string_allocator& allocator) const noexcept
+    string_type as<string_type>(const char_allocator& allocator) const noexcept
 If value is string, returns value, otherwise returns result of `to_string`.
 
     as<std::vector<T>>()
@@ -304,12 +310,12 @@ Returns `json` value as an `std::vector<T>`.
     as<json::std::map<std::string,T>>()
 Returns `json` object value as an `std::map`.
 
-    bool as_bool() const noexcept
+    bool as_bool() const
     int64_t as_integer() const
     uint64_t as_uinteger() const
     double as_double() const
     string_type as_string() const noexcept
-    string_type as_string(const string_allocator& allocator) const noexcept
+    string_type as_string(const char_allocator& allocator) const noexcept
     unsigned int as<unsigned int> const 
 Non-generic versions of `as` methods
 
@@ -333,31 +339,31 @@ Throws `std::runtime_error` if not an object.
     void shrink_to_fit()
 Requests the removal of unused capacity.
 
-    void set(const string_type& name, const json& val)
-    void set(string_type&& name, const json& val)
-    void set(const string_type& name, json&& val)
-    void set(string_type&& name, json&& val)
+    template <class T>
+    void set(const string_type& name, T&& val)
+    template <class T>
+    void set(string_type&& name, T&& val)
 Inserts a new member or replaces an existing member in a json object.
 Throws `std::runtime_error` if not an object.
 
-    object_iterator set(object_iterator hint, const string_type& name, const json& val)
-    object_iterator set(object_iterator hint, string_type&& name, const json& val)
-    object_iterator set(object_iterator hint, const string_type& name, json&& val)
-    object_iterator set(object_iterator hint, string_type&& name, json&& val)
+    template <class T>
+    object_iterator set(object_iterator hint, const string_type& name, T&& val)
+    template <class T>
+    object_iterator set(object_iterator hint, string_type&& name, T&& val)
 Inserts a new member or replaces an existing member in a json object.
 Insertion time is optimized if `hint` points to the member that will precede the inserted member.
 Returns a `member_iterator` pointing at the member that was inserted or updated
 Throws `std::runtime_error` if not an object.
 
-    void add(const json& val)
-    void add(json&& val)
-Adds a new element at the end of a json array. The content of `val` is copied (or moved) to the new element.
+    template <class T>
+    void add(T&& val)
+Adds a new json element at the end of a json array. The argument `val` is forwarded to the `json` constructor as `std::forward<T>(val)`.
 Throws `std::runtime_error` if not an array.
 
-    array_iterator add(const_array_iterator pos, const json& val)
-    array_iterator add(const_array_iterator pos, json&& val)
-Adds a new element at the specified position of a json array, shifting all elements currently at or above that position to the right.
-The content of `val` is copied (or moved) to the new element.
+    template <class T>
+    array_iterator add(const_array_iterator pos, T&& val)
+Adds a new json element at the specified position of a json array, shifting all elements currently at or above that position to the right.
+The argument `val` is forwarded to the `json` constructor as `std::forward<T>(val)`.
 Returns an `array_iterator` that points to the new value
 Throws `std::runtime_error` if not an array.
 
@@ -374,20 +380,20 @@ Returns `true` if two json objects do not compare equal, `false` otherwise.
 
 ### Serialization
 
-    string_type to_string(const string_allocator& allocator = string_allocator()) const noexcept
+    string_type to_string(const char_allocator& allocator = char_allocator()) const noexcept
 Inserts json value into string.
 
-    string_type to_string(const output_format& format, const string_allocator& allocator = string_allocator()) const
-Inserts json value into string using specified [output_format](output_format).
+    string_type to_string(const serialization_options& format, const char_allocator& allocator = char_allocator()) const
+Inserts json value into string using specified [serialization_options](serialization_options).
 
     void write(basic_json_output_handler<char_type>& output_handler) const
 Calls `begin_json()` on `output_handler`, emits json value to `output_handler`, and calls `end_json()` on `output_handler`.
 
     write write(std::ostream& os) const
-Inserts json value into stream with default output format.
+Inserts json value into stream with default serialization options.
 
-    write write(std::ostream<CharT> os, const output_format& format) const
-Inserts json value into stream using specified [output_format](output_format).
+    write write(std::ostream<CharT> os, const serialization_options& format) const
+Inserts json value into stream using specified [serialization_options](serialization_options).
 
     void write_body(json_output_handler& handler) const
 Emits JSON events for JSON objects, arrays, object members and array elements to a [json_output_handler](json_output_handler), such as a [json_serializer](json_serializer).
@@ -401,12 +407,12 @@ Reads a `json` value from a stream.
 Inserts json value into stream.
 
     std::ostream& print(const json& val)  
-    std::ostream& print(const json& val, const output_format<CharT>& format)  
-Inserts json value into stream using the specified [output_format](output_format) if supplied.
+    std::ostream& print(const json& val, const serialization_options<CharT>& format)  
+Inserts json value into stream using the specified [serialization_options](serialization_options) if supplied.
 
     std::ostream& pretty_print(const json& val)  
-    std::ostream& pretty_print(const json& val, const output_format<CharT>& format)  
-Inserts json value into stream using the specified [output_format](output_format) if supplied.
+    std::ostream& pretty_print(const json& val, const serialization_options<CharT>& format)  
+Inserts json value into stream using the specified [serialization_options](serialization_options) if supplied.
 
     void swap(json& a, json& b)
 Exchanges the values of `a` and `b`
@@ -421,7 +427,7 @@ As the `jsoncons` library has evolved, names have sometimes changed. To ease tra
 
 - [wjson](wjson) constructs a wide character json value that sorts name-value members alphabetically
 
-- [wojson](wojson) constructs a wide character json value that retains the original name-value insertion order
+- [owjson](owjson) constructs a wide character json value that retains the original name-value insertion order
 
 ## Examples
 
@@ -486,7 +492,7 @@ std::cout << "x2=" << x2 << std::endl;
 std::cout << "x3=" << x3 << std::endl;
 std::cout << "x4=" << x4 << std::endl;
 ```
-The output is
+Output:
 ```c++
 x1=1
 x2=20
@@ -499,7 +505,7 @@ json obj;
 obj["field1"] = json::null();
 std::cout << obj << std::endl;
 ```
-The output is 
+Output: 
 ```json
 {"field1":null}
 ```
@@ -512,7 +518,7 @@ arr.add(30);
 
 std::cout << arr << std::endl;
 ```
-The output is 
+Output: 
 ```json
 [10,20,30]
 ```
@@ -527,7 +533,7 @@ json arr(v.begin(),v.end());
 
 std::cout << arr << std::endl;
 ```
-The output is 
+Output: 
 ```c++
 [10,20,30]
 ```
@@ -543,7 +549,7 @@ for (auto it = obj.members().begin(); it != obj.members().end(); ++it)
     std::cout << it->name() << "=" << it->value().as<string_type>() << std::endl;
 }
 ```
-The output is
+Output:
 ```c++
 city=Toronto
 country=Canada
@@ -558,7 +564,7 @@ for (auto it = arr.elements().begin(); it != arr.elements().end(); ++it)
     std::cout << it->as<string_type>() << std::endl;
 }
 ```
-The output is
+Output:
 ```json
 Toronto
 Vancouver 
@@ -585,7 +591,7 @@ root["persons"].add(std::move(person));
 
 std::cout << pretty_print(root) << std::endl;
 ```
-The output is
+Output:
 ```c++
 {
     "persons":

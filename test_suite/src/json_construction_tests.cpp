@@ -7,8 +7,8 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/numeric/ublas/io.hpp>
-#include "jsoncons/json.hpp"
-#include "jsoncons/json_serializer.hpp"
+#include <jsoncons/json.hpp>
+#include <jsoncons/json_serializer.hpp>
 #include <sstream>
 #include <vector>
 #include <utility>
@@ -74,7 +74,7 @@ BOOST_AUTO_TEST_CASE(test_construction_in_code)
     arr.add(number);
     arr.add(obj);
 
-    output_format format;
+    serialization_options format;
     std::cout << pretty_print(arr) << std::endl;
 }
 
@@ -124,7 +124,7 @@ BOOST_AUTO_TEST_CASE(test_value_not_found_and_defaults)
     {
         std::string experience = obj["outdoor_experience"].as<std::string>();
     }
-    catch (const json_exception& e)
+    catch (const std::exception& e)
     {
         std::cout << e.what() << std::endl;
     }
@@ -223,21 +223,21 @@ BOOST_AUTO_TEST_CASE(test_multiple)
 
     std::istringstream is(in);
 
-    jsoncons::json_deserializer handler;
-    json_reader reader(is,handler);
+    jsoncons::json_encoder<json> encoder;
+    json_reader reader(is,encoder);
 
     if (!reader.eof())
     {
         reader.read_next();
         BOOST_CHECK(!reader.eof());
-        json val = handler.get_result();
+        json val = encoder.get_result();
         BOOST_CHECK_EQUAL(1,val["a"].as<int>());
     }
     if (!reader.eof())
     {
         reader.read_next();
         BOOST_CHECK(!reader.eof());
-        json val = handler.get_result();
+        json val = encoder.get_result();
         BOOST_CHECK_EQUAL(4,val["a"].as<int>());
     }
 

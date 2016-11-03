@@ -12,7 +12,7 @@ To install the jsoncons library, download the zip file, extract the zipped files
 
 The jsoncons classes and functions are in namespace `jsoncons`. You need to include the header file
 ```c++ 
-#include "jsoncons/json.hpp"
+#include <jsoncons/json.hpp>
 ```
 and, for convenience,
 
@@ -77,7 +77,7 @@ for (size_t i = 0; i < books.size(); ++i)
     std::cout << author << ", " << title << std::endl;
 }
 ```
-The output is
+Output:
 ```
 Haruki Murakami, Kafka on the Shore
 Charles Bukowski, Women: A Novel
@@ -105,7 +105,7 @@ for (auto it = books[2].members().begin();
               << (*it).value() << std::endl;
 } 
 ```
-The output is
+Output:
 ```
 author=Ivan Passer
 title=Cutter's Way
@@ -122,9 +122,9 @@ So if you want to show "n/a" for the missing price, you can use this accessor
 ```c++
 std::string price = book.get_with_default("price","n/a");
 ```
-Or you can check if book has a member "price" with the method `count`, and output accordingly,
+Or you can check if book has a member "price" with the method `has_name`, and output accordingly,
 ```c++
-if (book.count("price") > 0)
+if (book.has_name("price"))
 {
     double price = book["price"].as<double>();
     std::cout << price;
@@ -180,14 +180,23 @@ Or, use an array initializer-list:
 json image_formats = json::array{"JPEG","PSD","TIFF","DNG"};
 ```
 
-The `operator[]` provides another way for setting name-value pairs:
+The `operator[]` provides another way for setting name-value pairs.
 ```c++
 json file_export;
-file_export["File Format Options"]["Color Spaces"] = std::move(color_spaces);
-file_export["File Format Options"]["Image Formats"] = std::move(image_formats);
+file_export["File Format Options"]["Color Spaces"] = 
+    std::move(color_spaces);
+file_export["File Format Options"]["Image Formats"] = 
+    std::move(image_formats);
 file_export["File Settings"] = std::move(file_settings);
 file_export["Image Sizing"] = std::move(image_sizing);
 ```
+Note that if `file_export["File Format Options"]` doesn't exist, 
+```c++
+file_export["File Format Options"]["Color Spaces"] = 
+    std::move(color_spaces)
+```
+creates `"File Format Options"` as an object and puts `"Color Spaces"` in it.
+
 Serializing
 ```c++
 std::cout << pretty_print(file_export) << std::endl;
@@ -223,7 +232,7 @@ std::vector<int> v = {1,2,3,4};
 json j(v);
 std::cout << j << std::endl;
 ```
-The output is
+Output:
 ```json
 [1,2,3,4]
 ```
@@ -236,7 +245,7 @@ for (auto x : d)
     std::cout << x << std::endl;
 }
 ```
-The output is
+Output:
 ```
 1
 true
@@ -248,9 +257,9 @@ std::map<std::string,int> m = {{"one",1},{"two",2},{"three",3}};
 json j(m);
 std::cout << j << std::endl;
 ```
-The output is
+Output:
 ```json
-{"one": 1,"three": 3,"two": 2}
+{"one":1,"three":3,"two":2}
 ```
 
 ```c++
@@ -265,7 +274,7 @@ for (const auto& x : um)
     std::cout << x.first << "=" << x.second << std::endl;
 }
 ```
-The output is
+Output:
 ```
 one=1
 three=3
@@ -285,15 +294,15 @@ project_id, task_name, task_start, task_finish
 ```
 You can read the `CSV` file into a `json` value with the `csv_reader`.
 ```c++
-#include "jsoncons_ext/csv/csv_reader.hpp"
+#include <jsoncons_ext/csv/csv_reader.hpp>
 
 using jsoncons::csv::csv_parameters;
 using jsoncons::csv::csv_reader;
-using jsoncons::json_deserializer;
+using jsoncons::json_encoder;
 
 std::fstream is("tasks.csv");
 
-json_deserializer handler;
+json_encoder<json> encoder;
 
 csv_parameters params;
 params.assume_header(true)
@@ -301,13 +310,13 @@ params.assume_header(true)
       .ignore_empty_values(true)
       .column_types({"integer","string","string","string"});
 
-csv_reader reader(is,handler,params);
+csv_reader reader(is,encoder,params);
 reader.read();
-json val = handler.get_result();
+json val = encoder.get_result();
 
 std::cout << pretty_print(val) << std::endl;
 ```
-The output is:
+Output:
 ```json
 [
     {
@@ -371,10 +380,10 @@ produces
 ```
 By default, within objects, arrays of scalar values are displayed on the same line.
 
-The `pretty_print` function takes an optional second parameter, [output_format](https://github.com/danielaparker/jsoncons/wiki/output_format), that allows custom formatting of output.
+The `pretty_print` function takes an optional second parameter, [serialization_options](https://github.com/danielaparker/jsoncons/wiki/serialization_options), that allows custom formatting of output.
 To display the array scalar values on a new line, set the `object_array_split_lines` property to `line_split_kind::new_line`. The code
 ```c++
-output_format format;
+serialization_options format;
 format.object_array_split_lines(line_split_kind::new_line);
 std::cout << pretty_print(val,format) << std::endl;
 ```
@@ -394,7 +403,7 @@ produces
 ```
 To display the elements of array values on multiple lines, set the `object_array_split_lines` property to `line_split_kind::multi_line`. The code
 ```c++
-output_format format;
+serialization_options format;
 format.object_array_split_lines(line_split_kind::multi_line);
 std::cout << pretty_print(val,format) << std::endl;
 ```
@@ -419,6 +428,49 @@ produces
     ]
 }
 ```
+
+### Filters
+
+You can rename object member names with the built in filter [rename_name_filter](https://github.com/danielaparker/jsoncons/wiki/rename_name_filter)
+
+```c++
+#include <sstream>
+#include <jsoncons/json.hpp>
+#include <jsoncons/json_filter.hpp>
+
+using namespace jsoncons;
+
+int main()
+{
+    std::string s = R"({"first":1,"second":2,"fourth":3,"fifth":4})";    
+
+    json_serializer serializer(std::cout);
+
+    // Filters can be chained
+    rename_name_filter filter2("fifth", "fourth", serializer);
+    rename_name_filter filter1("fourth", "third", filter2);
+
+    // A filter can be passed to any function that takes
+    // a json_input_handler ...
+    std::cout << "(1) ";
+    std::istringstream is(s);
+    json_reader reader(is, filter1);
+    reader.read();
+    std::cout << std::endl;
+
+    // or a json_output_handler    
+    std::cout << "(2) ";
+    ojson j = ojson::parse(s);
+    j.write(filter1);
+    std::cout << std::endl;
+}
+```
+Output:
+```json
+(1) {"first":1,"second":2,"third":3,"fourth":4}
+(2) {"first":1,"second":2,"third":3,"fourth":4}
+```
+Or define and use your own filters. See [json_filter](https://github.com/danielaparker/jsoncons/wiki/json_filter) for details.
 
 ### JsonPath
 
@@ -456,59 +508,61 @@ Here is a sample JSON file (store.json):
 ```
 JsonPath examples:
 ```c++    
-#include "jsoncons_ext/jsonpath/json_query.hpp"
+#include <jsoncons_ext/jsonpath/json_query.hpp>
 
 using jsoncons::jsonpath::json_query;
 
 json root = json::parse_file("store.json");
 
-// (1) The authors of books that are cheaper than $10
-json result = json_query(root,"$.store.book[?(@.price < 10)].author");
-std::cout << result << std::endl;
+// The authors of books that are cheaper than $10
+json result1 = json_query(booklist, "$.store.book[?(@.price < 10)].author");
+std::cout << "(1) " << result1 << std::endl;
 
-// (2) The number of books
-json result = json_query(root,"$..book.length");
-std::cout << result << std::endl;
+// The number of books
+json result2 = json_query(booklist, "$..book.length");
+std::cout << "(2) " << result2 << std::endl;
 
-// (3) The third book
-json result = json_query(root,"$..book[2]");
-std::cout << pretty_print(result) << std::endl;
+// The third book
+json result3 = json_query(booklist, "$..book[2]");
+std::cout << "(3)\n" << pretty_print(result3) << std::endl;
 
-// (4) All books whose author's name starts with Evelyn
-json result = json_query(root,"$.store.book[?(@.author =~ /Evelyn.*?/)]");
-std::cout << pretty_print(result) << std::endl;
+// All books whose author's name starts with Evelyn
+json result4 = json_query(booklist, "$.store.book[?(@.author =~ /Evelyn.*?/)]");
+std::cout << "(4)\n" << pretty_print(result4) << std::endl;
 
-// (5) The titles of all books that have isbn number
-json result = json_query(root,"$..book[?(@.isbn)]/title");
-std::cout << result << std::endl;
+// The titles of all books that have isbn number
+json result5 = json_query(booklist, "$..book[?(@.isbn)].title");
+std::cout << "(5) " << result5 << std::endl;
 
-// (6) All authors and titles of books
-result = json_query(booklist, "$['store']['book']..['author','title']");
-std::cout << pretty_print(result) << std::endl;
+// All authors and titles of books
+json result6 = json_query(booklist, "$['store']['book']..['author','title']");
+std::cout << "(6)\n" << pretty_print(result6) << std::endl;
 ```
-Result:
+Output:
 ```json
 (1) ["Nigel Rees","Herman Melville"]
 (2) [4]
-(3) [
-        {
-            "category": "fiction",
-            "author": "Herman Melville",
-            "title": "Moby Dick",
-            "isbn": "0-553-21311-3",
-            "price": 8.99
-        }
-    ]
-(4) [
-        {
-            "category": "fiction",
-            "author": "Evelyn Waugh",
-            "title": "Sword of Honour",
-            "price": 12.99
-        }
-    ]
-(5) ["Moby Dick","The Lord of the Rings"] 
-(6) 
+(3)
+[
+    {
+        "author": "Herman Melville",
+        "category": "fiction",
+        "isbn": "0-553-21311-3",
+        "price": 8.99,
+        "title": "Moby Dick"
+    }
+]
+(4)
+[
+    {
+        "author": "Evelyn Waugh",
+        "category": "fiction",
+        "price": 12.99,
+        "title": "Sword of Honour"
+    }
+]
+(5) ["Moby Dick","The Lord of the Rings"]
+(6)
 [
     "Nigel Rees",
     "Sayings of the Century",
@@ -537,12 +591,12 @@ typedef basic_json<wchar_t,
                    JsonTraits = json_traits<wchar_t>,
                    Allocator = std::allocator<wchar_t>> wjson;
 ```
-If you prefer to retain the original insertion order, use [wojson](https://github.com/danielaparker/jsoncons/wiki/wojson) instead.
+If you prefer to retain the original insertion order, use [owjson](https://github.com/danielaparker/jsoncons/wiki/owjson) instead.
 
 Note that the allocator type allows you to supply a custom allocator. For example, you can use the boost [fast_pool_allocator](http://www.boost.org/doc/libs/1_60_0/libs/pool/doc/html/boost/fast_pool_allocator.html):
 ```c++
 #include <boost/pool/pool_alloc.hpp>
-#include "jsoncons/json.hpp"
+#include <jsoncons/json.hpp>
 
 typedef jsoncons::basic_json<char, boost::fast_pool_allocator<char>> myjson;
 
@@ -572,9 +626,9 @@ which prints
 ```c++
 {"field1":"test","field2":3.9,"field3":true}
 ```
-### ojson and wojson
+### ojson and owjson
 
-The [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) ([wojson](https://github.com/danielaparker/jsoncons/wiki/wojson)) class is an instantiation of the `basic_json` class template that uses `char` (`wchar_t`) as the character type and keeps object members in their original order. 
+The [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) ([owjson](https://github.com/danielaparker/jsoncons/wiki/owjson)) class is an instantiation of the `basic_json` class template that uses `char` (`wchar_t`) as the character type and keeps object members in their original order. 
 ```c++
 ojson o = ojson::parse(R"(
 {
@@ -587,7 +641,7 @@ ojson o = ojson::parse(R"(
 
 std::cout << pretty_print(o) << std::endl;
 ```
-The output is
+Output:
 ```json
 {
     "street_number": "100",
@@ -602,7 +656,7 @@ o.set("postal_code", "M5H 2N2");
 
 std::cout << pretty_print(o) << std::endl;
 ```
-The output is
+Output:
 ```json
 {
     "street_number": "100",
@@ -619,7 +673,7 @@ o.set(it,"province","Ontario");
 
 std::cout << pretty_print(o) << std::endl;
 ```
-The output is
+Output:
 ```json
 {
     "street_number": "100",
@@ -631,12 +685,12 @@ The output is
 }
 ```
 
-### Type extensibility
+### Convert `json` to/from user defined type
 
 In the json class, constructors, accessors and modifiers are templated, for example,
 ```c++
 template <class T>
-json(T val)
+json(const T& val)
 
 template<class T>
 bool is() const
@@ -645,109 +699,122 @@ template<class T>
 T as() const
 
 template <class T>
-basic_json& operator=(T val)
+basic_json& operator=(const T& val)
 
 template <class T>
-void add(T val)
+void add(const T& val)
 ```
 The implementations of these functions and operators make use of the class template `json_type_traits`
+
+This `json_type_traits` template is extensible, you, the user, can extend `json_type_traits` in the `jsoncons` namespace with your own types. 
+For example, you can provide a specialization of `json_type_traits` for a `book` class, and then transfer book objects or
+standard library collections of book objects to and from `json` values.
+
 ```c++
-
-template <class Json, class T, class Enable=void>
-struct json_type_traits
+struct book
 {
-    static const bool is_assignable = false;
-
-    static bool is(const Json&)
-    {
-        return false;
-    }
-
-    static T as(const Json& rhs);
-
-    static void assign(Json& lhs, T rhs);
+    std::string author;
+    std::string title;
+    double price;
 };
-```
-This class template is extensible, you as a user can extend `json_type_traits` in the `jsoncons` namespace with your own types. 
 
-You can, for example, extend `json_type_traits` to access and modify `json` structures with `boost::gregorian::date values`.
-
-```c++
-#include "jsoncons/json.hpp"
-#include "boost/date_time/gregorian/gregorian.hpp"
-
-namespace jsoncons 
+namespace jsoncons
 {
-    template <class Json>
-    struct json_type_traits<Json,boost::gregorian::date>
+    template<class Json>
+    struct json_type_traits<Json, book>
     {
-        static const bool is_assignable = true;
-
-        static bool is(const Json& val) noexcept
+        static bool is(const Json& rhs) noexcept
         {
-            if (!val.is_string())
-            {
-                return false;
-            }
-            std::string s = val.template as<std::string>();
-            try
-            {
-                boost::gregorian::from_simple_string(s);
-                return true;
-            }
-            catch (...)
-            {
-                return false;
-            }
+            return rhs.is_object() &&
+                   rhs.has_name("author") && 
+                   rhs.has_name("title") && 
+                   rhs.has_name("price");
         }
-
-        static boost::gregorian::date as(const Json& val)
+        static book as(const Json& rhs)
         {
-            std::string s = val.template as<std::string>();
-            return boost::gregorian::from_simple_string(s);
+            book val;
+            val.author = rhs["author"]. template as<std::string>();
+            val.title = rhs["title"]. template as<std::string>();
+            val.price = rhs["price"]. template as<double>();
+            return val;
         }
-
-        static void assign(Json& lhs, boost::gregorian::date val)
+        static Json to_json(const book& val)
         {
-            lhs.assign_string(to_iso_extended_string(val));
+            Json j;
+            j["author"] = val.author;
+            j["title"] = val.title;
+            j["price"] = val.price;
+            return j;
         }
     };
-}
-```
-```c++
-namespace my_ns
+};
+
+int main()
 {
-    using jsoncons::json;
-    using boost::gregorian::date;
+    book book1{"Haruki Murakami", "Kafka on the Shore", 25.17};
 
-    json deal = json::parse(R"(
+    json j = book1;
+
+    std::cout << "(1) " << std::boolalpha << j.is<book>() << "\n\n";
+
+    std::cout << "(2) " << pretty_print(j) << "\n\n";
+
+    book temp = j.as<book>();
+    std::cout << "(3) " << temp.author << "," 
+                        << temp.title << "," 
+                        << temp.price << "\n\n";
+
+    book book2{"Charles Bukowski", "Women: A Novel", 12.0};
+
+    std::vector<book> book_array{book1, book2};
+
+    json ja = book_array;
+
+    std::cout << "(4) " << std::boolalpha 
+                        << ja.is<std::vector<book>>() << "\n\n";
+
+    std::cout << "(5)\n" << pretty_print(ja) << "\n\n";
+
+    auto book_list = ja.as<std::list<book>>();
+
+    std::cout << "(6)" << std::endl;
+    for (auto b : book_list)
     {
-        "Maturity":"2014-10-14",
-        "ObservationDates": ["2014-02-14","2014-02-21"]
+        std::cout << b.author << ", " 
+                  << b.title << ", " 
+                  << b.price << std::endl;
     }
-    )");
-
-    deal["ObservationDates"].add(date(2014,2,28));    
-
-    date maturity = deal["Maturity"].as<date>();
-    std::cout << "Maturity: " << maturity << std::endl << std::endl;
-
-    std::cout << "Observation dates: " << std::endl << std::endl;
-
-    for (auto observation_date: deal["ObservationDates"].elements())
-    {
-        std::cout << observation_date << std::endl;
-    }
-    std::cout << std::endl;
 }
-```
-The output is
-```
-Maturity: 2014-Oct-14
-
-Observation dates:
-
-2014-Feb-14
-2014-Feb-21
-2014-Feb-28
 ``` 
+Output:
+```
+(1) true
+
+(2) {
+    "author": "Haruki Murakami",
+    "price": 25.17,
+    "title": "Kafka on the Shore"
+}
+
+(3) Haruki Murakami,Kafka on the Shore,25.17
+
+(4) true
+
+(5)
+[
+    {
+        "author": "Haruki Murakami",
+        "price": 25.17,
+        "title": "Kafka on the Shore"
+    },
+    {
+        "author": "Charles Bukowski",
+        "price": 12.0,
+        "title": "Women: A Novel"
+    }
+]
+
+(6)
+Haruki Murakami, Kafka on the Shore, 25.17
+Charles Bukowski, Women: A Novel, 12
+```

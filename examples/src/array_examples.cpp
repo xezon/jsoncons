@@ -2,15 +2,12 @@
 // Distributed under Boost license
 
 #include <string>
-#include "jsoncons/json.hpp"
+#include <jsoncons/json.hpp>
 #include <deque>
 #include <map>
 #include <unordered_map>
 
-using jsoncons::json;
-using jsoncons::pretty_print;
-using jsoncons::output_format;
-using std::string;
+using namespace jsoncons;
 
 void array_example1()
 {
@@ -167,14 +164,25 @@ void make_3_dimensional_array()
 {
     std::cout << "3 dimensional array" <<std::endl;
     json a = json::make_array<3>(4,3,2,0);
-    a[0][2][0] = 2;
-    a[0][2][1] = 3;
+
+    double val = 1.0;
+    for (size_t i = 0; i < a.size(); ++i)
+    {
+        for (size_t j = 0; j < a[i].size(); ++j)
+        {
+            for (size_t k = 0; k < a[i][j].size(); ++k)
+            {
+                a[i][j][k] = val;
+                val += 1.0;
+            }
+        }
+    }
     std::cout << pretty_print(a) << std::endl;
 }
 
 void array_examples()
 {
-    std::cout << "Array examples\n" << std::endl;
+    std::cout << "\nArray examples\n\n";
     array_example1();
 
     construct_json_from_vector();

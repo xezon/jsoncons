@@ -2,7 +2,7 @@
 
 jsoncons is a C++ library for the construction of [JavaScript Object Notation (JSON)](http://www.json.org). It supports parsing a JSON file or string into a `json` value, building a `json` value in C++ code, and serializing a `json` value to a file or string. It also provides an API for generating json read and write events in code, somewhat analogously to SAX processing in the XML world. 
 
-jsoncons uses some features that are new to C++ 11, including [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, and recent versions of clang. Note that `std::regex` isn't fully implemented in GCC 4.8., so `jsoncons_ext/jsonpath` regular expression filters aren't supported for that compiler.
+jsoncons uses some features that are new to C++ 11, including [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, GCC 6.2.0 and recent versions of clang. Note that `std::regex` isn't fully implemented in GCC 4.8., so `jsoncons_ext/jsonpath` regular expression filters aren't supported for that compiler.
 
 The [code repository](https://github.com/danielaparker/jsoncons) and [releases](https://github.com/danielaparker/jsoncons/releases) are on github. It is distributed under the [Boost Software License](http://www.boost.org/users/license.html)
 
@@ -26,36 +26,100 @@ The library has a number of features, which are listed below:
 - Passes all tests from [JSON_checker](http://www.json.org/JSON_checker/) except `fail1.json`, which is allowed in [RFC7159](http://www.ietf.org/rfc/rfc7159.txt)
 - Handles JSON texts of arbitrarily large depth of nesting, a limit can be set if desired
 - Supports [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/)
+- Supports search (by JsonPath) and replace
 
 As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the [deprecated list](https://github.com/danielaparker/jsoncons/wiki/deprecated) for the status of old names. The deprecated names can be suppressed by defining macro `JSONCONS_NO_DEPRECATED`, which is recommended for new code.
-
-## Note
-The `json` initializer-list constructor has been removed, it gives inconsistent results when an initializer has zero elements, or one element of the type being initialized (`json`). Please replace
-
-`json j = {1,2,3}` with `json j = json::array{1,2,3}`, and 
-
-`json j = {{1,2,3},{4,5,6}}` with `json j = json::array{json::array{1,2,3},json::array{4,5,6}}`
-
-Initializer-list constructors are now supported in `json::object` as well as `json::array`, e.g.
-```c++
-json j = json::object{{"first",1},{"second",json::array{1,2,3}}};
-```
 
 ## Benchmarks
 
 [json_benchmarks](https://github.com/danielaparker/json_benchmarks) provides some measurements about how `jsoncons` compares to other `json` libraries.
 
-## Using the jsoncons library
+## What's new on master
+
+Note that changes introduced to the `json_filter` class have been reversed, if you have implemented your own custom filters that extend `json_filter`, no changes are required.
+
+- The deprecated class `json::any` has been removed 
+- The jsoncons `boost` extension has been removed. That extension contained a sample `json_type_traits` specialization for `boost::gregorian::date`, which may still be found in the [Type Extensibility](https://github.com/danielaparker/jsoncons/wiki/Type-Extensibility) tutorial.  
+- The member `json_type_traits` member function `assign` has been removed and replaced by `to_json`. if you have implemented your own type specializations, you will also have to change your `assign` function to `to_json`.
+- `json_type_traits` specializations no longer require the `is_assignable` data member
+- The names `json_deserializer`,`ojson_deserializer`,`wjson_deserializer`,`wojson_deserializer` have been deprecated (they still work) and replaced by `json_encoder<json>`, `json_encoder<ojson>`, `json_encoder<wjson>` and `json_encoder<owjson>`.  
+- The name `output_format` has been deprecated (it still works) and renamed to `serialization_options`.  
+- The name `wojson` has been deprecated (it still works) and renamed to `owjson`.  
+- New `jsonpath` function `json_replace` that searches for all values that match a JsonPath expression and replaces them with a specified value.
+- The `json_filter` accessor `input_handler` has been deprecated (it still works) and renamed to `downstream_handler`.  
+
+## Get jsoncons
 
 The jsoncons library is header-only: it consists solely of header files containing templates and inline functions, and requires no separately-compiled library binaries when linking. It has no dependence on other libraries. The accompanying test suite uses boost, but not the library itself.
 
 To install the jsoncons library, download the zip file, unpack the release, under `src` find the directory `jsoncons`, and copy it to your `include` directory. If you wish to use extensions, copy the `jsoncons_ext` directory as well. 
 
-For a quick guide, see the article [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons). Consult the wiki for the latest [documentation and tutorials](https://github.com/danielaparker/jsoncons/wiki) and [roadmap](https://github.com/danielaparker/jsoncons/wiki/Roadmap). 
+## A simple program using jsoncons
+
+```c++
+#include <iostream>
+#include <jsoncons/json.hpp>
+
+// For convenience
+using jsoncons::json;
+
+int main()
+{
+    json color_spaces = json::array();
+    color_spaces.add("sRGB");
+    color_spaces.add("AdobeRGB");
+    color_spaces.add("ProPhoto RGB");
+
+    json image_sizing; // empty object
+    image_sizing["Resize To Fit"] = true; // a boolean 
+    image_sizing["Resize Unit"] = "pixels"; // a string
+    image_sizing["Resize What"] = "long_edge"; // a string
+    image_sizing["Dimension 1"] = 9.84; // a double
+    
+    json file_export;
+
+    // create "File Format Options" as an object and put "Color Spaces" in it
+    file_export["File Format Options"]["Color Spaces"] = std::move(color_spaces); 
+
+    file_export["Image Sizing"] = std::move(image_sizing);
+
+    std::cout << "(1)\n" << pretty_print(file_export) << "\n\n";
+
+    const json& val = file_export["Image Sizing"];
+
+    std::cout << "(2) " << "Dimension 1 = " << val["Dimension 1"].as<double>() << "\n\n";
+
+    std::cout << "(3) " << "Dimension 2 = " << val.get_with_default("Dimension 2","n/a") << "\n";
+}
+```
+Output:
+```json
+(1)
+{
+    "File Format Options": {
+        "Color Spaces": ["sRGB","AdobeRGB","ProPhoto RGB"]
+    },
+    "Image Sizing": {
+        "Dimension 1": 9.84,
+        "Resize To Fit": true,
+        "Resize Unit": "pixels",
+        "Resize What": "long_edge"
+    }
+}
+
+(2) Dimension 1 = 9.84
+
+(3) Dimension 2 = n/a
+```
+
+For a quick guide, see the article [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons). Consult the [wiki](https://github.com/danielaparker/jsoncons/wiki) for the latest documentation, tutorials and roadmap. 
 
 ## Building the test suite and examples with CMake
 
-[CMake](https://cmake.org/) is a C++ Makefiles/Solution generator for cross-platform software development. 
+[CMake](https://cmake.org/) is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a [Windows Installer package](https://cmake.org/download/). On Linux it is usually available as a package, e.g., on Ubuntu,
+```
+    sudo apt-get install cmake
+```
 
 Instructions for building the test suite with CMake may be found in
 
@@ -81,455 +145,377 @@ The library includes four instantiations of `basic_json`:
 
 - [wjson](https://github.com/danielaparker/jsoncons/wiki/wjson) constructs a wide character json value that sorts name-value members alphabetically
 
-- [wojson](https://github.com/danielaparker/jsoncons/wiki/wojson) constructs a wide character json value that retains the original name-value insertion order
+- [owjson](https://github.com/danielaparker/jsoncons/wiki/owjson) constructs a wide character json value that retains the original name-value insertion order
 
-## Examples
+## Features
 
-The examples below illustrate the use of the [json](https://github.com/danielaparker/jsoncons/wiki/json) class and [json_query](https://github.com/danielaparker/jsoncons/wiki/json_query) function.
-
-### json construction
+### Meaningful error messages
 
 ```c++
-#include "jsoncons/json.hpp"
-
-// For convenience
-using jsoncons::json;
-
-// Construct a book object
-json book1;
-
-book1["category"] = "Fiction";
-book1["title"] = "A Wild Sheep Chase: A Novel";
-book1["author"] = "Haruki Murakami";
-book1["date"] = "2002-04-09";
-book1["price"] = 9.01;
-book1["isbn"] = "037571894X";  
-
-// Construct another using the set function
-json book2;
-
-book2.set("category", "History");
-book2.set("title", "Charlie Wilson's War");
-book2.set("author", "George Crile");
-book2.set("date", "2007-11-06");
-book2.set("price", 10.50);
-book2.set("isbn", "0802143415");  
-
-// Use set again, but more efficiently
-json book3;
-
-// Reserve memory, to avoid reallocations
-book3.reserve(6);
-
-// Insert in name alphabetical order
-// Give set a hint where to insert the next member
-auto hint = book3.set(book3.members().begin(),"author", "Haruki Murakami");
-hint = book3.set(hint, "category", "Fiction");
-hint = book3.set(hint, "date", "2006-01-03");
-hint = book3.set(hint, "isbn", "1400079276");  
-hint = book3.set(hint, "price", 13.45);
-hint = book3.set(hint, "title", "Kafka on the Shore");
-
-// Construct a fourth from a string
-json book4 = json::parse(R"(
+try 
 {
-    "category" : "Fiction",
-    "title" : "Pulp",
-    "author" : "Charles Bukowski",
-    "date" : "2004-07-08",
-    "price" : 22.48,
-    "isbn" : "1852272007"  
-}
-)");
-
-// Construct a booklist array
-
-json booklist = json::array();
-
-// For efficiency, reserve memory, to avoid reallocations
-booklist.reserve(4);
-
-// For efficency, tell jsoncons to move the contents 
-// of the four book objects into the array
-booklist.add(std::move(book1));    
-booklist.add(std::move(book2));    
-
-// Add the third book to the front
-auto pos = booklist.add(booklist.elements().begin(),std::move(book3));
-
-// and the last one immediately after
-booklist.add(pos+1,std::move(book4));    
-
-// See what's left of book1, 2, 3 and 4 (expect nulls)
-std::cout << book1 << "," << book2 << "," << book3 << "," << book4 << std::endl;
-
-
-++
-//Loop through the booklist elements using a range-based for loop    
-for (const auto& book : booklist.elements())
+    json val = json::parse("[1,2,3,4,]");
+} 
+catch(const std::exception& e) 
 {
-    std::cout << book["title"].as<std::string>()
-              << ","
-              << book["price"].as<double>() << std::endl;
+    std::cout << e.what() << std::endl;
 }
+```
+Output:
+```
+Extra comma at line 1 and column 10
+```
 
-// The second book
-json& book = booklist[1];
+### Use range-based for loops with arrays
 
-//Loop through the book's name-value pairs using a range-based for loop    
+```c++
+json j = json::array{1,2,3,4};
+
+for (auto element : book.elements())
+{
+    std::cout << element << std::endl;
+}
+```
+
+### Use range-based for loops with objects
+
+```c++
+json book = json::object{
+    {"author", "Haruki Murakami"},
+    {"title", "Kafka on the Shore"},
+    {"price", 25.17}
+};
+
 for (const auto& member : book.members())
 {
-    std::cout << member.name()
-              << ","
+    std::cout << member.name() << "=" 
               << member.value() << std::endl;
 }
-
-auto it = book.find("author");
-if (it != book.members().end())
-{
-    // member "author" found
-}
-
-if (book.count("author") > 0)
-{
-    // book has a member "author"
-}
-
-book.get("author", "author unknown").as<std::string>();
-// Returns author if found, otherwise "author unknown"
-
-try
-{
-    book["ratings"].as<std::string>();
-}
-catch (const std::out_of_range& e)
-{
-    // member "ratings" not found
-}
-
-// Add ratings
-book["ratings"]["*****"] = 4;
-book["ratings"]["*"] = 2;
-
-// Delete one-star ratings
-book["ratings"].erase("*");
-
-```
-```c++  
-    // Serialize the booklist to a file
-    std::ofstream os("booklist.json");
-    os << pretty_print(booklist);
 ```
 
-The JSON output `booklist.json`
+### Construct multi-dimensional json arrays
+```c++
+json a = json::make_array<3>(4, 3, 2, 0.0);
+double val = 1.0;
+for (size_t i = 0; i < a.size(); ++i)
+{
+    for (size_t j = 0; j < a[i].size(); ++j)
+    {
+        for (size_t k = 0; k < a[i][j].size(); ++k)
+        {
+            a[i][j][k] = val;
+            val += 1.0;
+        }
+    }
+}
+std::cout << pretty_print(a) << std::endl;
+```
+Output:
 ```json
 [
-    {
-        "author":"Haruki Murakami",
-        "category":"Fiction",
-        "date":"2006-01-03",
-        "isbn":"1400079276",
-        "price":13.45,
-        "title":"Kafka on the Shore"
-    },
-    {
-        "author":"Charles Bukowski",
-        "category":"Fiction",
-        "date":"2004-07-08",
-        "isbn":"1852272007",
-        "price":22.48,
-        "ratings":
-        {
-            "*****":4
-        },
-        "title":"Pulp"
-    },
-    {
-        "author":"Haruki Murakami",
-        "category":"Fiction",
-        "date":"2002-04-09",
-        "isbn":"037571894X",
-        "price":9.01,
-        "title":"A Wild Sheep Chase: A Novel"
-    },
-    {
-        "author":"George Crile",
-        "category":"History",
-        "date":"2007-11-06",
-        "isbn":"0802143415",
-        "price":10.5,
-        "title":"Charlie Wilson's War"
-    }
+    [
+        [1.0,2.0],
+        [3.0,4.0],
+        [5.0,6.0]
+    ],
+    [
+        [7.0,8.0],
+        [9.0,10.0],
+        [11.0,12.0]
+    ],
+    [
+        [13.0,14.0],
+        [15.0,16.0],
+        [17.0,18.0]
+    ],
+    [
+        [19.0,20.0],
+        [21.0,22.0],
+        [23.0,24.0]
+    ]
 ]
 ```
-### json query
+See [Arrays](https://github.com/danielaparker/jsoncons/wiki/Arrays) for details
+
+### Convert from and to standard library sequence containers
+
+```c++
+std::vector<int> v{1, 2, 3, 4};
+json j(v);
+std::cout << "(1) "<< j << std::endl;
+std::deque<int> d = j.as<std::deque<int>>();
+```
+Output:
+```
+(1) [1,2,3,4]
+```
+
+### Convert from and to standard library associative containers
+
+```c++
+std::map<std::string,int> m{{"one",1},{"two",2},{"three",3}};
+json j(m);
+std::cout << "(1) " << j << std::endl;
+std::unordered_map<std::string,int> um = j.as<std::unordered_map<std::string,int>>();
+```
+Output:
+```
+(1) {"one":1,"three":3,"two":2}
+```
+
+### Convert from and to user defined types (and standard library containers of user defined types)
+
+```c++
+struct book
+{
+    std::string author;
+    std::string title;
+    double price;
+};
+
+namespace jsoncons
+{
+    template<class Json>
+    struct json_type_traits<Json, book>
+    {
+        // Implement static functions is, as and to_json 
+    };
+}        
+
+book book1{"Haruki Murakami", "Kafka on the Shore", 25.17};
+book book2{"Charles Bukowski", "Women: A Novel", 12.0};
+
+std::vector<book> v{book1, book2};
+
+json j = v;
+
+std::list<book> l = j.as<std::list<book>>();
+```
+
+See [Type Extensibility](https://github.com/danielaparker/jsoncons/wiki/Type%20Extensibility) for details.
+
+### Filter json names and values
+
+You can rename object member names with the built in filter [rename_name_filter](https://github.com/danielaparker/jsoncons/wiki/rename_name_filter)
+
+```c++
+#include <sstream>
+#include <jsoncons/json.hpp>
+#include <jsoncons/json_filter.hpp>
+
+using namespace jsoncons;
+
+int main()
+{
+    std::string s = R"({"first":1,"second":2,"fourth":3,"fifth":4})";    
+
+    json_serializer serializer(std::cout);
+
+    // Filters can be chained
+    rename_name_filter filter2("fifth", "fourth", serializer);
+    rename_name_filter filter1("fourth", "third", filter2);
+
+    // A filter can be passed to any function that takes
+    // a json_input_handler ...
+    std::cout << "(1) ";
+    std::istringstream is(s);
+    json_reader reader(is, filter1);
+    reader.read();
+    std::cout << std::endl;
+
+    // or a json_output_handler    
+    std::cout << "(2) ";
+    ojson j = ojson::parse(s);
+    j.write(filter1);
+    std::cout << std::endl;
+}
+```
+Output:
+```json
+(1) {"first":1,"second":2,"third":3,"fourth":4}
+(2) {"first":1,"second":2,"third":3,"fourth":4}
+```
+Or define and use your own filters. See [json_filter](https://github.com/danielaparker/jsoncons/wiki/json_filter) for details.
+
+## Extensions
+
+### jsonpath
+
+Example file (store.json):
+```json
+{ "store": {
+    "book": [ 
+      { "category": "reference",
+        "author": "Nigel Rees",
+        "title": "Sayings of the Century",
+        "price": 8.95
+      },
+      { "category": "fiction",
+        "author": "Evelyn Waugh",
+        "title": "Sword of Honour",
+        "price": 12.99
+      },
+      { "category": "fiction",
+        "author": "Herman Melville",
+        "title": "Moby Dick",
+        "isbn": "0-553-21311-3",
+        "price": 8.99
+      }
+    ]
+  }
+}
+```
+```c++
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpath/json_query.hpp>
+
+using namespace jsoncons;
+using namespace jsoncons::jsonpath;
+
+int main()
+{
+    std::ifstream is("input/booklist.json");
+    json booklist;
+    is >> booklist;
+
+    // All books whose author's name starts with Evelyn
+    json result1 = json_query(booklist, "$.store.book[?(@.author =~ /Evelyn.*?/)]");
+    std::cout << "(1)\n" << pretty_print(result1) << std::endl;
+
+    // Change the price of "Moby Dick"
+    json_replace(booklist,"$.store.book[?(@.isbn == '0-553-21311-3')].price",10.0);
+    std::cout << "(2)\n" << pretty_print(booklist) << std::endl;
+
+}
+```
+Output:
+```json
+(1)
+[
+    {
+        "author": "Evelyn Waugh",
+        "category": "fiction",
+        "price": 12.99,
+        "title": "Sword of Honour"
+    }
+]
+(2)
+{
+    "store": {
+        "book": [
+            {
+                "author": "Nigel Rees",
+                "category": "reference",
+                "price": 8.95,
+                "title": "Sayings of the Century"
+            },
+            {
+                "author": "Evelyn Waugh",
+                "category": "fiction",
+                "price": 12.99,
+                "title": "Sword of Honour"
+            },
+            {
+                "author": "Herman Melville",
+                "category": "fiction",
+                "isbn": "0-553-21311-3",
+                "price": 10.0,
+                "title": "Moby Dick"
+            }
+        ]
+    }
+}
+```
+
+See [json_query](https://github.com/danielaparker/jsoncons/wiki/json_query), [json_replace](https://github.com/danielaparker/jsoncons/wiki/json_replace), and [Basics](https://github.com/danielaparker/jsoncons/wiki/Basics) for details.
+
+### csv
+Example file (tasks.csv)
+```csv
+project_id, task_name, task_start, task_finish
+4001,task1,01/01/2003,01/31/2003
+4001,task2,02/01/2003,02/28/2003
+4001,task3,03/01/2003,03/31/2003
+4002,task1,04/01/2003,04/30/2003
+4002,task2,05/01/2003,
+```
 
 ```c++
 #include <fstream>
-#include "jsoncons/json.hpp"
-#include "jsoncons_ext/jsonpath/json_query.hpp"
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/csv/csv_reader.hpp>
+#include <jsoncons_ext/csv/csv_serializer.hpp>
 
-// For convenience
-using jsoncons::json;
-using jsoncons::jsonpath::json_query;
+using namespace jsoncons;
+using namespace jsoncons::csv;
 
-// Deserialize the booklist
-std::ifstream is("booklist.json");
-json booklist;
-is >> booklist;
+int main()
+{
+    std::ifstream is("input/tasks.csv");
 
-// Use a JsonPath expression to find 
-//  
-// (1) The authors of books that cost less than $12
-json result = json_query(booklist, "$[*][?(@.price < 12)].author");
-std::cout << result << std::endl;
+    json_encoder<json> encoder;
+    csv_parameters params;
+    params.assume_header(true)
+          .trim(true)
+          .ignore_empty_values(true) 
+          .column_types({"integer","string","string","string"});
+    csv_reader reader(is,encoder,params);
+    reader.read();
+    ojson tasks = encoder.get_result();
 
-// (2) The number of books
-result = json_query(booklist, "$.length");
-std::cout << result << std::endl;
+    std::cout << "(1)\n" << pretty_print(tasks) << "\n\n";
 
-// (3) The third book
-result = json_query(booklist, "$[2]");
-std::cout << std::endl << pretty_print(result) << std::endl;
-
-// (4) The authors of books that were published in 2004
-result = json_query(booklist, "$[*][?(@.date =~ /2004.*?/)].author");
-std::cout << result << std::endl;
-
-// (5) The titles of all books that have ratings
-result = json_query(booklist, "$[*][?(@.ratings)].title");
-std::cout << result << std::endl;
-
-// (6) All authors and titles of books
-result = json_query(booklist, "$..['author','title']");
-std::cout << pretty_print(result) << std::endl;
+    std::cout << "(2)\n";
+    csv_serializer serializer(std::cout);
+    tasks.write(serializer);
+}
 ```
-Result:
+Output:
 ```json
-(1) ["Haruki Murakami","George Crile"]
-(2) [4]
-(3)
+(1)
 [
     {
-        "author":"Haruki Murakami",
-        "category":"Fiction",
-        "date":"2002-04-09",
-        "isbn":"037571894X",
-        "price":9.01,
-        "title":"A Wild Sheep Chase: A Novel"
-    }
-]
-(4) ["Charles Bukowski"]
-(5) ["Pulp"]
-(6) 
-[
-    "Nigel Rees",
-    "Sayings of the Century",
-    "Evelyn Waugh",
-    "Sword of Honour",
-    "Herman Melville",
-    "Moby Dick",
-    "J. R. R. Tolkien",
-    "The Lord of the Rings"
-]
-```
-## Once again, this time with wide characters
-
-### wjson construction
-
-```c++
-#include "jsoncons/json.hpp"
-
-// For convenience
-using jsoncons::wjson;
-
-// Construct a book object
-wjson book1;
-
-book1[L"category"] = L"Fiction";
-book1[L"title"] = L"A Wild Sheep Chase: A Novel";
-book1[L"author"] = L"Haruki Murakami";
-book1[L"date"] = L"2002-04-09";
-book1[L"price"] = 9.01;
-book1[L"isbn"] = L"037571894X";
-
-// Construct another using the set function
-wjson book2;
-
-book2.set(L"category", L"History");
-book2.set(L"title", L"Charlie Wilson's War");
-book2.set(L"author", L"George Crile");
-book2.set(L"date", L"2007-11-06");
-book2.set(L"price", 10.50);
-book2.set(L"isbn", L"0802143415");
-
-// Use set again, but more efficiently
-wjson book3;
-
-// Reserve memory, to avoid reallocations
-book3.reserve(6);
-
-// Insert in name alphabetical order
-// Give set a hint where to insert the next member
-auto hint = book3.set(book3.members().begin(), L"author", L"Haruki Murakami");
-hint = book3.set(hint, L"category", L"Fiction");
-hint = book3.set(hint, L"date", L"2006-01-03");
-hint = book3.set(hint, L"isbn", L"1400079276");
-hint = book3.set(hint, L"price", 13.45);
-hint = book3.set(hint, L"title", L"Kafka on the Shore");
-
-// Construct a fourth from a string
-wjson book4 = wjson::parse(LR"(
-{
-    "category" : "Fiction",
-    "title" : "Pulp",
-    "author" : "Charles Bukowski",
-    "date" : "2004-07-08",
-    "price" : 22.48,
-    "isbn" : "1852272007"  
-}
-)");
-
-// Construct a booklist array
-
-wjson booklist = wjson::array();
-
-// For efficiency, reserve memory, to avoid reallocations
-booklist.reserve(4);
-
-// For efficency, tell jsoncons to move the contents 
-// of the four book objects into the array
-booklist.add(std::move(book1));
-booklist.add(std::move(book2));
-
-// Add the third book to the front
-auto pos = booklist.add(booklist.elements().begin(),std::move(book3));
-
-// and the last one immediately after
-booklist.add(pos+1,std::move(book4));    
-
-// See what's left of book1, 2, 3 and 4 (expect nulls)
-std::wcout << book1 << L"," << book2 << L"," << book3 << L"," << book4 << std::endl;
-
-++
-//Loop through the booklist elements using a range-based for loop    
-for (const auto& book : booklist.elements())
-{
-    std::wcout << book[L"title"].as<std::wstring>()
-               << L","
-               << book[L"price"].as<double>() << std::endl;
-}
-
-// The second book
-wjson& book = booklist[1];
-
-//Loop through the book's name-value pairs using a range-based for loop    
-for (const auto& member : book.members())
-{
-    std::wcout << member.name()
-               << L","
-               << member.value() << std::endl;
-}
-
-auto it = book.find(L"author");
-if (it != book.members().end())
-{
-    // member "author" found
-}
-
-if (book.count(L"author") > 0)
-{
-    // book has a member "author"
-}
-
-book.get(L"author", L"author unknown").as<std::wstring>();
-// Returns author if found, otherwise "author unknown"
-
-try
-{
-    book[L"ratings"].as<std::wstring>();
-}
-catch (const std::out_of_range& e)
-{
-    // member "ratings" not found
-}
-
-// Add ratings
-book[L"ratings"][L"*****"] = 4;
-book[L"ratings"][L"*"] = 2;
-
-// Delete one-star ratings
-book[L"ratings"].erase(L"*");
-
-```
-```c++
-// Serialize the booklist to a file
-std::wofstream os("booklist2.json");
-os << pretty_print(booklist);
-```
-### wjson query
-
-```c++
-// Deserialize the booklist
-std::wifstream is("booklist2.json");
-wjson booklist;
-is >> booklist;
-
-// Use a JsonPath expression to find 
-//  
-// (1) The authors of books that cost less than $12
-wjson result = json_query(booklist, L"$[*][?(@.price < 12)].author");
-std::wcout << result << std::endl;
-
-// (2) The number of books
-result = json_query(booklist, L"$.length");
-std::wcout << result << std::endl;
-
-// (3) The third book
-result = json_query(booklist, L"$[2]");
-std::wcout << pretty_print(result) << std::endl;
-
-// (4) The authors of books that were published in 2004
-result = json_query(booklist, L"$[*][?(@.date =~ /2004.*?/)].author");
-std::wcout << result << std::endl;
-
-// (5) The titles of all books that have ratings
-result = json_query(booklist, L"$[*][?(@.ratings)].title");
-std::wcout << result << std::endl;
-
-// (6) All authors and titles of books
-result = json_query(booklist, L"$..['author','title']");
-std::wcout << pretty_print(result) << std::endl;
-```
-Result:
-```json
-(1) ["Haruki Murakami","George Crile"]
-(2) [4]
-(3)
-[
+        "project_id": 4001,
+        "task_name": "task1",
+        "task_start": "01/01/2003",
+        "task_finish": "01/31/2003"
+    },
     {
-        "author":"Haruki Murakami",
-        "category":"Fiction",
-        "date":"2002-04-09",
-        "isbn":"037571894X",
-        "price":9.01,
-        "title":"A Wild Sheep Chase: A Novel"
+        "project_id": 4001,
+        "task_name": "task2",
+        "task_start": "02/01/2003",
+        "task_finish": "02/28/2003"
+    },
+    {
+        "project_id": 4001,
+        "task_name": "task3",
+        "task_start": "03/01/2003",
+        "task_finish": "03/31/2003"
+    },
+    {
+        "project_id": 4002,
+        "task_name": "task1",
+        "task_start": "04/01/2003",
+        "task_finish": "04/30/2003"
+    },
+    {
+        "project_id": 4002,
+        "task_name": "task2",
+        "task_start": "05/01/2003"
     }
 ]
-(4) ["Charles Bukowski"]
-(5) ["Pulp"]
-(6) 
-[
-    "Nigel Rees",
-    "Sayings of the Century",
-    "Evelyn Waugh",
-    "Sword of Honour",
-    "Herman Melville",
-    "Moby Dick",
-    "J. R. R. Tolkien",
-    "The Lord of the Rings"
-]
 ```
+```csv
+(2)
+project_id,task_name,task_start,task_finish
+4001,task2,02/01/2003,02/28/2003
+4001,task3,03/01/2003,03/31/2003
+4002,task1,04/01/2003,04/30/2003
+4002,task2,05/01/2003,
+```
+
+See [csv_reader](https://github.com/danielaparker/jsoncons/wiki/csv_reader) and [csv_serializer](https://github.com/danielaparker/jsoncons/wiki/csv_serializer) for details.
+
 ## Acknowledgements
 
 Special thanks to our [contributors](https://github.com/danielaparker/jsoncons/blob/master/acknowledgements.txt)

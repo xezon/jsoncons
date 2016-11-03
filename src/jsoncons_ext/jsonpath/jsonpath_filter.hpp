@@ -14,12 +14,14 @@
 #include <cstdlib>
 #include <memory>
 #include <regex>
-#include "jsoncons/json.hpp"
+#include <jsoncons/json.hpp>
 #include "jsonpath_error_category.hpp"
 
 namespace jsoncons { namespace jsonpath {
 
-template <class Json>
+template <class Json,
+          class JsonReference,
+          class JsonPointer>
 class jsonpath_evaluator;
 
 enum class filter_states
@@ -188,7 +190,7 @@ public:
         return *this;
     }
 
-    token_types type() const
+    token_types type_id() const
     {
         return type_;
     }
@@ -470,7 +472,7 @@ public:
 
     void initialize(const Json& context_node) override
     {
-        jsonpath_evaluator<Json> evaluator;
+        jsonpath_evaluator<Json,const Json&,const Json*> evaluator;
         evaluator.evaluate(context_node,path_);
         nodes_ = evaluator.get_values();
     }
@@ -751,7 +753,7 @@ public:
         auto t = ts.get();
         while (true)
         {
-            switch (t.type())
+            switch (t.type_id())
             {
             case token_types::plus:
             {
@@ -779,13 +781,13 @@ public:
     {
         auto t = ts.get();
 
-        switch (t.type())
+        switch (t.type_id())
         {
         case token_types::left_paren:
         {
             auto expr = expression(ts);
             t = ts.get();
-            if (t.type() != token_types::right_paren)
+            if (t.type_id() != token_types::right_paren)
             {
                 throw parse_exception(jsonpath_parser_errc::invalid_filter_expected_right_brace,line_,column_);
             }
@@ -816,7 +818,7 @@ public:
         auto t = ts.get();
         while (true)
         {
-            switch (t.type())
+            switch (t.type_id())
             {
             case token_types::eq:
             {
@@ -1342,6 +1344,8 @@ public:
                     state = pre_line_break_state;
                     break;
                 case ' ':case '\t':
+                    ++p;
+                    ++column_;
                     break;
                 case ')':
                     tokens.push_back(token<Json>(token_types::right_paren));

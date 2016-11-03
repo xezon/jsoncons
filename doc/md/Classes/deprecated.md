@@ -1,4 +1,4 @@
-# Deprecated Features
+## Deprecated Features
 
 As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. The deprecated names can be suppressed by defining macro JSONCONS_NO_DEPRECATED, which is recommended for new code.
 
@@ -39,13 +39,18 @@ json|add(size_t index, const json& val)|<em>&#x2713;</em>|Use add(array_iterator
     |resize_array(size_t n, const json& val)|<em>&#x2713;</em>|Use resize(size_t n, const json& val)
     |to_stream|<em>&#x2713;</em>|Use write
     |`json` initializer-list constructor||Construct from `json::array` with initializer-list
+    |json_deserializer|<em>&#x2713;</em>|Use json_encoder<json>`
+    |wjson_deserializer|<em>&#x2713;</em>|Use `json_encoder<wjson>`
+    |ojson_deserializer|<em>&#x2713;</em>|Use `json_encoder<ojson>`
+    |wojson_deserializer|<em>&#x2713;</em>|Use `json_encoder<wojson>`
+    |wojson|<em>&#x2713;</em>|Use owjson`
 json member types|any|<em>&#x2713;</em>|
 json member constants|null||Use static member function `json::null()`
     |an_object||Use the default constructor `json()` instead.
     |an_array||Use assignment to `json::array()` or `json::make_array()` instead.
-json_deserializer|json& root()|<em>&#x2713;</em>|json get_result()
-json_reader|read()|<em>&#x2713;</em>|Use read_next()
-    |max_depth() const|<em>&#x2713;</em>|Use max_nesting_depth() const
+json_encoder|json& root()|<em>&#x2713;</em>|json get_result()
+serialization|`output_format`|<em>&#x2713;</em>|Use `serialization_options`
+json_reader|max_depth() const|<em>&#x2713;</em>|Use max_nesting_depth() const
     |max_depth(depth)|<em>&#x2713;</em>|Use max_nesting_depth() const
     |json_input_handler& parent()|<em>&#x2713;</em>|Use json_input_handler& input_handler()
 json_input_handler class|do_longlong_value(long long value, const parsing_context& context)||Override do_integer_value(int64_t value, const parsing_context& context)
@@ -55,7 +60,8 @@ json_output_handler class|do_longlong_value(long long value)||Removed, override 
     |do_ulonglong_value(unsigned long long value)||Removed, override do_uinteger_value(uint64_t value)
     |do_double_value(double value)||Removed, override do_double_value(double value, uint8_t precision)
 basic_parsing_context|last_char()|<em>&#x2713;</em>|Use current_char()
-json_filter|parent()|<em>&#x2713;</em>|Use input_handler()
+json_filter|parent()|<em>&#x2713;</em>|Use downstream_handler()
+           |input_handler()|<em>&#x2713;</em>|Use downstream_handler()
 csv_parameters|`header(std::string value)`|<em>&#x2713;</em>|Use `column_names(std::vector<std::string>> value)`
     |`data_types()`|<em>&#x2713;</em>|Use `column_types()`
     |`data_types(std::string value)`|<em>&#x2713;</em>|Use `column_types(std::vector<std::string>> value)`

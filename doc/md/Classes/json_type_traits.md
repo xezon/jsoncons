@@ -17,7 +17,9 @@ struct json_type_traits
 
     static T as(const Json& rhs);
 
-    static void assign(Json& lhs, T rhs);
+    static Json to_json(T rhs);
+
+    static Json to_json(T rhs, typename Json::allocator_type allocator);
 };
 ```
 
@@ -56,7 +58,7 @@ You can interact with a new type using `is<T>`, `as<T>`, construction and assign
 For example, you can access and modify `json` values with `boost::gregorian` dates.
 
 ```c++
-#include "jsoncons/json.hpp"
+#include <jsoncons/json.hpp>
 #include "boost/date_time/gregorian/gregorian.hpp"
 
 namespace jsoncons 
@@ -90,9 +92,15 @@ namespace jsoncons
             return boost::gregorian::from_simple_string(s);
         }
 
-        static void assign(Json& lhs, boost::gregorian::date val)
+        static Json to_json(boost::gregorian::date val)
         {
-            lhs.assign_string(to_iso_extended_string(val));
+            return Json::make_string(to_iso_extended_string(val));
+        }
+
+        static Json to_json(boost::gregorian::date val, 
+                            typename Json::allocator_type allocator)
+        {
+            return Json::make_string(to_iso_extended_string(val),allocator);
         }
     };
 }
@@ -124,7 +132,7 @@ namespace my_ns
     std::cout << std::endl;
 }
 ```
-The output is
+Output:
 ```
 Maturity: 2014-Oct-14
 

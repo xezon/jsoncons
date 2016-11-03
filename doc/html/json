@@ -480,8 +480,7 @@ vertical-align:1px;
 
 <h3>Header</h3>
 
-<pre><code>#include "jsoncons/json.hpp"
-</code></pre>
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json.hpp<span class="pl-pds">&gt;</span></span></pre></div>
 
 <h3>Member types</h3>
 
@@ -502,7 +501,7 @@ vertical-align:1px;
 <td>Allocator type</td>
 </tr>
 <tr>
-<td><code>string_allocator</code></td>
+<td><code>char_allocator</code></td>
 <td>String allocator type</td>
 </tr>
 <tr>
@@ -655,12 +654,12 @@ static json make_array(size_t size1 ... size_t sizeN, const T&amp; val, const ar
 
 <p>Copy with allocator</p>
 
-<pre><code>json(json&amp;&amp; val)
+<pre><code>json(json&amp;&amp; val) noexcept
 </code></pre>
 
 <p>Acquires the contents of val, leaving val a <code>null</code> value</p>
 
-<pre><code>json(json&amp;&amp; val, const allocator_type&amp; allocator)
+<pre><code>json(json&amp;&amp; val, const allocator_type&amp; allocator) 
 </code></pre>
 
 <p>Move with allocator</p>
@@ -694,7 +693,7 @@ json(InputIterator first, InputIterator last,
 <h3>Assignment operator</h3>
 
 <pre><code>json&amp; operator=(const json&amp; rhs)
-json&amp; operator=(json&amp;&amp; rhs)
+json&amp; operator=(json&amp;&amp; rhs) noexcept
 </code></pre>
 
 <p>Assigns a new <code>json</code> value to a <code>json</code> variable, replacing it's current contents.</p>
@@ -757,6 +756,11 @@ Throws <code>std::runtime_error</code> if not an array.</p>
 <p>Resizes a json array so that it contains <code>n</code> elements that are initialized to <code>val</code>. </p>
 
 <h3>Accessors</h3>
+
+<pre><code>bool has_name(const string_type&amp; name) const
+</code></pre>
+
+<p>Returns <code>true</code> if an object has a member with the given <code>name</code>, otherwise <code>false</code>.    </p>
 
 <pre><code>size_t count(const string_type&amp; name) const
 </code></pre>
@@ -912,7 +916,9 @@ T as() const
 <pre><code>as&lt;bool&gt;
 </code></pre>
 
-<p>Returns <code>false</code> if value is <code>false</code> or <code>null</code>, if value is a zero length string, or if value is a zero length array or object. Everything else returns <code>true</code>.</p>
+<p>Returns <code>true</code> if value is <code>bool</code> and <code>true</code>, or if value is integral and non-zero, or if value is floating point and non-zero, or if value is string and parsed value evaluates as <code>true</code>. <br>
+Returns <code>false</code> if value is <code>bool</code> and <code>false</code>, or if value is integral and zero, or if value is floating point and zero, or if value is string and parsed value evaluates as <code>false</code>. <br>
+Otherwise throws <code>std::runtime_exception</code></p>
 
 <pre><code>as&lt;double&gt;
 </code></pre>
@@ -936,7 +942,7 @@ unsigned long long as&lt;unsigned long long&gt; const
 <p>Return integer value if value has integral type, performs cast if value has double type, returns 1 or 0 if value has bool type, otherwise throws.</p>
 
 <pre><code>string_type as&lt;string_type&gt;() const noexcept
-string_type as&lt;string_type&gt;(const string_allocator&amp; allocator) const noexcept
+string_type as&lt;string_type&gt;(const char_allocator&amp; allocator) const noexcept
 </code></pre>
 
 <p>If value is string, returns value, otherwise returns result of <code>to_string</code>.</p>
@@ -951,12 +957,12 @@ string_type as&lt;string_type&gt;(const string_allocator&amp; allocator) const n
 
 <p>Returns <code>json</code> object value as an <code>std::map</code>.</p>
 
-<pre><code>bool as_bool() const noexcept
+<pre><code>bool as_bool() const
 int64_t as_integer() const
 uint64_t as_uinteger() const
 double as_double() const
 string_type as_string() const noexcept
-string_type as_string(const string_allocator&amp; allocator) const noexcept
+string_type as_string(const char_allocator&amp; allocator) const noexcept
 unsigned int as&lt;unsigned int&gt; const 
 </code></pre>
 
@@ -992,19 +998,19 @@ Throws <code>std::runtime_error</code> if not an object.</p>
 
 <p>Requests the removal of unused capacity.</p>
 
-<pre><code>void set(const string_type&amp; name, const json&amp; val)
-void set(string_type&amp;&amp; name, const json&amp; val)
-void set(const string_type&amp; name, json&amp;&amp; val)
-void set(string_type&amp;&amp; name, json&amp;&amp; val)
+<pre><code>template &lt;class T&gt;
+void set(const string_type&amp; name, T&amp;&amp; val)
+template &lt;class T&gt;
+void set(string_type&amp;&amp; name, T&amp;&amp; val)
 </code></pre>
 
 <p>Inserts a new member or replaces an existing member in a json object.<br>
 Throws <code>std::runtime_error</code> if not an object.</p>
 
-<pre><code>object_iterator set(object_iterator hint, const string_type&amp; name, const json&amp; val)
-object_iterator set(object_iterator hint, string_type&amp;&amp; name, const json&amp; val)
-object_iterator set(object_iterator hint, const string_type&amp; name, json&amp;&amp; val)
-object_iterator set(object_iterator hint, string_type&amp;&amp; name, json&amp;&amp; val)
+<pre><code>template &lt;class T&gt;
+object_iterator set(object_iterator hint, const string_type&amp; name, T&amp;&amp; val)
+template &lt;class T&gt;
+object_iterator set(object_iterator hint, string_type&amp;&amp; name, T&amp;&amp; val)
 </code></pre>
 
 <p>Inserts a new member or replaces an existing member in a json object.<br>
@@ -1012,19 +1018,19 @@ Insertion time is optimized if <code>hint</code> points to the member that will 
 Returns a <code>member_iterator</code> pointing at the member that was inserted or updated<br>
 Throws <code>std::runtime_error</code> if not an object.</p>
 
-<pre><code>void add(const json&amp; val)
-void add(json&amp;&amp; val)
+<pre><code>template &lt;class T&gt;
+void add(T&amp;&amp; val)
 </code></pre>
 
-<p>Adds a new element at the end of a json array. The content of <code>val</code> is copied (or moved) to the new element.<br>
+<p>Adds a new json element at the end of a json array. The argument <code>val</code> is forwarded to the <code>json</code> constructor as <code>std::forward&lt;T&gt;(val)</code>.<br>
 Throws <code>std::runtime_error</code> if not an array.</p>
 
-<pre><code>array_iterator add(const_array_iterator pos, const json&amp; val)
-array_iterator add(const_array_iterator pos, json&amp;&amp; val)
+<pre><code>template &lt;class T&gt;
+array_iterator add(const_array_iterator pos, T&amp;&amp; val)
 </code></pre>
 
-<p>Adds a new element at the specified position of a json array, shifting all elements currently at or above that position to the right.<br>
-The content of <code>val</code> is copied (or moved) to the new element.<br>
+<p>Adds a new json element at the specified position of a json array, shifting all elements currently at or above that position to the right.<br>
+The argument <code>val</code> is forwarded to the <code>json</code> constructor as <code>std::forward&lt;T&gt;(val)</code>.<br>
 Returns an <code>array_iterator</code> that points to the new value<br>
 Throws <code>std::runtime_error</code> if not an array.</p>
 
@@ -1047,15 +1053,15 @@ Throws <code>std::runtime_error</code> if not an array.</p>
 
 <h3>Serialization</h3>
 
-<pre><code>string_type to_string(const string_allocator&amp; allocator = string_allocator()) const noexcept
+<pre><code>string_type to_string(const char_allocator&amp; allocator = char_allocator()) const noexcept
 </code></pre>
 
 <p>Inserts json value into string.</p>
 
-<pre><code>string_type to_string(const output_format&amp; format, const string_allocator&amp; allocator = string_allocator()) const
+<pre><code>string_type to_string(const serialization_options&amp; format, const char_allocator&amp; allocator = char_allocator()) const
 </code></pre>
 
-<p>Inserts json value into string using specified <a href="output_format">output_format</a>.</p>
+<p>Inserts json value into string using specified <a href="serialization_options">serialization_options</a>.</p>
 
 <pre><code>void write(basic_json_output_handler&lt;char_type&gt;&amp; output_handler) const
 </code></pre>
@@ -1065,12 +1071,12 @@ Throws <code>std::runtime_error</code> if not an array.</p>
 <pre><code>write write(std::ostream&amp; os) const
 </code></pre>
 
-<p>Inserts json value into stream with default output format.</p>
+<p>Inserts json value into stream with default serialization options.</p>
 
-<pre><code>write write(std::ostream&lt;CharT&gt; os, const output_format&amp; format) const
+<pre><code>write write(std::ostream&lt;CharT&gt; os, const serialization_options&amp; format) const
 </code></pre>
 
-<p>Inserts json value into stream using specified <a href="output_format">output_format</a>.</p>
+<p>Inserts json value into stream using specified <a href="serialization_options">serialization_options</a>.</p>
 
 <pre><code>void write_body(json_output_handler&amp; handler) const
 </code></pre>
@@ -1090,16 +1096,16 @@ Throws <code>std::runtime_error</code> if not an array.</p>
 <p>Inserts json value into stream.</p>
 
 <pre><code>std::ostream&amp; print(const json&amp; val)  
-std::ostream&amp; print(const json&amp; val, const output_format&lt;CharT&gt;&amp; format)  
+std::ostream&amp; print(const json&amp; val, const serialization_options&lt;CharT&gt;&amp; format)  
 </code></pre>
 
-<p>Inserts json value into stream using the specified <a href="output_format">output_format</a> if supplied.</p>
+<p>Inserts json value into stream using the specified <a href="serialization_options">serialization_options</a> if supplied.</p>
 
 <pre><code>std::ostream&amp; pretty_print(const json&amp; val)  
-std::ostream&amp; pretty_print(const json&amp; val, const output_format&lt;CharT&gt;&amp; format)  
+std::ostream&amp; pretty_print(const json&amp; val, const serialization_options&lt;CharT&gt;&amp; format)  
 </code></pre>
 
-<p>Inserts json value into stream using the specified <a href="output_format">output_format</a> if supplied.</p>
+<p>Inserts json value into stream using the specified <a href="serialization_options">serialization_options</a> if supplied.</p>
 
 <pre><code>void swap(json&amp; a, json&amp; b)
 </code></pre>
@@ -1115,7 +1121,7 @@ std::ostream&amp; pretty_print(const json&amp; val, const output_format&lt;CharT
 <ul>
 <li><p><a href="ojson">ojson</a> constructs a json value that retains the original name-value insertion order</p></li>
 <li><p><a href="wjson">wjson</a> constructs a wide character json value that sorts name-value members alphabetically</p></li>
-<li><p><a href="wojson">wojson</a> constructs a wide character json value that retains the original name-value insertion order</p></li>
+<li><p><a href="owjson">owjson</a> constructs a wide character json value that retains the original name-value insertion order</p></li>
 </ul>
 
 <h2>Examples</h2>
@@ -1181,7 +1187,7 @@ std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>x2=<span clas
 std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>x3=<span class="pl-pds">"</span></span> &lt;&lt; x3 &lt;&lt; std::endl;
 std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>x4=<span class="pl-pds">"</span></span> &lt;&lt; x4 &lt;&lt; std::endl;</pre></div>
 
-<p>The output is</p>
+<p>Output:</p>
 
 <div class="highlight highlight-source-c++"><pre>x1=<span class="pl-c1">1</span>
 x2=<span class="pl-c1">20</span>
@@ -1194,7 +1200,7 @@ x4=San Francisco</pre></div>
 obj[<span class="pl-s"><span class="pl-pds">"</span>field1<span class="pl-pds">"</span></span>] = json::null();
 std::cout &lt;&lt; obj &lt;&lt; std::endl;</pre></div>
 
-<p>The output is </p>
+<p>Output: </p>
 
 <div class="highlight highlight-source-json"><pre>{<span class="pl-s"><span class="pl-pds">"</span>field1<span class="pl-pds">"</span></span>:<span class="pl-c1">null</span>}</pre></div>
 
@@ -1207,7 +1213,7 @@ arr.add(<span class="pl-c1">30</span>);
 
 std::cout &lt;&lt; arr &lt;&lt; std::endl;</pre></div>
 
-<p>The output is </p>
+<p>Output: </p>
 
 <div class="highlight highlight-source-json"><pre>[<span class="pl-c1">10</span>,<span class="pl-c1">20</span>,<span class="pl-c1">30</span>]</pre></div>
 
@@ -1222,7 +1228,7 @@ json <span class="pl-en">arr</span>(v.begin(),v.end());
 
 std::cout &lt;&lt; arr &lt;&lt; std::endl;</pre></div>
 
-<p>The output is </p>
+<p>Output: </p>
 
 <div class="highlight highlight-source-c++"><pre>[<span class="pl-c1">10</span>,<span class="pl-c1">20</span>,<span class="pl-c1">30</span>]</pre></div>
 
@@ -1238,7 +1244,7 @@ obj[<span class="pl-s"><span class="pl-pds">"</span>country<span class="pl-pds">
     std::cout &lt;&lt; it-&gt;<span class="pl-c1">name</span>() &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>=<span class="pl-pds">"</span></span> &lt;&lt; it-&gt;<span class="pl-c1">value</span>().<span class="pl-smi">as</span>&lt;string_type&gt;() &lt;&lt; std::endl;
 }</pre></div>
 
-<p>The output is</p>
+<p>Output:</p>
 
 <div class="highlight highlight-source-c++"><pre>city=Toronto
 country=Canada
@@ -1253,7 +1259,7 @@ province=Ontario</pre></div>
     std::cout &lt;&lt; it-&gt;as&lt;string_type&gt;() &lt;&lt; std::endl;
 }</pre></div>
 
-<p>The output is</p>
+<p>Output:</p>
 
 <div class="highlight highlight-source-json"><pre>Toronto
 Vancouver 
@@ -1280,7 +1286,7 @@ root[<span class="pl-s"><span class="pl-pds">"</span>persons<span class="pl-pds"
 
 std::cout &lt;&lt; pretty_print(root) &lt;&lt; std::endl;</pre></div>
 
-<p>The output is</p>
+<p>Output:</p>
 
 <div class="highlight highlight-source-c++"><pre>{
     <span class="pl-s"><span class="pl-pds">"</span>persons<span class="pl-pds">"</span></span>:

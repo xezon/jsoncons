@@ -7,9 +7,8 @@
 
 #include <boost/test/unit_test.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
-#include "jsoncons/json.hpp"
-#include "jsoncons/json_serializer.hpp"
-#include "my_any_specializations.hpp"
+#include <jsoncons/json.hpp>
+#include <jsoncons/json_serializer.hpp>
 #include <sstream>
 #include <vector>
 #include <utility>
@@ -132,6 +131,18 @@ BOOST_AUTO_TEST_CASE(test_as)
     // Compile time error, "as<Json::object> not supported"
 }
 
+BOOST_AUTO_TEST_CASE(test_as2)
+{
+    json obj;
+    obj["field1"] = "10";
+    obj["field2"] = "-10";
+    obj["field3"] = "10.1";
+
+    BOOST_CHECK_EQUAL(10,obj["field1"].as<int>());
+    BOOST_CHECK_EQUAL(-10,obj["field2"].as<int>());
+    BOOST_CHECK_EQUAL(10.1,obj["field3"].as<double>());
+}
+
 BOOST_AUTO_TEST_CASE(test_is)
 {
     json obj;
@@ -139,9 +150,9 @@ BOOST_AUTO_TEST_CASE(test_is)
     obj["field2"] = -10;
     obj["field3"] = 10U;
 
-    BOOST_CHECK(obj["field1"].type() == jsoncons::value_types::integer_t);
-    BOOST_CHECK(obj["field2"].type() == jsoncons::value_types::integer_t);
-    BOOST_CHECK(obj["field3"].type() == jsoncons::value_types::uinteger_t);
+    BOOST_CHECK(obj["field1"].type_id() == jsoncons::value_types::integer_t);
+    BOOST_CHECK(obj["field2"].type_id() == jsoncons::value_types::integer_t);
+    BOOST_CHECK(obj["field3"].type_id() == jsoncons::value_types::uinteger_t);
 
     BOOST_CHECK(!obj["field1"].is<std::string>());
     BOOST_CHECK(obj["field1"].is<short>());
@@ -179,7 +190,7 @@ BOOST_AUTO_TEST_CASE(test_is2)
 {
     json obj = json::parse("{\"field1\":10}");
 
-    BOOST_CHECK(obj["field1"].type() == jsoncons::value_types::uinteger_t);
+    BOOST_CHECK(obj["field1"].type_id() == jsoncons::value_types::uinteger_t);
 
     BOOST_CHECK(!obj["field1"].is<std::string>());
     BOOST_CHECK(obj["field1"].is<int>());
@@ -253,12 +264,6 @@ BOOST_AUTO_TEST_CASE(test_is_type)
     BOOST_CHECK(obj["array"].is_array());
     BOOST_CHECK(obj["array"].is<json::array>());
 
-#if !defined(JSONCONS_NO_DEPRECATED)
-
-    matrix<double> A;
-    obj.set("my-any",json::any(A));
-    BOOST_CHECK(obj["my-any"].is<json::any>());
-#endif
     // tests for json is_type methods
 
     json str = obj["string"];

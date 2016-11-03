@@ -6,13 +6,12 @@
 #endif
 
 #include <boost/test/unit_test.hpp>
-#include "jsoncons/json.hpp"
-#include "jsoncons/json_serializer.hpp"
-#include "jsoncons/json_filter.hpp"
+#include <jsoncons/json.hpp>
 #include <sstream>
 #include <vector>
 #include <utility>
 #include <ctime>
+#include <string>
 
 using namespace jsoncons;
 
@@ -22,20 +21,36 @@ BOOST_AUTO_TEST_CASE( test_surrogate_pair )
 {
     std::string input = "[\"\\u8A73\\u7D30\\u95B2\\u89A7\\uD800\\uDC01\\u4E00\"]";
     json value = json::parse(input);
-    output_format format;
+    serialization_options format;
     format.escape_all_non_ascii(true);
     std::string output = value.to_string(format);
 
     BOOST_CHECK_EQUAL(input,output);
 }
-#if 0
+
+BOOST_AUTO_TEST_CASE(test_skip_bom)
+{
+    std::string input = "\xEF\xBB\xBF[1,2,3]";
+    json value = json::parse(input);
+    BOOST_CHECK_EQUAL(true,value.is_array());
+    BOOST_CHECK_EQUAL(3,value.size());
+}
+
+BOOST_AUTO_TEST_CASE(test_skip_bom2)
+{
+    std::wstring input = L"\xFEFF[1,2,3]";
+    wjson value = wjson::parse(input);
+    BOOST_CHECK_EQUAL(true,value.is_array());
+    BOOST_CHECK_EQUAL(3,value.size());
+}
+
 BOOST_AUTO_TEST_CASE(test_wide_surrogate_pair)
 {
-    wstring input = L"[\"\\u8A73\\u7D30\\u95B2\\u89A7\\uD800\\uDC01\\u4E00\"]";
+    std::wstring input = L"[\"\\u8A73\\u7D30\\u95B2\\u89A7\\uD800\\uDC01\\u4E00\"]";
     wjson value = wjson::parse(input);
-    woutput_format format;
+    wserialization_options format;
     format.escape_all_non_ascii(true);
-    wstring output = value.to_string(format);
+    std::wstring output = value.to_string(format);
 
     BOOST_CHECK(input == output);
 }
@@ -58,7 +73,6 @@ BOOST_AUTO_TEST_CASE( test1 )
 
     json copy(root);
 }
-#endif
 
 BOOST_AUTO_TEST_SUITE_END()
 

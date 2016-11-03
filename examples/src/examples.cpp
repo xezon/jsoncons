@@ -3,22 +3,22 @@
 
 #include <stdexcept>
 #include <string>
-#include "jsoncons/json.hpp"
-#include "csv_examples.h"
+#include <jsoncons/json.hpp>
 
-using jsoncons::json;
-using jsoncons::json_exception;
-using jsoncons::json_deserializer;
-using jsoncons::json_reader;
-using jsoncons::pretty_print;
-using jsoncons::output_format;
-using std::string;
+using namespace jsoncons;
 
-void run_readme_examples();
+void basics_examples();
+void json_filter_examples();
 void array_examples();
-void json_any_examples();
+void container_examples();
 void wjson_examples();
 void serialization_examples();
+void type_extensibility_examples();
+void ojson_examples();
+void unicode_examples();
+void csv_examples();
+void jsonpath_examples();
+void jsonx_examples();
 
 void first_example_a()
 {
@@ -29,8 +29,8 @@ void first_example_a()
         try
         {
             json& book = books[i];
-            string author = book["author"].as<std::string>();
-            string title = book["title"].as<std::string>();
+            std::string author = book["author"].as<std::string>();
+            std::string title = book["title"].as<std::string>();
             double price = book["price"].as<double>();
             std::cout << author << ", " << title << ", " << price << std::endl;
         }
@@ -50,12 +50,12 @@ void first_example_b()
         try
         {
             json& book = books[i];
-            string author = book["author"].as<std::string>();
-            string title = book["title"].as<std::string>();
-            string price = book.get_with_default("price", "N/A");
+            std::string author = book["author"].as<std::string>();
+            std::string title = book["title"].as<std::string>();
+            std::string price = book.get("price", "N/A").as<std::string>();
             std::cout << author << ", " << title << ", " << price << std::endl;
         }
-        catch (const json_exception& e)
+        catch (const std::exception& e)
         {
             std::cerr << e.what() << std::endl;
         }
@@ -66,7 +66,7 @@ void first_example_c()
 {
     json books = json::parse_file("input/books.json");
 
-    output_format format;
+    serialization_options format;
     //format.floatfield(std::ios::fixed);
     format.precision(2);
 
@@ -75,9 +75,9 @@ void first_example_c()
         try
         {
             json& book = books[i];
-            string author = book["author"].as<std::string>();
-            string title = book["title"].as<std::string>();
-            string price = book.get("price", "N/A").to_string(format);
+            std::string author = book["author"].as<std::string>();
+            std::string title = book["title"].as<std::string>();
+            std::string price = book.get("price", "N/A").to_string(format);
             std::cout << author << ", " << title << ", " << price << std::endl;
         }
         catch (const std::exception& e)
@@ -92,7 +92,7 @@ void first_example_d()
 {
     json books = json::parse_file("input/books.json");
 
-    output_format format;
+    serialization_options format;
     //format.floatfield(std::ios::fixed);
     format.precision(2);
 
@@ -101,9 +101,9 @@ void first_example_d()
         try
         {
             json& book = books[i];
-            string author = book["author"].as<std::string>();
-            string title = book["title"].as<std::string>();
-            if (book.count("price") > 0 && book["price"].is_number())
+            std::string author = book["author"].as<std::string>();
+            std::string title = book["title"].as<std::string>();
+            if (book.has_name("price") && book["price"].is_number())
             {
                 double price = book["price"].as<double>();
                 std::cout << author << ", " << title << ", " << price << std::endl;
@@ -166,15 +166,15 @@ void mulitple_json_objects()
         throw std::runtime_error("Cannot open file");
     }
 
-    json_deserializer handler;
-    json_reader reader(is, handler);
+    json_encoder<json> encoder;
+    json_reader reader(is, encoder);
 
     while (!reader.eof())
     {
         reader.read_next();
         if (!reader.eof())
         {
-            json val = handler.get_result();
+            json val = encoder.get_result();
             std::cout << val << std::endl;
         }
     }
@@ -239,24 +239,9 @@ void introspection_example()
     }
 }
 
-void read_and_write_escaped_unicode()
-{
-    string input = "[\"\\u8A73\\u7D30\\u95B2\\u89A7\\uD800\\uDC01\\u4E00\"]";
-    json value = json::parse(input);
-    output_format format;
-    format.escape_all_non_ascii(true);
-    string output = value.to_string(format);
-
-    std::cout << "Input:" << std::endl;
-    std::cout << input << std::endl;
-    std::cout << std::endl;
-    std::cout << "Output:" << std::endl;
-    std::cout << output << std::endl;
-}
-
 void parse_exception_example()
 {
-    string s = "[1,2,3,4,]";
+    std::string s = "[1,2,3,4,]";
     try 
     {
         jsoncons::json val = jsoncons::json::parse(s);
@@ -273,7 +258,9 @@ int main()
 {
     try
     {
-        run_readme_examples();
+        basics_examples();
+        ojson_examples();
+
         first_example_a();
         first_example_b();
         first_example_c();
@@ -282,10 +269,9 @@ int main()
         second_example_a();
 
         array_examples();
-        json_any_examples();
+        container_examples();
 
-        read_csv_file();
-        write_csv_file();
+        csv_examples();
 
         more_examples();
         mulitple_json_objects();
@@ -294,11 +280,19 @@ int main()
 
         wjson_examples();
 
-        read_and_write_escaped_unicode();
+        unicode_examples();
 
         serialization_examples();
 
         parse_exception_example();
+
+        type_extensibility_examples();
+
+        json_filter_examples();
+
+        jsonpath_examples();
+
+        jsonx_examples();
     }
     catch (const std::exception& e)
     {

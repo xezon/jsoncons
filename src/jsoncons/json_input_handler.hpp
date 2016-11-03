@@ -8,61 +8,9 @@
 #define JSONCONS_JSON_INPUT_HANDLER_HPP
 
 #include <string>
-#include "jsoncons/jsoncons.hpp"
+#include <jsoncons/json_text_traits.hpp>
 
 namespace jsoncons {
-
-template<class CharT> inline
-bool try_string_to_uinteger(const CharT *s, size_t length, uint64_t& result)
-{
-    static const uint64_t max_value = std::numeric_limits<uint64_t>::max JSONCONS_NO_MACRO_EXP();
-    static const uint64_t max_value_div_10 = max_value / 10;
-    uint64_t n = 0;
-    for (size_t i = 0; i < length; ++i)
-    {
-        uint64_t x = s[i] - '0';
-        if (n > max_value_div_10)
-        {
-            return false;
-        }
-        n = n * 10;
-        if (n > max_value - x)
-        {
-            return false;
-        }
-
-        n += x;
-    }
-    result = n;
-    return true;
-}
-
-template<class CharT> inline
-bool try_string_to_integer(bool has_neg, const CharT *s, size_t length, int64_t& result)
-{
-    static const int64_t max_value = std::numeric_limits<int64_t>::max JSONCONS_NO_MACRO_EXP();
-    static const int64_t max_value_div_10 = max_value / 10;
-
-    int64_t n = 0;
-    const CharT* end = s+length; 
-    for (const CharT* p = s; p < end; ++p)
-    {
-        int64_t x = *p - '0';
-        if (n > max_value_div_10)
-        {
-            return false;
-        }
-        n = n * 10;
-        if (n > max_value - x)
-        {
-            return false;
-        }
-
-        n += x;
-    }
-    result = has_neg ? -n : n;
-    return true;
-}
 
 template <class CharT>
 class basic_parsing_context;
@@ -206,14 +154,13 @@ private:
     virtual void do_bool_value(bool value, const basic_parsing_context<CharT>& context) = 0;
 };
 
-
 template <class CharT>
-class basic_empty_json_input_handler : public basic_json_input_handler<CharT>
+class basic_null_json_input_handler : public basic_json_input_handler<CharT>
 {
 public:
     static basic_json_input_handler<CharT>& instance()
     {
-        static basic_empty_json_input_handler<CharT> instance;
+        static basic_null_json_input_handler<CharT> instance;
         return instance;
     }
 private:
@@ -277,8 +224,8 @@ private:
 typedef basic_json_input_handler<char> json_input_handler;
 typedef basic_json_input_handler<wchar_t> wjson_input_handler;
 
-typedef basic_empty_json_input_handler<char> empty_json_input_handler;
-typedef basic_empty_json_input_handler<wchar_t> wempty_json_input_handler;
+typedef basic_null_json_input_handler<char> empty_json_input_handler;
+typedef basic_null_json_input_handler<wchar_t> wempty_json_input_handler;
 
 }
 

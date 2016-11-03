@@ -475,7 +475,7 @@ vertical-align:1px;
 
 <h3>Header</h3>
 
-<pre><code>#include "jsoncons/jsonpath/json_query.hpp"
+<pre><code>#include &lt;jsoncons/jsonpath/json_query.hpp&gt;
 
 template&lt;Json&gt;
 Json json_query(const Json&amp; root, 
@@ -497,15 +497,20 @@ Json json_query(const Json&amp; root,
 
 <p>or the bracket–notation </p>
 
-<pre><code>$['store']['book'][0]['title']
+<pre><code>$[store][book][0][title]
 </code></pre>
 
 <p>or </p>
 
+<pre><code>$['store']['book'][0]['title']
+</code></pre>
+
+<p>or</p>
+
 <pre><code>$["store"]["book"][0]["title"]
 </code></pre>
 
-<p>Note that Stefan Goessner's original implementation only supports single quotes inside of JSONPath expressions, the jsoncons implementation supports both single quotes and double quotes.</p>
+<p>Note that Stefan Goessner's original implementation supports unquoted or single quoted names inside of square brackets, the jsoncons implementation in addition supports double quoted names.</p>
 
 <table>
 <thead>
@@ -679,12 +684,11 @@ Json json_query(const Json&amp; root,
 
 <p>Our first example returns all authors whose books are cheaper than $10. </p>
 
-<pre><code>#include "jsoncons/json.hpp"
+<pre><code>#include &lt;jsoncons/json.hpp&gt;
 #include "jsoncons_ext/jsonpath/json_query.hpp"
 
-using jsoncons::json;
-using jsoncons::pretty_print;
-using jsoncons::jsonpath::json_query;
+using namespace jsoncons;
+using namespace jsoncons::jsonpath;
 
 json root = json::parse_file("store.json");
 

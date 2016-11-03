@@ -15,9 +15,9 @@
 #include <cstdlib>
 #include <limits> // std::numeric_limits
 #include <fstream>
-#include "jsoncons/jsoncons.hpp"
-#include "jsoncons/output_format.hpp"
-#include "jsoncons/json_output_handler.hpp"
+#include <jsoncons/json_text_traits.hpp>
+#include <jsoncons/serialization_options.hpp>
+#include <jsoncons/json_output_handler.hpp>
 
 namespace jsoncons {
 
@@ -70,10 +70,10 @@ class basic_json_serializer : public basic_json_output_handler<CharT>
         bool is_object_;
         size_t count_;
         line_split_kind split_lines_;
-        bool unindent_at_end_;
         bool indent_once_;
+        bool unindent_at_end_;
     };
-    basic_output_format<CharT> format_;
+    basic_serialization_options<CharT> format_;
     std::vector<stack_item> stack_;
     int indent_;
     bool indenting_;
@@ -96,7 +96,7 @@ public:
     {
     }
 
-    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_output_format<CharT>& format)
+    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_serialization_options<CharT>& format)
        : format_(format), 
          indent_(0), 
          indenting_(false),  
@@ -104,7 +104,7 @@ public:
          bos_(os)
     {
     }
-    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_output_format<CharT>& format, bool indenting)
+    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_serialization_options<CharT>& format, bool indenting)
        : format_(format), 
          indent_(0), 
          indenting_(indenting),  

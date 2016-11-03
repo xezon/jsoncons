@@ -472,7 +472,7 @@ vertical-align:1px;
 
 <p>jsoncons is a C++ library for the construction of <a href="http://www.json.org">JavaScript Object Notation (JSON)</a>. It supports parsing a JSON file or string into a <code>json</code> value, building a <code>json</code> value in C++ code, and serializing a <code>json</code> value to a file or string. It also provides an API for generating json read and write events in code, somewhat analogously to SAX processing in the XML world. </p>
 
-<p>jsoncons uses some features that are new to C++ 11, including <a href="http://thbecker.net/articles/rvalue_references/section_02.html">move semantics</a> and the <a href="http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer">AllocatorAwareContainer</a> concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, and recent versions of clang. Note that <code>std::regex</code> isn't fully implemented in GCC 4.8., so <code>jsoncons_ext/jsonpath</code> regular expression filters aren't supported for that compiler.</p>
+<p>jsoncons uses some features that are new to C++ 11, including <a href="http://thbecker.net/articles/rvalue_references/section_02.html">move semantics</a> and the <a href="http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer">AllocatorAwareContainer</a> concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, GCC 6.2.0 and recent versions of clang. Note that <code>std::regex</code> isn't fully implemented in GCC 4.8., so <code>jsoncons_ext/jsonpath</code> regular expression filters aren't supported for that compiler.</p>
 
 <p>The <a href="https://github.com/danielaparker/jsoncons">code repository</a> and <a href="https://github.com/danielaparker/jsoncons/releases">releases</a> are on github. It is distributed under the <a href="http://www.boost.org/users/license.html">Boost Software License</a></p>
 
@@ -499,37 +499,107 @@ vertical-align:1px;
 <li>Handles JSON texts of arbitrarily large depth of nesting, a limit can be set if desired</li>
 <li>Supports <a href="http://goessner.net/articles/JsonPath/">Stefan Goessner's JsonPath</a>
 </li>
+<li>Supports search (by JsonPath) and replace</li>
 </ul>
 
 <p>As the <code>jsoncons</code> library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the <a href="https://github.com/danielaparker/jsoncons/wiki/deprecated">deprecated list</a> for the status of old names. The deprecated names can be suppressed by defining macro <code>JSONCONS_NO_DEPRECATED</code>, which is recommended for new code.</p>
-
-<h2>Note</h2>
-
-<p>The <code>json</code> initializer-list constructor has been removed, it gives inconsistent results when an initializer has zero elements, or one element of the type being initialized (<code>json</code>). Please replace</p>
-
-<p><code>json j = {1,2,3}</code> with <code>json j = json::array{1,2,3}</code>, and </p>
-
-<p><code>json j = {{1,2,3},{4,5,6}}</code> with <code>json j = json::array{json::array{1,2,3},json::array{4,5,6}}</code></p>
-
-<p>Initializer-list constructors are now supported in <code>json::object</code> as well as <code>json::array</code>, e.g.</p>
-
-<div class="highlight highlight-source-c++"><pre>json j = json::object{{<span class="pl-s"><span class="pl-pds">"</span>first<span class="pl-pds">"</span></span>,<span class="pl-c1">1</span>},{<span class="pl-s"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>,json::array{<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>}}};</pre></div>
 
 <h2>Benchmarks</h2>
 
 <p><a href="https://github.com/danielaparker/json_benchmarks">json_benchmarks</a> provides some measurements about how <code>jsoncons</code> compares to other <code>json</code> libraries.</p>
 
-<h2>Using the jsoncons library</h2>
+<h2>What's new on master</h2>
+
+<p>Note that changes introduced to the <code>json_filter</code> class have been reversed, if you have implemented your own custom filters that extend <code>json_filter</code>, no changes are required.</p>
+
+<ul>
+<li>The deprecated class <code>json::any</code> has been removed </li>
+<li>The jsoncons <code>boost</code> extension has been removed. That extension contained a sample <code>json_type_traits</code> specialization for <code>boost::gregorian::date</code>, which may still be found in the <a href="https://github.com/danielaparker/jsoncons/wiki/Type-Extensibility">Type Extensibility</a> tutorial.<br>
+</li>
+<li>The member <code>json_type_traits</code> member function <code>assign</code> has been removed and replaced by <code>to_json</code>. if you have implemented your own type specializations, you will also have to change your <code>assign</code> function to <code>to_json</code>.</li>
+<li>
+<code>json_type_traits</code> specializations no longer require the <code>is_assignable</code> data member</li>
+<li>The names <code>json_deserializer</code>,<code>ojson_deserializer</code>,<code>wjson_deserializer</code>,<code>wojson_deserializer</code> have been deprecated (they still work) and replaced by <code>json_encoder&lt;json&gt;</code>, <code>json_encoder&lt;ojson&gt;</code>, <code>json_encoder&lt;wjson&gt;</code> and <code>json_encoder&lt;owjson&gt;</code>.<br>
+</li>
+<li>The name <code>output_format</code> has been deprecated (it still works) and renamed to <code>serialization_options</code>.<br>
+</li>
+<li>The name <code>wojson</code> has been deprecated (it still works) and renamed to <code>owjson</code>.<br>
+</li>
+<li>New <code>jsonpath</code> function <code>json_replace</code> that searches for all values that match a JsonPath expression and replaces them with a specified value.</li>
+<li>The <code>json_filter</code> accessor <code>input_handler</code> has been deprecated (it still works) and renamed to <code>downstream_handler</code>.<br>
+</li>
+</ul>
+
+<h2>Get jsoncons</h2>
 
 <p>The jsoncons library is header-only: it consists solely of header files containing templates and inline functions, and requires no separately-compiled library binaries when linking. It has no dependence on other libraries. The accompanying test suite uses boost, but not the library itself.</p>
 
 <p>To install the jsoncons library, download the zip file, unpack the release, under <code>src</code> find the directory <code>jsoncons</code>, and copy it to your <code>include</code> directory. If you wish to use extensions, copy the <code>jsoncons_ext</code> directory as well. </p>
 
-<p>For a quick guide, see the article <a href="http://danielaparker.github.io/jsoncons">jsoncons: a C++ library for json construction</a>. Consult the wiki for the latest <a href="https://github.com/danielaparker/jsoncons/wiki">documentation and tutorials</a> and <a href="https://github.com/danielaparker/jsoncons/wiki/Roadmap">roadmap</a>. </p>
+<h2>A simple program using jsoncons</h2>
+
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>iostream<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json.hpp<span class="pl-pds">&gt;</span></span>
+
+<span class="pl-c">// For convenience</span>
+<span class="pl-k">using</span> jsoncons::json;
+
+<span class="pl-k">int</span> <span class="pl-en">main</span>()
+{
+    json color_spaces = <span class="pl-c1">json::array</span>();
+    color_spaces.<span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>sRGB<span class="pl-pds">"</span></span>);
+    color_spaces.<span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>AdobeRGB<span class="pl-pds">"</span></span>);
+    color_spaces.<span class="pl-c1">add</span>(<span class="pl-s"><span class="pl-pds">"</span>ProPhoto RGB<span class="pl-pds">"</span></span>);
+
+    json image_sizing; <span class="pl-c">// empty object</span>
+    image_sizing[<span class="pl-s"><span class="pl-pds">"</span>Resize To Fit<span class="pl-pds">"</span></span>] = <span class="pl-c1">true</span>; <span class="pl-c">// a boolean </span>
+    image_sizing[<span class="pl-s"><span class="pl-pds">"</span>Resize Unit<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>pixels<span class="pl-pds">"</span></span>; <span class="pl-c">// a string</span>
+    image_sizing[<span class="pl-s"><span class="pl-pds">"</span>Resize What<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>long_edge<span class="pl-pds">"</span></span>; <span class="pl-c">// a string</span>
+    image_sizing[<span class="pl-s"><span class="pl-pds">"</span>Dimension 1<span class="pl-pds">"</span></span>] = <span class="pl-c1">9.84</span>; <span class="pl-c">// a double</span>
+
+    json file_export;
+
+    <span class="pl-c">// create "File Format Options" as an object and put "Color Spaces" in it</span>
+    file_export[<span class="pl-s"><span class="pl-pds">"</span>File Format Options<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>Color Spaces<span class="pl-pds">"</span></span>] = <span class="pl-c1">std::move</span>(color_spaces); 
+
+    file_export[<span class="pl-s"><span class="pl-pds">"</span>Image Sizing<span class="pl-pds">"</span></span>] = <span class="pl-c1">std::move</span>(image_sizing);
+
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-c1">pretty_print</span>(file_export) &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\n\n</span><span class="pl-pds">"</span></span>;
+
+    <span class="pl-k">const</span> json&amp; val = file_export[<span class="pl-s"><span class="pl-pds">"</span>Image Sizing<span class="pl-pds">"</span></span>];
+
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(2) <span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>Dimension 1 = <span class="pl-pds">"</span></span> &lt;&lt; val[<span class="pl-s"><span class="pl-pds">"</span>Dimension 1<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;<span class="pl-k">double</span>&gt;() &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\n\n</span><span class="pl-pds">"</span></span>;
+
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(3) <span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>Dimension 2 = <span class="pl-pds">"</span></span> &lt;&lt; val.<span class="pl-c1">get_with_default</span>(<span class="pl-s"><span class="pl-pds">"</span>Dimension 2<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>n/a<span class="pl-pds">"</span></span>) &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\n</span><span class="pl-pds">"</span></span>;
+}</pre></div>
+
+<p>Output:</p>
+
+<div class="highlight highlight-source-json"><pre>(<span class="pl-c1">1</span>)
+{
+    <span class="pl-s"><span class="pl-pds">"</span>File Format Options<span class="pl-pds">"</span></span>: {
+        <span class="pl-s"><span class="pl-pds">"</span>Color Spaces<span class="pl-pds">"</span></span>: [<span class="pl-s"><span class="pl-pds">"</span>sRGB<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>AdobeRGB<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>ProPhoto RGB<span class="pl-pds">"</span></span>]
+    },
+    <span class="pl-s"><span class="pl-pds">"</span>Image Sizing<span class="pl-pds">"</span></span>: {
+        <span class="pl-s"><span class="pl-pds">"</span>Dimension 1<span class="pl-pds">"</span></span>: <span class="pl-c1">9.84</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>Resize To Fit<span class="pl-pds">"</span></span>: <span class="pl-c1">true</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>Resize Unit<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>pixels<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>Resize What<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>long_edge<span class="pl-pds">"</span></span>
+    }
+}
+
+(<span class="pl-c1">2</span>) Dimension <span class="pl-c1">1</span> = <span class="pl-c1">9.84</span>
+
+(<span class="pl-c1">3</span>) Dimension <span class="pl-c1">2</span> = n/a</pre></div>
+
+<p>For a quick guide, see the article <a href="http://danielaparker.github.io/jsoncons">jsoncons: a C++ library for json construction</a>. Consult the <a href="https://github.com/danielaparker/jsoncons/wiki">wiki</a> for the latest documentation, tutorials and roadmap. </p>
 
 <h2>Building the test suite and examples with CMake</h2>
 
-<p><a href="https://cmake.org/">CMake</a> is a C++ Makefiles/Solution generator for cross-platform software development. </p>
+<p><a href="https://cmake.org/">CMake</a> is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a <a href="https://cmake.org/download/">Windows Installer package</a>. On Linux it is usually available as a package, e.g., on Ubuntu,</p>
+
+<pre><code>    sudo apt-get install cmake
+</code></pre>
 
 <p>Instructions for building the test suite with CMake may be found in</p>
 
@@ -555,448 +625,364 @@ vertical-align:1px;
 <li><p><a href="https://github.com/danielaparker/jsoncons/wiki/json">json</a> constructs a narrow character json value that sorts name-value members alphabetically</p></li>
 <li><p><a href="https://github.com/danielaparker/jsoncons/wiki/ojson">ojson</a> constructs a narrow character json value that retains the original name-value insertion order</p></li>
 <li><p><a href="https://github.com/danielaparker/jsoncons/wiki/wjson">wjson</a> constructs a wide character json value that sorts name-value members alphabetically</p></li>
-<li><p><a href="https://github.com/danielaparker/jsoncons/wiki/wojson">wojson</a> constructs a wide character json value that retains the original name-value insertion order</p></li>
+<li><p><a href="https://github.com/danielaparker/jsoncons/wiki/owjson">owjson</a> constructs a wide character json value that retains the original name-value insertion order</p></li>
 </ul>
 
-<h2>Examples</h2>
+<h2>Features</h2>
 
-<p>The examples below illustrate the use of the <a href="https://github.com/danielaparker/jsoncons/wiki/json">json</a> class and <a href="https://github.com/danielaparker/jsoncons/wiki/json_query">json_query</a> function.</p>
+<h3>Meaningful error messages</h3>
 
-<h3>json construction</h3>
-
-<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jsoncons/json.hpp<span class="pl-pds">"</span></span>
-
-<span class="pl-c">// For convenience</span>
-<span class="pl-k">using</span> jsoncons::json;
-
-<span class="pl-c">// Construct a book object</span>
-json book1;
-
-book1[<span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>A Wild Sheep Chase: A Novel<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>2002-04-09<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>] = <span class="pl-c1">9.01</span>;
-book1[<span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">"</span>037571894X<span class="pl-pds">"</span></span>;  
-
-<span class="pl-c">// Construct another using the set function</span>
-json book2;
-
-book2.set(<span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>History<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Charlie Wilson's War<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>George Crile<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>2007-11-06<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>, <span class="pl-c1">10.50</span>);
-book2.set(<span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>0802143415<span class="pl-pds">"</span></span>);  
-
-<span class="pl-c">// Use set again, but more efficiently</span>
-json book3;
-
-<span class="pl-c">// Reserve memory, to avoid reallocations</span>
-book3.reserve(<span class="pl-c1">6</span>);
-
-<span class="pl-c">// Insert in name alphabetical order</span>
-<span class="pl-c">// Give set a hint where to insert the next member</span>
-<span class="pl-k">auto</span> hint = book3.set(book3.members().begin(),<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>2006-01-03<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>1400079276<span class="pl-pds">"</span></span>);  
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>, <span class="pl-c1">13.45</span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Kafka on the Shore<span class="pl-pds">"</span></span>);
-
-<span class="pl-c">// Construct a fourth from a string</span>
-json book4 = json::parse(<span class="pl-s"><span class="pl-pds">R"(</span></span>
-<span class="pl-s">{</span>
-<span class="pl-s">    "category" : "Fiction",</span>
-<span class="pl-s">    "title" : "Pulp",</span>
-<span class="pl-s">    "author" : "Charles Bukowski",</span>
-<span class="pl-s">    "date" : "2004-07-08",</span>
-<span class="pl-s">    "price" : 22.48,</span>
-<span class="pl-s">    "isbn" : "1852272007"  </span>
-<span class="pl-s">}</span>
-<span class="pl-s"><span class="pl-pds">)"</span></span>);
-
-<span class="pl-c">// Construct a booklist array</span>
-
-json booklist = json::array();
-
-<span class="pl-c">// For efficiency, reserve memory, to avoid reallocations</span>
-booklist.reserve(<span class="pl-c1">4</span>);
-
-<span class="pl-c">// For efficency, tell jsoncons to move the contents </span>
-<span class="pl-c">// of the four book objects into the array</span>
-booklist.add(std::move(book1));    
-booklist.add(std::move(book2));    
-
-<span class="pl-c">// Add the third book to the front</span>
-<span class="pl-k">auto</span> pos = booklist.add(booklist.elements().begin(),std::move(book3));
-
-<span class="pl-c">// and the last one immediately after</span>
-booklist.add(pos+<span class="pl-c1">1</span>,std::move(book4));    
-
-<span class="pl-c">// See what's left of book1, 2, 3 and 4 (expect nulls)</span>
-std::cout &lt;&lt; book1 &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span> &lt;&lt; book2 &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span> &lt;&lt; book3 &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span> &lt;&lt; book4 &lt;&lt; std::endl;
-
-
-++
-<span class="pl-c">//Loop through the booklist elements using a range-based for loop    </span>
-<span class="pl-k">for</span> (<span class="pl-k">const</span> <span class="pl-k">auto</span>&amp; book : booklist.elements())
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">try</span> 
 {
-    std::cout &lt;&lt; book[<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;std::string&gt;()
-              &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span>
-              &lt;&lt; book[<span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;<span class="pl-k">double</span>&gt;() &lt;&lt; std::endl;
-}
+    json val = <span class="pl-c1">json::parse</span>(<span class="pl-s"><span class="pl-pds">"</span>[1,2,3,4,]<span class="pl-pds">"</span></span>);
+} 
+<span class="pl-k">catch</span>(<span class="pl-k">const</span> std::exception&amp; e) 
+{
+    std::cout &lt;&lt; e.<span class="pl-c1">what</span>() &lt;&lt; std::endl;
+}</pre></div>
 
-<span class="pl-c">// The second book</span>
-json&amp; book = booklist[<span class="pl-c1">1</span>];
+<p>Output:</p>
 
-<span class="pl-c">//Loop through the book's name-value pairs using a range-based for loop    </span>
+<pre><code>Extra comma at line 1 and column 10
+</code></pre>
+
+<h3>Use range-based for loops with arrays</h3>
+
+<div class="highlight highlight-source-c++"><pre>json j = json::array{<span class="pl-c1">1</span>,<span class="pl-c1">2</span>,<span class="pl-c1">3</span>,<span class="pl-c1">4</span>};
+
+<span class="pl-k">for</span> (<span class="pl-k">auto</span> element : book.elements())
+{
+    std::cout &lt;&lt; element &lt;&lt; std::endl;
+}</pre></div>
+
+<h3>Use range-based for loops with objects</h3>
+
+<div class="highlight highlight-source-c++"><pre>json book = json::object{
+    {<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>},
+    {<span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Kafka on the Shore<span class="pl-pds">"</span></span>},
+    {<span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>, <span class="pl-c1">25.17</span>}
+};
+
 <span class="pl-k">for</span> (<span class="pl-k">const</span> <span class="pl-k">auto</span>&amp; member : book.members())
 {
-    std::cout &lt;&lt; member.<span class="pl-c1">name</span>()
-              &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>,<span class="pl-pds">"</span></span>
+    std::cout &lt;&lt; member.<span class="pl-c1">name</span>() &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>=<span class="pl-pds">"</span></span> 
               &lt;&lt; member.<span class="pl-c1">value</span>() &lt;&lt; std::endl;
-}
+}</pre></div>
 
-<span class="pl-k">auto</span> it = book.find(<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>);
-<span class="pl-k">if</span> (it != book.members().end())
+<h3>Construct multi-dimensional json arrays</h3>
+
+<div class="highlight highlight-source-c++"><pre>json a = json::make_array&lt;<span class="pl-c1">3</span>&gt;(<span class="pl-c1">4</span>, <span class="pl-c1">3</span>, <span class="pl-c1">2</span>, <span class="pl-c1">0.0</span>);
+<span class="pl-k">double</span> val = <span class="pl-c1">1.0</span>;
+<span class="pl-k">for</span> (<span class="pl-c1">size_t</span> i = <span class="pl-c1">0</span>; i &lt; a.size(); ++i)
 {
-    <span class="pl-c">// member "author" found</span>
+    <span class="pl-k">for</span> (<span class="pl-c1">size_t</span> j = <span class="pl-c1">0</span>; j &lt; a[i].<span class="pl-c1">size</span>(); ++j)
+    {
+        <span class="pl-k">for</span> (<span class="pl-c1">size_t</span> k = <span class="pl-c1">0</span>; k &lt; a[i][j].<span class="pl-c1">size</span>(); ++k)
+        {
+            a[i][j][k] = val;
+            val += <span class="pl-c1">1.0</span>;
+        }
+    }
 }
+std::cout &lt;&lt; pretty_print(a) &lt;&lt; std::endl;</pre></div>
 
-<span class="pl-k">if</span> (book.count(<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>) &gt; <span class="pl-c1">0</span>)
-{
-    <span class="pl-c">// book has a member "author"</span>
-}
-
-book.get(<span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>author unknown<span class="pl-pds">"</span></span>).as&lt;std::string&gt;();
-<span class="pl-c">// Returns author if found, otherwise "author unknown"</span>
-
-<span class="pl-k">try</span>
-{
-    book[<span class="pl-s"><span class="pl-pds">"</span>ratings<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;std::string&gt;();
-}
-<span class="pl-k">catch</span> (<span class="pl-k">const</span> std::out_of_range&amp; e)
-{
-    <span class="pl-c">// member "ratings" not found</span>
-}
-
-<span class="pl-c">// Add ratings</span>
-book[<span class="pl-s"><span class="pl-pds">"</span>ratings<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>*****<span class="pl-pds">"</span></span>] = <span class="pl-c1">4</span>;
-book[<span class="pl-s"><span class="pl-pds">"</span>ratings<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">"</span>*<span class="pl-pds">"</span></span>] = <span class="pl-c1">2</span>;
-
-<span class="pl-c">// Delete one-star ratings</span>
-book[<span class="pl-s"><span class="pl-pds">"</span>ratings<span class="pl-pds">"</span></span>].erase(<span class="pl-s"><span class="pl-pds">"</span>*<span class="pl-pds">"</span></span>);
-</pre></div>
-
-<div class="highlight highlight-source-c++"><pre>    <span class="pl-c">// Serialize the booklist to a file</span>
-    std::ofstream <span class="pl-en">os</span>(<span class="pl-s"><span class="pl-pds">"</span>booklist.json<span class="pl-pds">"</span></span>);
-    os &lt;&lt; pretty_print(booklist);</pre></div>
-
-<p>The JSON output <code>booklist.json</code></p>
+<p>Output:</p>
 
 <div class="highlight highlight-source-json"><pre>[
-    {
-        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>2006-01-03<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>1400079276<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>:<span class="pl-c1">13.45</span>,
-        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Kafka on the Shore<span class="pl-pds">"</span></span>
-    },
-    {
-        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Charles Bukowski<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>2004-07-08<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>1852272007<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>:<span class="pl-c1">22.48</span>,
-        <span class="pl-s"><span class="pl-pds">"</span>ratings<span class="pl-pds">"</span></span>:
-        {
-            <span class="pl-s"><span class="pl-pds">"</span>*****<span class="pl-pds">"</span></span>:<span class="pl-c1">4</span>
-        },
-        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Pulp<span class="pl-pds">"</span></span>
-    },
-    {
-        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>2002-04-09<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>037571894X<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>:<span class="pl-c1">9.01</span>,
-        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>A Wild Sheep Chase: A Novel<span class="pl-pds">"</span></span>
-    },
-    {
-        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>George Crile<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>History<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>2007-11-06<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>0802143415<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>:<span class="pl-c1">10.5</span>,
-        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Charlie Wilson's War<span class="pl-pds">"</span></span>
-    }
+    [
+        [<span class="pl-c1">1.0</span>,<span class="pl-c1">2.0</span>],
+        [<span class="pl-c1">3.0</span>,<span class="pl-c1">4.0</span>],
+        [<span class="pl-c1">5.0</span>,<span class="pl-c1">6.0</span>]
+    ],
+    [
+        [<span class="pl-c1">7.0</span>,<span class="pl-c1">8.0</span>],
+        [<span class="pl-c1">9.0</span>,<span class="pl-c1">10.0</span>],
+        [<span class="pl-c1">11.0</span>,<span class="pl-c1">12.0</span>]
+    ],
+    [
+        [<span class="pl-c1">13.0</span>,<span class="pl-c1">14.0</span>],
+        [<span class="pl-c1">15.0</span>,<span class="pl-c1">16.0</span>],
+        [<span class="pl-c1">17.0</span>,<span class="pl-c1">18.0</span>]
+    ],
+    [
+        [<span class="pl-c1">19.0</span>,<span class="pl-c1">20.0</span>],
+        [<span class="pl-c1">21.0</span>,<span class="pl-c1">22.0</span>],
+        [<span class="pl-c1">23.0</span>,<span class="pl-c1">24.0</span>]
+    ]
 ]</pre></div>
 
-<h3>json query</h3>
+<p>See <a href="https://github.com/danielaparker/jsoncons/wiki/Arrays">Arrays</a> for details</p>
 
-<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>fstream<span class="pl-pds">&gt;</span></span>
-#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jsoncons/json.hpp<span class="pl-pds">"</span></span>
+<h3>Convert from and to standard library sequence containers</h3>
+
+<div class="highlight highlight-source-c++"><pre>std::vector&lt;<span class="pl-k">int</span>&gt; v{<span class="pl-c1">1</span>, <span class="pl-c1">2</span>, <span class="pl-c1">3</span>, <span class="pl-c1">4</span>};
+json <span class="pl-en">j</span>(v);
+std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1) <span class="pl-pds">"</span></span>&lt;&lt; j &lt;&lt; std::endl;
+std::deque&lt;<span class="pl-k">int</span>&gt; d = j.as&lt;std::deque&lt;<span class="pl-k">int</span>&gt;&gt;();</pre></div>
+
+<p>Output:</p>
+
+<pre><code>(1) [1,2,3,4]
+</code></pre>
+
+<h3>Convert from and to standard library associative containers</h3>
+
+<div class="highlight highlight-source-c++"><pre>std::map&lt;std::string,<span class="pl-k">int</span>&gt; m{{<span class="pl-s"><span class="pl-pds">"</span>one<span class="pl-pds">"</span></span>,<span class="pl-c1">1</span>},{<span class="pl-s"><span class="pl-pds">"</span>two<span class="pl-pds">"</span></span>,<span class="pl-c1">2</span>},{<span class="pl-s"><span class="pl-pds">"</span>three<span class="pl-pds">"</span></span>,<span class="pl-c1">3</span>}};
+json <span class="pl-en">j</span>(m);
+std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1) <span class="pl-pds">"</span></span> &lt;&lt; j &lt;&lt; std::endl;
+std::unordered_map&lt;std::string,<span class="pl-k">int</span>&gt; um = j.as&lt;std::unordered_map&lt;std::string,<span class="pl-k">int</span>&gt;&gt;();</pre></div>
+
+<p>Output:</p>
+
+<pre><code>(1) {"one":1,"three":3,"two":2}
+</code></pre>
+
+<h3>Convert from and to user defined types (and standard library containers of user defined types)</h3>
+
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">struct</span> <span class="pl-en">book</span>
+{
+    std::string author;
+    std::string title;
+    <span class="pl-k">double</span> price;
+};
+
+<span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span>
+{
+    <span class="pl-k">template</span>&lt;<span class="pl-k">class</span> <span class="pl-en">Json</span>&gt;
+    <span class="pl-k">struct</span> <span class="pl-en">json_type_traits</span>&lt;Json, book&gt;
+    {
+        <span class="pl-c">// Implement static functions is, as and to_json </span>
+    };
+}        
+
+book book1{<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Kafka on the Shore<span class="pl-pds">"</span></span>, <span class="pl-c1">25.17</span>};
+book book2{<span class="pl-s"><span class="pl-pds">"</span>Charles Bukowski<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>Women: A Novel<span class="pl-pds">"</span></span>, <span class="pl-c1">12.0</span>};
+
+std::vector&lt;book&gt; v{book1, book2};
+
+json j = v;
+
+std::list&lt;book&gt; l = j.as&lt;std::list&lt;book&gt;&gt;();</pre></div>
+
+<p>See <a href="https://github.com/danielaparker/jsoncons/wiki/Type%20Extensibility">Type Extensibility</a> for details.</p>
+
+<h3>Filter json names and values</h3>
+
+<p>You can rename object member names with the built in filter <a href="https://github.com/danielaparker/jsoncons/wiki/rename_name_filter">rename_name_filter</a></p>
+
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>sstream<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json.hpp<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json_filter.hpp<span class="pl-pds">&gt;</span></span>
+
+<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span><span class="pl-k">;</span>
+
+<span class="pl-k">int</span> <span class="pl-en">main</span>()
+{
+    std::string s = <span class="pl-s"><span class="pl-pds">R"(</span>{"first":1,"second":2,"fourth":3,"fifth":4}<span class="pl-pds">)"</span></span>;    
+
+    json_serializer <span class="pl-smi">serializer</span>(std::cout);
+
+    <span class="pl-c">// Filters can be chained</span>
+    rename_name_filter <span class="pl-smi">filter2</span>(<span class="pl-s"><span class="pl-pds">"</span>fifth<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>fourth<span class="pl-pds">"</span></span>, serializer);
+    rename_name_filter <span class="pl-smi">filter1</span>(<span class="pl-s"><span class="pl-pds">"</span>fourth<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">"</span>third<span class="pl-pds">"</span></span>, filter2);
+
+    <span class="pl-c">// A filter can be passed to any function that takes</span>
+    <span class="pl-c">// a json_input_handler ...</span>
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1) <span class="pl-pds">"</span></span>;
+    std::istringstream <span class="pl-smi">is</span>(s);
+    json_reader <span class="pl-smi">reader</span>(is, filter1);
+    reader.<span class="pl-c1">read</span>();
+    std::cout &lt;&lt; std::endl;
+
+    <span class="pl-c">// or a json_output_handler    </span>
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(2) <span class="pl-pds">"</span></span>;
+    ojson j = <span class="pl-c1">ojson::parse</span>(s);
+    j.<span class="pl-c1">write</span>(filter1);
+    std::cout &lt;&lt; std::endl;
+}</pre></div>
+
+<p>Output:</p>
+
+<div class="highlight highlight-source-json"><pre>(<span class="pl-c1">1</span>) {<span class="pl-s"><span class="pl-pds">"</span>first<span class="pl-pds">"</span></span>:<span class="pl-c1">1</span>,<span class="pl-s"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>:<span class="pl-c1">2</span>,<span class="pl-s"><span class="pl-pds">"</span>third<span class="pl-pds">"</span></span>:<span class="pl-c1">3</span>,<span class="pl-s"><span class="pl-pds">"</span>fourth<span class="pl-pds">"</span></span>:<span class="pl-c1">4</span>}
+(<span class="pl-c1">2</span>) {<span class="pl-s"><span class="pl-pds">"</span>first<span class="pl-pds">"</span></span>:<span class="pl-c1">1</span>,<span class="pl-s"><span class="pl-pds">"</span>second<span class="pl-pds">"</span></span>:<span class="pl-c1">2</span>,<span class="pl-s"><span class="pl-pds">"</span>third<span class="pl-pds">"</span></span>:<span class="pl-c1">3</span>,<span class="pl-s"><span class="pl-pds">"</span>fourth<span class="pl-pds">"</span></span>:<span class="pl-c1">4</span>}</pre></div>
+
+<p>Or define and use your own filters. See <a href="https://github.com/danielaparker/jsoncons/wiki/json_filter">json_filter</a> for details.</p>
+
+<h2>Extensions</h2>
+
+<h3>jsonpath</h3>
+
+<p>Example file (store.json):</p>
+
+<div class="highlight highlight-source-json"><pre>{ <span class="pl-s"><span class="pl-pds">"</span>store<span class="pl-pds">"</span></span>: {
+    <span class="pl-s"><span class="pl-pds">"</span>book<span class="pl-pds">"</span></span>: [ 
+      { <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>reference<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Nigel Rees<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Sayings of the Century<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">8.95</span>
+      },
+      { <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>fiction<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Evelyn Waugh<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Sword of Honour<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">12.99</span>
+      },
+      { <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>fiction<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Herman Melville<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Moby Dick<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>0-553-21311-3<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">8.99</span>
+      }
+    ]
+  }
+}</pre></div>
+
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json.hpp<span class="pl-pds">&gt;</span></span>
 #<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jsoncons_ext/jsonpath/json_query.hpp<span class="pl-pds">"</span></span>
 
-<span class="pl-c">// For convenience</span>
-<span class="pl-k">using</span> jsoncons::json;
-<span class="pl-k">using</span> jsoncons::jsonpath::json_query;
+<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span><span class="pl-k">;</span>
+<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span>::jsonpath<span class="pl-k">;</span>
 
-<span class="pl-c">// Deserialize the booklist</span>
-std::ifstream <span class="pl-en">is</span>(<span class="pl-s"><span class="pl-pds">"</span>booklist.json<span class="pl-pds">"</span></span>);
-json booklist;
-is &gt;&gt; booklist;
+<span class="pl-k">int</span> <span class="pl-en">main</span>()
+{
+    std::ifstream <span class="pl-smi">is</span>(<span class="pl-s"><span class="pl-pds">"</span>input/booklist.json<span class="pl-pds">"</span></span>);
+    json booklist;
+    is &gt;&gt; booklist;
 
-<span class="pl-c">// Use a JsonPath expression to find </span>
-<span class="pl-c">//  </span>
-<span class="pl-c">// (1) The authors of books that cost less than $12</span>
-json result = json_query(booklist, <span class="pl-s"><span class="pl-pds">"</span>$[*][?(@.price &lt; 12)].author<span class="pl-pds">"</span></span>);
-std::cout &lt;&lt; result &lt;&lt; std::endl;
+    <span class="pl-c">// All books whose author's name starts with Evelyn</span>
+    json result1 = <span class="pl-c1">json_query</span>(booklist, <span class="pl-s"><span class="pl-pds">"</span>$.store.book[?(@.author =~ /Evelyn.*?/)]<span class="pl-pds">"</span></span>);
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-c1">pretty_print</span>(result1) &lt;&lt; std::endl;
 
-<span class="pl-c">// (2) The number of books</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">"</span>$.length<span class="pl-pds">"</span></span>);
-std::cout &lt;&lt; result &lt;&lt; std::endl;
+    <span class="pl-c">// Change the price of "Moby Dick"</span>
+    <span class="pl-c1">json_replace</span>(booklist,<span class="pl-s"><span class="pl-pds">"</span>$.store.book[?(@.isbn == '0-553-21311-3')].price<span class="pl-pds">"</span></span>,<span class="pl-c1">10.0</span>);
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(2)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-c1">pretty_print</span>(booklist) &lt;&lt; std::endl;
 
-<span class="pl-c">// (3) The third book</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">"</span>$[2]<span class="pl-pds">"</span></span>);
-std::cout &lt;&lt; std::endl &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
+}</pre></div>
 
-<span class="pl-c">// (4) The authors of books that were published in 2004</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">"</span>$[*][?(@.date =~ /2004.*?/)].author<span class="pl-pds">"</span></span>);
-std::cout &lt;&lt; result &lt;&lt; std::endl;
+<p>Output:</p>
 
-<span class="pl-c">// (5) The titles of all books that have ratings</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">"</span>$[*][?(@.ratings)].title<span class="pl-pds">"</span></span>);
-std::cout &lt;&lt; result &lt;&lt; std::endl;
-
-<span class="pl-c">// (6) All authors and titles of books</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">"</span>$..['author','title']<span class="pl-pds">"</span></span>);
-std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;</pre></div>
-
-<p>Result:</p>
-
-<div class="highlight highlight-source-json"><pre>(<span class="pl-c1">1</span>) [<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>George Crile<span class="pl-pds">"</span></span>]
-(<span class="pl-c1">2</span>) [<span class="pl-c1">4</span>]
-(<span class="pl-c1">3</span>)
+<div class="highlight highlight-source-json"><pre>(<span class="pl-c1">1</span>)
 [
     {
-        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>2002-04-09<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>037571894X<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>:<span class="pl-c1">9.01</span>,
-        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>A Wild Sheep Chase: A Novel<span class="pl-pds">"</span></span>
+        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Evelyn Waugh<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>fiction<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">12.99</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Sword of Honour<span class="pl-pds">"</span></span>
     }
 ]
-(<span class="pl-c1">4</span>) [<span class="pl-s"><span class="pl-pds">"</span>Charles Bukowski<span class="pl-pds">"</span></span>]
-(<span class="pl-c1">5</span>) [<span class="pl-s"><span class="pl-pds">"</span>Pulp<span class="pl-pds">"</span></span>]
-(<span class="pl-c1">6</span>) 
-[
-    <span class="pl-s"><span class="pl-pds">"</span>Nigel Rees<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Sayings of the Century<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Evelyn Waugh<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Sword of Honour<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Herman Melville<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Moby Dick<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>J. R. R. Tolkien<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>The Lord of the Rings<span class="pl-pds">"</span></span>
-]</pre></div>
-
-<h2>Once again, this time with wide characters</h2>
-
-<h3>wjson construction</h3>
-
-<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jsoncons/json.hpp<span class="pl-pds">"</span></span>
-
-<span class="pl-c">// For convenience</span>
-<span class="pl-k">using</span> jsoncons::wjson;
-
-<span class="pl-c">// Construct a book object</span>
-wjson book1;
-
-book1[<span class="pl-s"><span class="pl-pds">L"</span>category<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">L"</span>Fiction<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">L"</span>title<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">L"</span>A Wild Sheep Chase: A Novel<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">L"</span>author<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">L"</span>Haruki Murakami<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">L"</span>date<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">L"</span>2002-04-09<span class="pl-pds">"</span></span>;
-book1[<span class="pl-s"><span class="pl-pds">L"</span>price<span class="pl-pds">"</span></span>] = <span class="pl-c1">9.01</span>;
-book1[<span class="pl-s"><span class="pl-pds">L"</span>isbn<span class="pl-pds">"</span></span>] = <span class="pl-s"><span class="pl-pds">L"</span>037571894X<span class="pl-pds">"</span></span>;
-
-<span class="pl-c">// Construct another using the set function</span>
-wjson book2;
-
-book2.set(<span class="pl-s"><span class="pl-pds">L"</span>category<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>History<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">L"</span>title<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>Charlie Wilson's War<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">L"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>George Crile<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">L"</span>date<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>2007-11-06<span class="pl-pds">"</span></span>);
-book2.set(<span class="pl-s"><span class="pl-pds">L"</span>price<span class="pl-pds">"</span></span>, <span class="pl-c1">10.50</span>);
-book2.set(<span class="pl-s"><span class="pl-pds">L"</span>isbn<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>0802143415<span class="pl-pds">"</span></span>);
-
-<span class="pl-c">// Use set again, but more efficiently</span>
-wjson book3;
-
-<span class="pl-c">// Reserve memory, to avoid reallocations</span>
-book3.reserve(<span class="pl-c1">6</span>);
-
-<span class="pl-c">// Insert in name alphabetical order</span>
-<span class="pl-c">// Give set a hint where to insert the next member</span>
-<span class="pl-k">auto</span> hint = book3.set(book3.members().begin(), <span class="pl-s"><span class="pl-pds">L"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>Haruki Murakami<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">L"</span>category<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>Fiction<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">L"</span>date<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>2006-01-03<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">L"</span>isbn<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>1400079276<span class="pl-pds">"</span></span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">L"</span>price<span class="pl-pds">"</span></span>, <span class="pl-c1">13.45</span>);
-hint = book3.set(hint, <span class="pl-s"><span class="pl-pds">L"</span>title<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>Kafka on the Shore<span class="pl-pds">"</span></span>);
-
-<span class="pl-c">// Construct a fourth from a string</span>
-wjson book4 = wjson::parse(<span class="pl-s"><span class="pl-pds">LR"(</span></span>
-<span class="pl-s">{</span>
-<span class="pl-s">    "category" : "Fiction",</span>
-<span class="pl-s">    "title" : "Pulp",</span>
-<span class="pl-s">    "author" : "Charles Bukowski",</span>
-<span class="pl-s">    "date" : "2004-07-08",</span>
-<span class="pl-s">    "price" : 22.48,</span>
-<span class="pl-s">    "isbn" : "1852272007"  </span>
-<span class="pl-s">}</span>
-<span class="pl-s"><span class="pl-pds">)"</span></span>);
-
-<span class="pl-c">// Construct a booklist array</span>
-
-wjson booklist = wjson::array();
-
-<span class="pl-c">// For efficiency, reserve memory, to avoid reallocations</span>
-booklist.reserve(<span class="pl-c1">4</span>);
-
-<span class="pl-c">// For efficency, tell jsoncons to move the contents </span>
-<span class="pl-c">// of the four book objects into the array</span>
-booklist.add(std::move(book1));
-booklist.add(std::move(book2));
-
-<span class="pl-c">// Add the third book to the front</span>
-<span class="pl-k">auto</span> pos = booklist.add(booklist.elements().begin(),std::move(book3));
-
-<span class="pl-c">// and the last one immediately after</span>
-booklist.add(pos+<span class="pl-c1">1</span>,std::move(book4));    
-
-<span class="pl-c">// See what's left of book1, 2, 3 and 4 (expect nulls)</span>
-std::wcout &lt;&lt; book1 &lt;&lt; <span class="pl-s"><span class="pl-pds">L"</span>,<span class="pl-pds">"</span></span> &lt;&lt; book2 &lt;&lt; <span class="pl-s"><span class="pl-pds">L"</span>,<span class="pl-pds">"</span></span> &lt;&lt; book3 &lt;&lt; <span class="pl-s"><span class="pl-pds">L"</span>,<span class="pl-pds">"</span></span> &lt;&lt; book4 &lt;&lt; std::endl;
-
-++
-<span class="pl-c">//Loop through the booklist elements using a range-based for loop    </span>
-<span class="pl-k">for</span> (<span class="pl-k">const</span> <span class="pl-k">auto</span>&amp; book : booklist.elements())
+(<span class="pl-c1">2</span>)
 {
-    std::wcout &lt;&lt; book[<span class="pl-s"><span class="pl-pds">L"</span>title<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;std::wstring&gt;()
-               &lt;&lt; <span class="pl-s"><span class="pl-pds">L"</span>,<span class="pl-pds">"</span></span>
-               &lt;&lt; book[<span class="pl-s"><span class="pl-pds">L"</span>price<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;<span class="pl-k">double</span>&gt;() &lt;&lt; std::endl;
-}
+    <span class="pl-s"><span class="pl-pds">"</span>store<span class="pl-pds">"</span></span>: {
+        <span class="pl-s"><span class="pl-pds">"</span>book<span class="pl-pds">"</span></span>: [
+            {
+                <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Nigel Rees<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>reference<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">8.95</span>,
+                <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Sayings of the Century<span class="pl-pds">"</span></span>
+            },
+            {
+                <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Evelyn Waugh<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>fiction<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">12.99</span>,
+                <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Sword of Honour<span class="pl-pds">"</span></span>
+            },
+            {
+                <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Herman Melville<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>fiction<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>0-553-21311-3<span class="pl-pds">"</span></span>,
+                <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>: <span class="pl-c1">10.0</span>,
+                <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>Moby Dick<span class="pl-pds">"</span></span>
+            }
+        ]
+    }
+}</pre></div>
 
-<span class="pl-c">// The second book</span>
-wjson&amp; book = booklist[<span class="pl-c1">1</span>];
+<p>See <a href="https://github.com/danielaparker/jsoncons/wiki/json_query">json_query</a>, <a href="https://github.com/danielaparker/jsoncons/wiki/json_replace">json_replace</a>, and <a href="https://github.com/danielaparker/jsoncons/wiki/Basics">Basics</a> for details.</p>
 
-<span class="pl-c">//Loop through the book's name-value pairs using a range-based for loop    </span>
-<span class="pl-k">for</span> (<span class="pl-k">const</span> <span class="pl-k">auto</span>&amp; member : book.members())
+<h3>csv</h3>
+
+<p>Example file (tasks.csv)</p>
+
+<pre lang="csv"><code>project_id, task_name, task_start, task_finish
+4001,task1,01/01/2003,01/31/2003
+4001,task2,02/01/2003,02/28/2003
+4001,task3,03/01/2003,03/31/2003
+4002,task1,04/01/2003,04/30/2003
+4002,task2,05/01/2003,
+</code></pre>
+
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>fstream<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json.hpp<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons_ext/csv/csv_reader.hpp<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">"</span>jsoncons_ext/csv/csv_serializer.hpp<span class="pl-pds">"</span></span>
+
+<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span><span class="pl-k">;</span>
+<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span>::csv<span class="pl-k">;</span>
+
+<span class="pl-k">int</span> <span class="pl-en">main</span>()
 {
-    std::wcout &lt;&lt; member.<span class="pl-c1">name</span>()
-               &lt;&lt; <span class="pl-s"><span class="pl-pds">L"</span>,<span class="pl-pds">"</span></span>
-               &lt;&lt; member.<span class="pl-c1">value</span>() &lt;&lt; std::endl;
-}
+    std::ifstream <span class="pl-smi">is</span>(<span class="pl-s"><span class="pl-pds">"</span>input/tasks.csv<span class="pl-pds">"</span></span>);
 
-<span class="pl-k">auto</span> it = book.find(<span class="pl-s"><span class="pl-pds">L"</span>author<span class="pl-pds">"</span></span>);
-<span class="pl-k">if</span> (it != book.members().end())
-{
-    <span class="pl-c">// member "author" found</span>
-}
+    json_encoder&lt;json&gt; encoder;
+    csv_parameters params;
+    params.<span class="pl-c1">assume_header</span>(<span class="pl-c1">true</span>)
+          .<span class="pl-c1">trim</span>(<span class="pl-c1">true</span>)
+          .<span class="pl-c1">ignore_empty_values</span>(<span class="pl-c1">true</span>) 
+          .<span class="pl-c1">column_types</span>({<span class="pl-s"><span class="pl-pds">"</span>integer<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>string<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>string<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>string<span class="pl-pds">"</span></span>});
+    csv_reader <span class="pl-smi">reader</span>(is,encoder,params);
+    reader.<span class="pl-c1">read</span>();
+    ojson tasks = encoder.<span class="pl-c1">get_result</span>();
 
-<span class="pl-k">if</span> (book.count(<span class="pl-s"><span class="pl-pds">L"</span>author<span class="pl-pds">"</span></span>) &gt; <span class="pl-c1">0</span>)
-{
-    <span class="pl-c">// book has a member "author"</span>
-}
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-c1">pretty_print</span>(tasks) &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\n\n</span><span class="pl-pds">"</span></span>;
 
-book.get(<span class="pl-s"><span class="pl-pds">L"</span>author<span class="pl-pds">"</span></span>, <span class="pl-s"><span class="pl-pds">L"</span>author unknown<span class="pl-pds">"</span></span>).as&lt;std::wstring&gt;();
-<span class="pl-c">// Returns author if found, otherwise "author unknown"</span>
+    std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(2)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span>;
+    csv_serializer <span class="pl-smi">serializer</span>(std::cout);
+    tasks.<span class="pl-c1">write</span>(serializer);
+}</pre></div>
 
-<span class="pl-k">try</span>
-{
-    book[<span class="pl-s"><span class="pl-pds">L"</span>ratings<span class="pl-pds">"</span></span>].<span class="pl-smi">as</span>&lt;std::wstring&gt;();
-}
-<span class="pl-k">catch</span> (<span class="pl-k">const</span> std::out_of_range&amp; e)
-{
-    <span class="pl-c">// member "ratings" not found</span>
-}
+<p>Output:</p>
 
-<span class="pl-c">// Add ratings</span>
-book[<span class="pl-s"><span class="pl-pds">L"</span>ratings<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">L"</span>*****<span class="pl-pds">"</span></span>] = <span class="pl-c1">4</span>;
-book[<span class="pl-s"><span class="pl-pds">L"</span>ratings<span class="pl-pds">"</span></span>][<span class="pl-s"><span class="pl-pds">L"</span>*<span class="pl-pds">"</span></span>] = <span class="pl-c1">2</span>;
-
-<span class="pl-c">// Delete one-star ratings</span>
-book[<span class="pl-s"><span class="pl-pds">L"</span>ratings<span class="pl-pds">"</span></span>].erase(<span class="pl-s"><span class="pl-pds">L"</span>*<span class="pl-pds">"</span></span>);
-</pre></div>
-
-<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Serialize the booklist to a file</span>
-std::wofstream <span class="pl-en">os</span>(<span class="pl-s"><span class="pl-pds">"</span>booklist2.json<span class="pl-pds">"</span></span>);
-os &lt;&lt; pretty_print(booklist);</pre></div>
-
-<h3>wjson query</h3>
-
-<div class="highlight highlight-source-c++"><pre><span class="pl-c">// Deserialize the booklist</span>
-std::wifstream <span class="pl-en">is</span>(<span class="pl-s"><span class="pl-pds">"</span>booklist2.json<span class="pl-pds">"</span></span>);
-wjson booklist;
-is &gt;&gt; booklist;
-
-<span class="pl-c">// Use a JsonPath expression to find </span>
-<span class="pl-c">//  </span>
-<span class="pl-c">// (1) The authors of books that cost less than $12</span>
-wjson result = json_query(booklist, <span class="pl-s"><span class="pl-pds">L"</span>$[*][?(@.price &lt; 12)].author<span class="pl-pds">"</span></span>);
-std::wcout &lt;&lt; result &lt;&lt; std::endl;
-
-<span class="pl-c">// (2) The number of books</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">L"</span>$.length<span class="pl-pds">"</span></span>);
-std::wcout &lt;&lt; result &lt;&lt; std::endl;
-
-<span class="pl-c">// (3) The third book</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">L"</span>$[2]<span class="pl-pds">"</span></span>);
-std::wcout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
-
-<span class="pl-c">// (4) The authors of books that were published in 2004</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">L"</span>$[*][?(@.date =~ /2004.*?/)].author<span class="pl-pds">"</span></span>);
-std::wcout &lt;&lt; result &lt;&lt; std::endl;
-
-<span class="pl-c">// (5) The titles of all books that have ratings</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">L"</span>$[*][?(@.ratings)].title<span class="pl-pds">"</span></span>);
-std::wcout &lt;&lt; result &lt;&lt; std::endl;
-
-<span class="pl-c">// (6) All authors and titles of books</span>
-result = json_query(booklist, <span class="pl-s"><span class="pl-pds">L"</span>$..['author','title']<span class="pl-pds">"</span></span>);
-std::wcout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;</pre></div>
-
-<p>Result:</p>
-
-<div class="highlight highlight-source-json"><pre>(<span class="pl-c1">1</span>) [<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>George Crile<span class="pl-pds">"</span></span>]
-(<span class="pl-c1">2</span>) [<span class="pl-c1">4</span>]
-(<span class="pl-c1">3</span>)
+<div class="highlight highlight-source-json"><pre>(<span class="pl-c1">1</span>)
 [
     {
-        <span class="pl-s"><span class="pl-pds">"</span>author<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Haruki Murakami<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>category<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>Fiction<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>date<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>2002-04-09<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>isbn<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>037571894X<span class="pl-pds">"</span></span>,
-        <span class="pl-s"><span class="pl-pds">"</span>price<span class="pl-pds">"</span></span>:<span class="pl-c1">9.01</span>,
-        <span class="pl-s"><span class="pl-pds">"</span>title<span class="pl-pds">"</span></span>:<span class="pl-s"><span class="pl-pds">"</span>A Wild Sheep Chase: A Novel<span class="pl-pds">"</span></span>
+        <span class="pl-s"><span class="pl-pds">"</span>project_id<span class="pl-pds">"</span></span>: <span class="pl-c1">4001</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_name<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>task1<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_start<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>01/01/2003<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_finish<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>01/31/2003<span class="pl-pds">"</span></span>
+    },
+    {
+        <span class="pl-s"><span class="pl-pds">"</span>project_id<span class="pl-pds">"</span></span>: <span class="pl-c1">4001</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_name<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>task2<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_start<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>02/01/2003<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_finish<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>02/28/2003<span class="pl-pds">"</span></span>
+    },
+    {
+        <span class="pl-s"><span class="pl-pds">"</span>project_id<span class="pl-pds">"</span></span>: <span class="pl-c1">4001</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_name<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>task3<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_start<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>03/01/2003<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_finish<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>03/31/2003<span class="pl-pds">"</span></span>
+    },
+    {
+        <span class="pl-s"><span class="pl-pds">"</span>project_id<span class="pl-pds">"</span></span>: <span class="pl-c1">4002</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_name<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>task1<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_start<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>04/01/2003<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_finish<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>04/30/2003<span class="pl-pds">"</span></span>
+    },
+    {
+        <span class="pl-s"><span class="pl-pds">"</span>project_id<span class="pl-pds">"</span></span>: <span class="pl-c1">4002</span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_name<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>task2<span class="pl-pds">"</span></span>,
+        <span class="pl-s"><span class="pl-pds">"</span>task_start<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>05/01/2003<span class="pl-pds">"</span></span>
     }
-]
-(<span class="pl-c1">4</span>) [<span class="pl-s"><span class="pl-pds">"</span>Charles Bukowski<span class="pl-pds">"</span></span>]
-(<span class="pl-c1">5</span>) [<span class="pl-s"><span class="pl-pds">"</span>Pulp<span class="pl-pds">"</span></span>]
-(<span class="pl-c1">6</span>) 
-[
-    <span class="pl-s"><span class="pl-pds">"</span>Nigel Rees<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Sayings of the Century<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Evelyn Waugh<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Sword of Honour<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Herman Melville<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>Moby Dick<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>J. R. R. Tolkien<span class="pl-pds">"</span></span>,
-    <span class="pl-s"><span class="pl-pds">"</span>The Lord of the Rings<span class="pl-pds">"</span></span>
 ]</pre></div>
+
+<pre lang="csv"><code>(2)
+project_id,task_name,task_start,task_finish
+4001,task2,02/01/2003,02/28/2003
+4001,task3,03/01/2003,03/31/2003
+4002,task1,04/01/2003,04/30/2003
+4002,task2,05/01/2003,
+</code></pre>
+
+<p>See <a href="https://github.com/danielaparker/jsoncons/wiki/csv_reader">csv_reader</a> and <a href="https://github.com/danielaparker/jsoncons/wiki/csv_serializer">csv_serializer</a> for details.</p>
 
 <h2>Acknowledgements</h2>
 

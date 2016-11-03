@@ -4,7 +4,7 @@ Returns a `json` array of `json` values selected from a root `json` structure.
 
 ### Header
 
-    #include "jsoncons/jsonpath/json_query.hpp"
+    #include <jsoncons/jsonpath/json_query.hpp>
 
     template<Json>
     Json json_query(const Json& root, 
@@ -24,13 +24,19 @@ JSONPath expressions can use the dot–notation
 
 or the bracket–notation 
 
-    $['store']['book'][0]['title']
+
+    $[store][book][0][title]
 
 or 
 
+    $['store']['book'][0]['title']
+
+or
+
     $["store"]["book"][0]["title"]
 
-Note that Stefan Goessner's original implementation only supports single quotes inside of JSONPath expressions, the jsoncons implementation supports both single quotes and double quotes.
+
+Note that Stefan Goessner's original implementation supports unquoted or single quoted names inside of square brackets, the jsoncons implementation in addition supports double quoted names.
 
 JSONPath|       Description
 --------|--------------------------------
@@ -108,12 +114,11 @@ The examples below use the JSON text from [Stefan Goessner's JsonPath](http://go
 
 Our first example returns all authors whose books are cheaper than $10. 
     
-    #include "jsoncons/json.hpp"
-    #include "jsoncons_ext/jsonpath/json_query.hpp"
+    #include <jsoncons/json.hpp>
+    #include <jsoncons_ext/jsonpath/json_query.hpp>
 
-    using jsoncons::json;
-    using jsoncons::pretty_print;
-    using jsoncons::jsonpath::json_query;
+    using namespace jsoncons;
+    using namespace jsoncons::jsonpath;
 
     json root = json::parse_file("store.json");
 

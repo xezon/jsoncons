@@ -14,20 +14,20 @@
 #include <cstdlib>
 #include <map>
 #include <limits> // std::numeric_limits
-#include "jsoncons/jsoncons.hpp"
-#include "jsoncons/output_format.hpp"
-#include "jsoncons/json_output_handler.hpp"
-#include "jsoncons_ext/csv/csv_parameters.hpp"
+#include <jsoncons/json_text_traits.hpp>
+#include <jsoncons/serialization_options.hpp>
+#include <jsoncons/json_output_handler.hpp>
+#include <jsoncons_ext/csv/csv_parameters.hpp>
 
 namespace jsoncons { namespace csv {
 
 template <class CharT>
-struct csv_char_traits
+struct csv_string_traits
 {
 };
 
 template <>
-struct csv_char_traits<char>
+struct csv_string_traits<char>
 {
     static const std::string all_literal() {return "all";};
 
@@ -39,7 +39,7 @@ struct csv_char_traits<char>
 };
 
 template <>
-struct csv_char_traits<wchar_t>
+struct csv_string_traits<wchar_t>
 {
     static const std::wstring all_literal() {return L"all";};
 
@@ -93,7 +93,7 @@ class basic_csv_serializer : public basic_json_output_handler<CharT>
     };
     buffered_ostream<CharT> os_;
     basic_csv_parameters<CharT> parameters_;
-    basic_output_format<CharT> format_;
+    basic_serialization_options<CharT> format_;
     std::vector<stack_item> stack_;
     std::basic_ostringstream<CharT> header_oss_;
     buffered_ostream<CharT> header_os_;
@@ -147,11 +147,15 @@ private:
     {
         if (stack_.size() == 2)
         {
+            while (stack_.back().count_ < header_.size())
+            {
+                os_.put(parameters_.field_delimiter());
+                ++stack_.back().count_;
+            }
             os_.write(parameters_.line_delimiter());
             if (stack_[0].count_ == 0)
             {
                 os_.write(header_oss_.str());
-                os_.write(parameters_.line_delimiter());
             }
         }
         stack_.pop_back();

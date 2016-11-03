@@ -17,7 +17,7 @@
 #include <fstream>
 #include <limits>
 #include <type_traits>
-#include "jsoncons/jsoncons.hpp"
+#include <jsoncons/json_text_traits.hpp>
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push
@@ -41,17 +41,56 @@ struct json_string_type_traits<Json, T, typename std::enable_if<std::is_same<typ
 template <class Json, class T, class Enable=void>
 struct json_type_traits
 {
-    static const bool is_assignable = false;
+    static const bool is_compatible = false;
 
     static bool is(const Json&)
     {
         return false;
     }
-
-    static T as(const Json& rhs);
-
-    static void assign(Json& lhs, T rhs);
 };
+
+// is_incompatible
+template<class Json, class T, class Enable = void>
+struct is_incompatible : std::false_type {};
+
+
+// is_incompatible
+template<class Json, class T>
+struct is_incompatible<Json,T,
+    typename std::enable_if<!std::integral_constant<bool, json_type_traits<Json, T>::is_compatible>::value>::type
+> : std::true_type {};
+
+// is_compatible_string_type
+template<class Json, class T, class Enable=void>
+struct is_compatible_string_type : std::false_type {};
+
+template<class Json, class T>
+struct is_compatible_string_type<Json,T, 
+    typename std::enable_if<!std::is_same<T,typename Json::array>::value &&
+    !std::is_void<typename json_string_type_traits<Json,T>::char_traits_type>::value && 
+    !is_incompatible<Json,typename std::iterator_traits<typename T::iterator>::value_type>::value
+>::type> : std::true_type {};
+
+// is_compatible_array_type
+template<class Json, class T, class Enable=void>
+struct is_compatible_array_type : std::false_type {};
+
+template<class Json, class T>
+struct is_compatible_array_type<Json,T, 
+    typename std::enable_if<!std::is_same<T,typename Json::array>::value &&
+    std::is_void<typename json_string_type_traits<Json,T>::char_traits_type>::value && 
+    !is_incompatible<Json,typename std::iterator_traits<typename T::iterator>::value_type>::value
+>::type> : std::true_type {};
+
+// is_compatible_object_type
+template<class Json, class T, class Enable=void>
+struct is_compatible_object_type : std::false_type {};
+
+template<class Json, class T>
+struct is_compatible_object_type<Json,T, 
+                       typename std::enable_if<
+    !is_incompatible<Json,typename T::mapped_type>::value
+>::type> : std::true_type {};
 
 template <class Json, class T>
 class json_array_input_iterator
@@ -207,29 +246,8 @@ private:
 };
 
 template<class Json>
-struct json_type_traits<Json, typename Json::any>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& lhs) JSONCONS_NOEXCEPT
-    {
-        return lhs.is_any();
-    }
-    static typename Json::any as(const Json& rhs)
-    {
-        return rhs.any_value();
-    }
-    static void assign(Json& lhs, typename Json::any rhs)
-    {
-        lhs.assign_any(rhs);
-    }
-};
-
-template<class Json>
 struct json_type_traits<Json, typename type_wrapper<typename Json::char_type>::const_pointer_type>
 {
-    static const bool is_assignable = true;
-
     typedef typename Json::char_type char_type;
 
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
@@ -240,167 +258,141 @@ struct json_type_traits<Json, typename type_wrapper<typename Json::char_type>::c
     {
         return rhs.as_cstring();
     }
-    static void assign(Json& lhs, const char_type *rhs)
+    static Json to_json(const char_type* rhs)
     {
         size_t length = std::char_traits<char_type>::length(rhs);
-        lhs.assign_string(rhs,length);
+        return Json::make_string(rhs,length);
+    }
+    static Json to_json(const char_type* rhs, typename Json::allocator_type allocator)
+    {
+        size_t length = std::char_traits<char_type>::length(rhs);
+        return Json::make_string(rhs,length,allocator);
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, typename type_wrapper<typename Json::char_type>::pointer_type>
 {
-    static const bool is_assignable = true;
-
     typedef typename Json::char_type char_type;
 
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_string();
     }
-    static void assign(Json& lhs, const char_type *rhs)
+    static Json to_json(const char_type *rhs)
     {
         size_t length = std::char_traits<char_type>::length(rhs);
-        lhs.assign_string(rhs,length);
+        return Json::make_string(rhs,length);
+    }
+    static Json to_json(const char_type *rhs, typename Json::allocator_type allocator)
+    {
+        size_t length = std::char_traits<char_type>::length(rhs);
+        return Json::make_string(rhs,length,allocator);
     }
 };
 
-template<class Json>
-struct json_type_traits<Json, char>
-{
-    static const bool is_assignable = true;
+// integral
 
+template<class Json, class T>
+struct json_type_traits<Json, T,
+                        typename std::enable_if<std::is_integral<T>::value &&
+                        std::is_signed<T>::value &&
+                        !std::is_same<T,bool>::value
+>::type>
+{
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         if (rhs.is_integer())
         {
-            return rhs.as_integer() >= std::numeric_limits<char>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<char>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static char as(const Json& rhs)
-    {
-        return static_cast<char>(rhs.as_integer());
-    }
-    static void assign(Json& lhs, char ch)
-    {
-        lhs.assign_integer(ch);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, unsigned char>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= 0 && static_cast<unsigned long long>(rhs.as_integer()) <= std::numeric_limits<unsigned char>::max JSONCONS_NO_MACRO_EXP();
+            return rhs.as_integer() >= std::numeric_limits<T>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<T>::max JSONCONS_NO_MACRO_EXP();
         }
         else if (rhs.is_uinteger())
         {
-            return rhs.as_uinteger() <= std::numeric_limits<unsigned char>::max JSONCONS_NO_MACRO_EXP();
+            return rhs.as_uinteger() <= static_cast<uint64_t>(std::numeric_limits<T>::max JSONCONS_NO_MACRO_EXP());
         }
         else
         {
             return false;
         }
     }
-    static unsigned char as(const Json& rhs)
+    static T as(const Json& rhs)
     {
-        return static_cast<unsigned char>(rhs.as_uinteger());
+        return static_cast<T>(rhs.as_integer());
     }
-    static void assign(Json& lhs, unsigned char ch)
+    static Json to_json(T rhs)
     {
-        lhs.assign_uinteger(ch);
+        return Json::make_integer(rhs);
     }
 };
 
-template<class Json>
-struct json_type_traits<Json, signed char>
+template<class Json, class T>
+struct json_type_traits<Json, T,
+                        typename std::enable_if<std::is_integral<T>::value &&
+                        std::is_unsigned<T>::value &&
+                        !std::is_same<T,bool>::value
+>::type >
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         if (rhs.is_integer())
         {
-            return rhs.as_integer() >= std::numeric_limits<char>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<char>::max JSONCONS_NO_MACRO_EXP();
+            return rhs.as_integer() >= 0 && static_cast<uint64_t>(rhs.as_integer()) <= std::numeric_limits<T>::max JSONCONS_NO_MACRO_EXP();
         }
         else if (rhs.is_uinteger())
         {
-            return rhs.as_uinteger() <= static_cast<unsigned long long>(std::numeric_limits<char>::max JSONCONS_NO_MACRO_EXP());
+            return rhs.as_uinteger() <= std::numeric_limits<T>::max JSONCONS_NO_MACRO_EXP();
         }
         else
         {
             return false;
         }
     }
-    static signed char as(const Json& rhs)
+    static T as(const Json& rhs)
     {
-        return static_cast<signed char>(rhs.as_integer());
+        return static_cast<T>(rhs.as_uinteger());
     }
-    static void assign(Json& lhs, signed char ch)
+
+    static Json to_json(T val)
     {
-        lhs.assign_integer(ch);
+        return Json::make_uinteger(val);
     }
 };
 
-template<class Json>
-struct json_type_traits<Json, wchar_t>
+template<class Json,class T>
+struct json_type_traits<Json, T,
+                        typename std::enable_if<std::is_floating_point<T>::value
+>::type>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= std::numeric_limits<wchar_t>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<wchar_t>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= static_cast<unsigned long long>(std::numeric_limits<wchar_t>::max JSONCONS_NO_MACRO_EXP());
-        }
-        else
-        {
-            return false;
-        }
+        return rhs.is_double();
     }
-    static wchar_t as(const Json& rhs)
+    static T as(const Json& rhs)
     {
-        return static_cast<wchar_t>(rhs.as_integer());
+        return static_cast<T>(rhs.as_double());
     }
-    static void assign(Json& lhs, wchar_t ch)
+    static Json to_json(T val)
     {
-        lhs.assign_integer(ch);
+        return Json::make_double(val);
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, typename Json::object>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_object();
     }
-    static void assign(Json& lhs, typename Json::object rhs)
+    static Json to_json(const typename Json::object& rhs)
     {
-        lhs.assign_object(rhs);
+        return Json::make_object(rhs);
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, Json>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json&) JSONCONS_NOEXCEPT
     {
         return true;
@@ -409,32 +401,28 @@ struct json_type_traits<Json, Json>
     {
         return rhs;
     }
-    static void assign(Json& lhs, Json rhs)
+    static Json to_json(const Json& rhs)
     {
-        lhs.swap(rhs);
+        return rhs;
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, typename Json::array>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_array();
     }
-    static void assign(Json& lhs, typename Json::array rhs)
+    static Json to_json(const typename Json::array& rhs)
     {
-        lhs.assign_array(rhs);
+        return Json::make_array(rhs);
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, jsoncons::null_type>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_null();
@@ -444,17 +432,15 @@ struct json_type_traits<Json, jsoncons::null_type>
         JSONCONS_ASSERT(rhs.is_null());
         return jsoncons::null_type();
     }
-    static void assign(Json& lhs, null_type)
+    static Json to_json(jsoncons::null_type)
     {
-        lhs.assign_null();
+        return Json::null();
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, bool>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_bool();
@@ -463,9 +449,9 @@ struct json_type_traits<Json, bool>
     {
         return rhs.as_bool();
     }
-    static void assign(Json& lhs, bool rhs)
+    static Json to_json(bool rhs)
     {
-        lhs.assign_bool(rhs);
+        return Json::make_bool(rhs);
     }
 };
 
@@ -475,8 +461,6 @@ struct json_type_traits<Json, T, typename std::enable_if<std::is_same<T,
                      std::vector<bool>::const_reference,
                      void>::type>::value>::type>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_bool();
@@ -485,17 +469,15 @@ struct json_type_traits<Json, T, typename std::enable_if<std::is_same<T,
     {
         return rhs.as_bool();
     }
-    static void assign(Json& lhs, bool rhs)
+    static Json to_json(bool rhs)
     {
-        lhs.assign_bool(rhs);
+        return Json::make_bool(rhs);
     }
 };
 
 template<class Json>
 struct json_type_traits<Json, std::vector<bool>::reference>
 {
-    static const bool is_assignable = true;
-
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
         return rhs.is_bool();
@@ -504,280 +486,17 @@ struct json_type_traits<Json, std::vector<bool>::reference>
     {
         return rhs.as_bool();
     }
-    static void assign(Json& lhs, std::vector<bool>::reference rhs)
+    static Json to_json(std::vector<bool>::reference rhs)
     {
-        lhs.assign_bool(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, short>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= std::numeric_limits<short>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<short>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= static_cast<unsigned long long>(std::numeric_limits<short>::max JSONCONS_NO_MACRO_EXP());
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static short as(const Json& rhs)
-    {
-        return static_cast<short>(rhs.as_integer());
-    }
-    static void assign(Json& lhs, short rhs)
-    {
-        lhs.assign_integer(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, unsigned short>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= 0 && static_cast<unsigned long long>(rhs.as_integer()) <= std::numeric_limits<unsigned short>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= std::numeric_limits<unsigned short>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static unsigned short as(const Json& rhs)
-    {
-        return (unsigned short)rhs.as_uinteger();
-    }
-    static void assign(Json& lhs, unsigned short rhs)
-    {
-        lhs.assign_uinteger(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, int>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= std::numeric_limits<int>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= static_cast<unsigned long long>(std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP());
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static int as(const Json& rhs)
-    {
-        return static_cast<int>(rhs.as_integer());
-    }
-    static void assign(Json& lhs, int rhs)
-    {
-        lhs.assign_integer(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, unsigned int>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= 0 && static_cast<unsigned long long>(rhs.as_integer()) <= std::numeric_limits<unsigned int>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= std::numeric_limits<unsigned int>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static unsigned int as(const Json& rhs)
-    {
-        return static_cast<unsigned int>(rhs.as_uinteger());
-    }
-    static void assign(Json& lhs, unsigned int rhs)
-    {
-        lhs.assign_uinteger(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, long>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= std::numeric_limits<long>::min JSONCONS_NO_MACRO_EXP() && rhs.as_integer() <= std::numeric_limits<long>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= static_cast<unsigned long long>(std::numeric_limits<long>::max JSONCONS_NO_MACRO_EXP());
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static long as(const Json& rhs)
-    {
-        return static_cast<long>(rhs.as_integer());
-    }
-    static void assign(Json& lhs, long rhs)
-    {
-        lhs.assign_integer(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, unsigned long>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        if (rhs.is_integer())
-        {
-            return rhs.as_integer() >= 0 && static_cast<unsigned long long>(rhs.as_integer()) <= std::numeric_limits<unsigned long>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else if (rhs.is_uinteger())
-        {
-            return rhs.as_uinteger() <= std::numeric_limits<unsigned long>::max JSONCONS_NO_MACRO_EXP();
-        }
-        else
-        {
-            return false;
-        }
-    }
-    static unsigned long as(const Json& rhs)
-    {
-        return static_cast<unsigned long>(rhs.as_uinteger());
-    }
-    static void assign(Json& lhs, unsigned long rhs)
-    {
-        lhs.assign_uinteger(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, long long>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        return rhs.is_integer();
-    }
-    static long long as(const Json& rhs)
-    {
-        return rhs.as_integer();
-    }
-    static void assign(Json& lhs, long long rhs)
-    {
-        lhs.assign_integer(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, unsigned long long>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        return rhs.is_uinteger();
-    }
-    static unsigned long long as(const Json& rhs)
-    {
-        return rhs.as_uinteger();
-    }
-    static void assign(Json& lhs, unsigned long long rhs)
-    {
-        lhs.assign_uinteger(rhs);
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, float>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        return rhs.is_double();
-    }
-    static double as(const Json& rhs)
-    {
-        return static_cast<float>(rhs.as_double());
-    }
-    static void assign(Json& lhs, float rhs)
-    {
-        lhs.assign_double(static_cast<double>(rhs));
-    }
-};
-
-template<class Json>
-struct json_type_traits<Json, double>
-{
-    static const bool is_assignable = true;
-
-    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
-    {
-        return rhs.is_double();
-    }
-
-    static double as(const Json& rhs)
-    {
-        return rhs.as_double();
-    }
-    static void assign(Json& lhs, double rhs)
-    {
-        lhs.assign_double(rhs);
+        return Json::make_bool(rhs);
     }
 };
 
 template<class Json, typename T>
 struct json_type_traits<Json, T, 
-                        typename std::enable_if<!std::is_same<T,typename Json::array>::value &&
-std::is_void<typename json_string_type_traits<Json,T>::char_traits_type>::value && 
-std::integral_constant<bool, json_type_traits<Json, typename T::iterator::value_type>::is_assignable &&
-                             json_type_traits<Json, typename T::const_iterator::value_type>::is_assignable>::value
->::type>
+                        typename std::enable_if<is_compatible_array_type<Json,T>::value>::type>
 {
-    typedef typename T::iterator::value_type element_type;
-
-    static const bool is_assignable = true;
+    typedef typename std::iterator_traits<typename T::iterator>::value_type element_type;
 
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
@@ -810,22 +529,17 @@ std::integral_constant<bool, json_type_traits<Json, typename T::iterator::value_
         }
     }
 
-    static void assign(Json& lhs, const T& rhs)
+    static Json to_json(const T& rhs)
     {
-        lhs = Json(std::begin(rhs), std::end(rhs));
+        return Json(std::begin(rhs), std::end(rhs));
     }
 };
 
 template<class Json, typename T>
 struct json_type_traits<Json, T, 
-                        typename std::enable_if<!std::is_same<T,typename Json::array>::value &&
-    !std::is_void<typename json_string_type_traits<Json,T>::char_traits_type>::value && 
-std::integral_constant<bool, json_type_traits<Json, typename T::iterator::value_type>::is_assignable &&
-                             json_type_traits<Json, typename T::const_iterator::value_type>::is_assignable>::value>::type>
+                        typename std::enable_if<is_compatible_string_type<Json,T>::value>::type>
 {
-    typedef typename T::iterator::value_type element_type;
-
-    static const bool is_assignable = true;
+    typedef typename std::iterator_traits<typename T::iterator>::value_type element_type;
 
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
@@ -837,21 +551,20 @@ std::integral_constant<bool, json_type_traits<Json, typename T::iterator::value_
         return rhs.as_string();
     }
 
-    static void assign(Json& lhs, const T& rhs)
+    static Json to_json(const T& rhs)
     {
-        lhs.assign_string(rhs);
+        return Json::make_string(rhs);
     }
 };
 
 template<class Json, typename T>
 struct json_type_traits<Json, T, 
-                       typename std::enable_if<std::integral_constant<bool, json_type_traits<Json, typename T::mapped_type>::is_assignable>::value>::type>
+                        typename std::enable_if<is_compatible_object_type<Json,T>::value>::type
+>
 {
     typedef typename T::key_type key_type;
     typedef typename T::mapped_type mapped_type;
     typedef typename T::value_type value_type;
-
-    static const bool is_assignable = true;
 
     static bool is(const Json& rhs) JSONCONS_NOEXCEPT
     {
@@ -873,15 +586,15 @@ struct json_type_traits<Json, T,
         return v;
     }
 
-    static void assign(Json& lhs, const T& rhs)
+    static Json to_json(const T& rhs)
     {
         Json val;
         val.reserve(rhs.size());
         for (auto p: rhs)
         {
-            val.set(p.first,p.second);
+            val.set(p.first, p.second);
         }
-        lhs.swap(val);
+        return val;
     }
 };
 

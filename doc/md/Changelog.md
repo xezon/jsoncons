@@ -1,5 +1,27 @@
-Next release (0.99.3)
----------------------
+master
+------
+
+Changes
+
+- The deprecated class `json::any` has been removed. 
+- The jsoncons `boost` extension has been removed. That extension contained a sample `json_type_traits` specialization for `boost::gregorian::date`, which may still be found in the "Type Extensibility" tutorial.  
+- The member `json_type_traits` member function `assign` has been removed and replaced by `to_json`. if you have implemented your own type specializations, you will also have to change your `assign` function to `to_json`.
+- `json_type_traits` specializations no longer require the `is_assignable` data member
+- The names `json_deserializer`,`ojson_deserializer`,`wjson_deserializer`,`owjson_deserializer` have been deprecated (they still work) and replaced by `json_encoder<json>`, `json_encoder<ojson>`, `json_encoder<wjson>` and `json_encoder<owjson>`.  
+- The name `output_format` has been deprecated (it still works) and renamed to `serialization_options`.  
+- The name `wojson` has been deprecated (it still works) and renamed to `owjson`.  
+- The `json_filter` accessor `input_handler` has been deprecated (it still works) and renamed to `downstream_handler`.  
+
+New features
+
+- New `jsonpath` function `json_replace` that searches for all values that match a JsonPath expression and replaces them with a specified value.
+- `json` class has new method `has_name`
+- New filter class `rename_name` allows search and replace of `json` object member names
+
+0.99.3a
+-------
+
+Changes
 
 The `json` initializer-list constructor has been removed, it gives inconsistent results when an initializer has zero elements, or one element of the type being initialized (`json`). Please replace
 
@@ -12,9 +34,16 @@ The `json` initializer-list constructor has been removed, it gives inconsistent 
 json j = json::object{{"first",1},{"second",json::array{1,2,3}}};
 ```
 
+- json::any has been deprecated and will be removed in the future
+
 - The json method `to_stream` has been renamed to `write`, the old name is still supported.
 
-- A new extension jsonx that supports serializing JSON values to [JSONx](http://www.ibm.com/support/knowledgecenter/SS9H2Y_7.5.0/com.ibm.dp.doc/json_jsonx.html) (XML)
+- `output_format` `object_array_block_option`, `array_array_block_option` functions have been deprecated and replaced by 
+   `object_array_split_lines`, `array_array_split_lines` functions. 
+
+Enhancements
+
+- A new method `get_with_default`, with return type that of the default, has been added to `json`
 
 - A new template parameter, `JsonTraits`, has been added to the `basic_json` class template. 
 
@@ -23,6 +52,16 @@ json j = json::object{{"first",1},{"second",json::array{1,2,3}}};
 - Added support for `json` `is<T>`, `as<T>`, constructor, and assignment operator for any sequence container (`std::array`, `std::vector`, `std::deque`, `std::forward_list`, `std::list`) whose values are assignable to JSON types (e.g., ints, doubles, bools, strings, STL containers of same) and for associative containers (`std::set`, `std::multiset`, `std::unordered_set`, `std::unordered_multiset`.)
 
 - Added static method `null()` to `json` class to return null value
+
+- A new extension jsonx that supports serializing JSON values to [JSONx](http://www.ibm.com/support/knowledgecenter/SS9H2Y_7.5.0/com.ibm.dp.doc/json_jsonx.html) (XML)
+
+- json parser will skip `bom` in input if present
+
+Fixes:
+
+- Fixes to the `jsonpath` extension, including the union operator and applying index operations to string values
+
+- Fixes to remove warnings and issues reported by VS2015 with 4-th warnings level, PVS-Studio static analyzer tool, and UBSAN. 
 
 0.99.2
 ------

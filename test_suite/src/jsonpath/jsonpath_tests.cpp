@@ -6,14 +6,18 @@
 #endif
 
 #include <boost/test/unit_test.hpp>
+#include <iostream>
+#include <boost/filesystem.hpp>
+#include <boost/filesystem/fstream.hpp>
 #include <sstream>
 #include <vector>
+#include <map>
 #include <utility>
 #include <ctime>
 #include <new>
 #include <codecvt>
-#include "jsoncons/json.hpp"
-#include "jsoncons_ext/jsonpath/json_query.hpp"
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpath/json_query.hpp>
 
 using namespace jsoncons;
 using namespace jsoncons::jsonpath;
@@ -54,6 +58,101 @@ struct jsonpath_fixture
 };
 
 BOOST_AUTO_TEST_CASE(test_jsonpath)
+{
+    boost::filesystem::path p("input/JSONPath");
+
+    if (exists(p) && is_directory(p))
+    {
+        ojson document;
+        std::map<boost::filesystem::path,std::string> jsonpath_dictionary;
+        std::map<boost::filesystem::path,ojson> expected_dictionary;
+
+        boost::filesystem::directory_iterator end_iter;
+        for (boost::filesystem::directory_iterator dir_itr(p);
+            dir_itr != end_iter;
+            ++dir_itr)
+        {
+            if (is_regular_file(dir_itr->status()))
+            {
+                if (dir_itr->path().filename() == "json.json")
+                {
+                    try
+                    {
+                        boost::filesystem::ifstream is(dir_itr->path());
+                        is >> document;
+                        std::cout << dir_itr->path().filename() << '\n';
+                    }
+                    catch (const jsoncons::parse_exception& e)
+                    {
+                        std::cerr << dir_itr->path() << " " << e.what() << std::endl;
+                    }
+                }
+                else if (dir_itr->path().extension() == ".jsonpath")
+                {
+                    std::string s;
+                    char buffer[4096];
+                    boost::filesystem::ifstream is(dir_itr->path());
+                    while (is.read(buffer, sizeof(buffer)))
+                    {
+                        s.append(buffer, sizeof(buffer));
+                    }
+                    s.append(buffer, is.gcount());
+                    jsonpath_dictionary[dir_itr->path().stem()] = s;
+                    std::cout << ".jsonpath " << dir_itr->path().stem() << '\n';
+                }
+                else if (dir_itr->path().extension() == ".json")
+                {
+                    try
+                    {
+                        ojson j;
+                        boost::filesystem::ifstream is(dir_itr->path());
+                        is >> j;
+                        expected_dictionary[dir_itr->path().stem()] = j;
+                        std::cout << ".json " << dir_itr->path() << '\n';
+                    }
+                    catch (const jsoncons::parse_exception& e)
+                    {
+                        std::cerr << dir_itr->path() << " " << e.what() << std::endl;
+                    }
+                }
+            }
+        }
+        for (auto pair : jsonpath_dictionary)
+        {
+            auto it = expected_dictionary.find(pair.first);
+            if (it != expected_dictionary.end())
+            {
+                try
+                {
+                    std::cout << pair.second << '\n';
+                    ojson result = json_query(document, pair.second);
+                    if (it->second != result)
+                    {
+                        std::cout << pair.first << '\n';
+                        BOOST_CHECK_EQUAL(it->second,result);
+                    }
+                }
+                catch (const jsoncons::parse_exception& e)
+                {
+                    std::cerr << pair.first << " " << pair.second << " " << e.what() << std::endl;
+                }
+
+            }
+            else
+            {
+                std::cout << pair.second << '\n';
+                ojson result = json_query(document,pair.second);
+                std::cout << pretty_print(result) << std::endl;
+            }
+        }
+    }
+    else
+    {
+        std::cout << p << " directory does not exist\n";
+    }
+}
+
+BOOST_AUTO_TEST_CASE(test_path)
 {
     jsonpath_fixture fixture;
 
@@ -106,6 +205,22 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_bicycle)
     json root = json::parse(jsonpath_fixture::store_text());
 
     json result = json_query(root,"$['store']['book','bicycle']");
+
+    json expected = json::array();
+    expected.add(fixture.book());
+    expected.add(fixture.bicycle());
+    BOOST_CHECK_EQUAL(expected,result);
+
+    //    std::cout << pretty_print(result) << std::endl;
+}
+
+BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_bicycle_unquoted)
+{
+    jsonpath_fixture fixture;
+
+    json root = json::parse(jsonpath_fixture::store_text());
+
+    json result = json_query(root,"$[store][book,bicycle]");
 
     json expected = json::array();
     expected.add(fixture.book());
@@ -869,6 +984,85 @@ BOOST_AUTO_TEST_CASE(test_union_array_elements)
     json expected4 = expected2;
     json result4 = json_query(val, "$..book[(@.length - 1),-3]");
     BOOST_CHECK_EQUAL(expected4,result4);
+}
+
+BOOST_AUTO_TEST_CASE(test_array_slice_operator)
+{
+    //jsonpath_fixture fixture;
+
+    json root = json::parse(jsonpath_fixture::store_text());
+
+    json result1 = json_query(root,"$..book[1:2].author");
+    json expected1 = json::parse(R"(
+[
+   "Evelyn Waugh"
+]
+    )");
+    BOOST_CHECK_EQUAL(expected1,result1);
+
+    json result2 = json_query(root,"$..book[1:3:2].author");
+    json expected2 = expected1;
+    BOOST_CHECK_EQUAL(expected2,result2);
+
+    json result3 = json_query(root,"$..book[1:4:2].author");
+    json expected3 = json::parse(R"(
+[
+   "Evelyn Waugh",
+   "J. R. R. Tolkien"
+]    
+    )");
+    BOOST_CHECK_EQUAL(expected3,result3);
+
+    json result4 = json_query(root,"$..book[1:4:2,0].author");
+    json expected4 = json::parse(R"(
+[
+    "Evelyn Waugh",
+    "J. R. R. Tolkien",
+    "Nigel Rees"
+]    
+    )");
+    BOOST_CHECK_EQUAL(expected4,result4);
+
+    json result5 = json_query(root,"$..book[1::2,0].author");
+    json expected5 = json::parse(R"(
+[
+    "Evelyn Waugh",
+    "J. R. R. Tolkien",
+    "Nigel Rees"
+]    
+    )");
+    BOOST_CHECK_EQUAL(expected5,result5);
+
+}
+
+BOOST_AUTO_TEST_CASE(test_replace)
+{
+    json j;
+    try
+    {
+        j = json::parse(R"(
+{"store":
+{"book": [
+{"category": "reference",
+"author": "Margaret Weis",
+"title": "Dragonlance Series",
+"price": 31.96}, {"category": "reference",
+"author": "Brent Weeks",
+"title": "Night Angel Trilogy",
+"price": 14.70
+}]}}
+)");
+    }
+    catch (const parse_exception& e)
+    {
+        std::cout << e.what() << std::endl;
+    }
+
+    std::cout << ("1\n") << pretty_print(j) << std::endl;
+
+    json_replace(j,"$..book[?(@.price==31.96)].price", 30.9);
+
+    std::cout << ("2\n") << pretty_print(j) << std::endl;
 }
 
 BOOST_AUTO_TEST_SUITE_END()

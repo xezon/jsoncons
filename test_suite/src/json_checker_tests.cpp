@@ -8,9 +8,9 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/range/iterator_range.hpp>
-#include "jsoncons/json_reader.hpp"
-#include "jsoncons/json.hpp"
-#include "jsoncons/json_deserializer.hpp"
+#include <jsoncons/json_reader.hpp>
+#include <jsoncons/json.hpp>
+#include <jsoncons/json_encoder.hpp>
 #include <sstream>
 #include <vector>
 #include <utility>
@@ -321,8 +321,8 @@ BOOST_AUTO_TEST_CASE(test_fail18)
 
     try
     {
-        json_deserializer handler;
-        json_reader reader(is,handler);
+        json_encoder<json> encoder;
+        json_reader reader(is,encoder);
         reader.max_nesting_depth(20);
         reader.read_next();
         reader.check_done();
@@ -531,7 +531,7 @@ BOOST_AUTO_TEST_CASE(test_fail29)
         err = e.code();
         //std::cout << in_file << " " << e.what() << std::endl;
     }
-    BOOST_CHECK(err == jsoncons::json_parser_errc::invalid_number);
+    BOOST_CHECK(err == jsoncons::json_parser_errc::expected_value);
 }
 
 BOOST_AUTO_TEST_CASE(test_fail30)
@@ -549,7 +549,7 @@ BOOST_AUTO_TEST_CASE(test_fail30)
         err = e.code();
         //std::cout << in_file << " " << e.what() << std::endl;
     }
-    BOOST_CHECK(err == jsoncons::json_parser_errc::invalid_number);
+    BOOST_CHECK(err == jsoncons::json_parser_errc::expected_value);
 }
 
 BOOST_AUTO_TEST_CASE(test_fail31)
@@ -567,7 +567,7 @@ BOOST_AUTO_TEST_CASE(test_fail31)
         err = e.code();
         //std::cout << in_file << " " << e.what() << std::endl;
     }
-    BOOST_CHECK(err == jsoncons::json_parser_errc::invalid_number);
+    BOOST_CHECK(err == jsoncons::json_parser_errc::expected_value);
 }
 
 BOOST_AUTO_TEST_CASE(test_fail32)
