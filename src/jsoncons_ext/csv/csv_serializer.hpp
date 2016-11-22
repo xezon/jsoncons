@@ -54,7 +54,7 @@ template <class CharT>
 void escape_string(const CharT* s,
                    size_t length,
                    CharT quote_char, CharT quote_escape_char,
-                   buffered_ostream<CharT>& os)
+                   buffered_output<CharT>& os)
 {
     const CharT* begin = s;
     const CharT* end = s + length;
@@ -91,13 +91,13 @@ class basic_csv_serializer : public basic_json_output_handler<CharT>
         size_t count_;
         bool skip_;
     };
-    buffered_ostream<CharT> os_;
+    buffered_output<CharT> os_;
     basic_csv_parameters<CharT> parameters_;
     basic_serialization_options<CharT> format_;
     std::vector<stack_item> stack_;
     std::basic_ostringstream<CharT> header_oss_;
-    buffered_ostream<CharT> header_os_;
-    std::map<std::basic_string<CharT>,size_t> header_;
+    buffered_output<CharT> header_os_;
+    std::map<std::basic_string<CharT>,size_t> column_name_pos_map_;
     float_printer<CharT> fp_;
 public:
     basic_csv_serializer(std::basic_ostream<CharT>& os)
@@ -106,7 +106,7 @@ public:
        format_(),
        stack_(),
        header_os_(header_oss_),
-       header_(),
+       column_name_pos_map_(),
        fp_(format_.precision())
     {
     }
@@ -119,23 +119,45 @@ public:
        format_(),
        stack_(),
        header_os_(header_oss_),
-       header_(),
+       column_name_pos_map_(),
        fp_(format_.precision())
     {
-    }
-
-    ~basic_csv_serializer()
-    {
+        if (params.column_names().size() > 0)
+        {
+            size_t count = 0;
+            for (const auto& name : params.column_names())
+            {
+                column_name_pos_map_[name] = count++;
+            }
+        }
     }
 
 private:
 
     void do_begin_json() override
     {
+        if (parameters_.column_names().size() > 0)
+        {
+            bool first = true;
+            for (const auto& name : parameters_.column_names())
+            {
+                if (!first)
+                {
+                    os_.put(parameters_.field_delimiter());
+                }
+                else
+                {
+                    first = false;
+                }
+                write_string(name.data(), name.length(),os_);
+            }
+            os_.write(parameters_.line_delimiter());
+        }
     }
 
     void do_end_json() override
     {
+        os_.flush();
     }
 
     void do_begin_object() override
@@ -147,7 +169,7 @@ private:
     {
         if (stack_.size() == 2)
         {
-            while (stack_.back().count_ < header_.size())
+            while (stack_.back().count_ < column_name_pos_map_.size())
             {
                 os_.put(parameters_.field_delimiter());
                 ++stack_.back().count_;
@@ -155,6 +177,7 @@ private:
             os_.write(parameters_.line_delimiter());
             if (stack_[0].count_ == 0)
             {
+                header_os_.flush();
                 os_.write(header_oss_.str());
             }
         }
@@ -183,33 +206,21 @@ private:
     {
         if (stack_.size() == 2)
         {
-            if (stack_[0].count_ == 0)
+            if (stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
                 if (stack_.back().count_ > 0)
                 {
                     os_.put(parameters_.field_delimiter());
                 }
-                bool quote = false;
-                if (parameters_.quote_style() == quote_styles::all || parameters_.quote_style() == quote_styles::nonnumeric ||
-                    (parameters_.quote_style() == quote_styles::minimal && std::char_traits<CharT>::find(name,length,parameters_.field_delimiter()) != nullptr))
-                {
-                    quote = true;
-                    os_.put(parameters_.quote_char());
-                }
-                jsoncons::csv::escape_string<CharT>(name, length, parameters_.quote_char(), parameters_.quote_escape_char(), os_);
-                if (quote)
-                {
-                    os_.put(parameters_.quote_char());
-                }
-                header_[name] = stack_.back().count_;
+                write_string(name, length, os_);
+                column_name_pos_map_[name] = stack_.back().count_;
             }
             else
             {
-                typename std::map<std::basic_string<CharT>,size_t>::iterator it = header_.find(std::basic_string<CharT>(name,length));
-                if (it == header_.end())
+                auto it = column_name_pos_map_.find(std::basic_string<CharT>(name,length));
+                if (it == column_name_pos_map_.end())
                 {
                     stack_.back().skip_ = true;
-                    //std::cout << " Not found ";
                 }
                 else
                 {
@@ -219,17 +230,34 @@ private:
                         os_.put(parameters_.field_delimiter());
                         ++stack_.back().count_;
                     }
-                //    std::cout << " (" << it->value() << " " << stack_.back().count_ << ") ";
                 }
             }
         }
+    }
+
+    void write_string(const CharT* s, size_t length, buffered_output<CharT>& os)
+    {
+        bool quote = false;
+        if (parameters_.quote_style() == quote_styles::all || parameters_.quote_style() == quote_styles::nonnumeric ||
+            (parameters_.quote_style() == quote_styles::minimal &&
+            (std::char_traits<CharT>::find(s, length, parameters_.field_delimiter()) != nullptr || std::char_traits<CharT>::find(s, length, parameters_.quote_char()) != nullptr)))
+        {
+            quote = true;
+            os.put(parameters_.quote_char());
+        }
+        jsoncons::csv::escape_string<CharT>(s, length, parameters_.quote_char(), parameters_.quote_escape_char(), os);
+        if (quote)
+        {
+            os.put(parameters_.quote_char());
+        }
+
     }
 
     void do_null_value() override
     {
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
-            if (stack_.back().is_object() && stack_[0].count_ == 0)
+            if (stack_.back().is_object() && stack_[0].count_ == 0  && parameters_.column_names().size() == 0)
             {
                 do_null_value(header_os_);
             }
@@ -244,7 +272,7 @@ private:
     {
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
-            if (stack_.back().is_object() && stack_[0].count_ == 0)
+            if (stack_.back().is_object() && stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
                 value(val,length,header_os_);
             }
@@ -261,7 +289,7 @@ private:
 
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
-            if (stack_.back().is_object() && stack_[0].count_ == 0)
+            if (stack_.back().is_object() && stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
                 value(val,header_os_);
             }
@@ -276,7 +304,7 @@ private:
     {
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
-            if (stack_.back().is_object() && stack_[0].count_ == 0)
+            if (stack_.back().is_object() && stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
                 value(val,header_os_);
             }
@@ -291,7 +319,7 @@ private:
     {
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
-            if (stack_.back().is_object() && stack_[0].count_ == 0)
+            if (stack_.back().is_object() && stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
                 value(val,header_os_);
             }
@@ -306,7 +334,7 @@ private:
     {
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
-            if (stack_.back().is_object() && stack_[0].count_ == 0)
+            if (stack_.back().is_object() && stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
                 value(val,header_os_);
             }
@@ -317,27 +345,14 @@ private:
         }
     }
 
-    void value(const CharT* val, size_t length, buffered_ostream<CharT>& os)
+    void value(const CharT* val, size_t length, buffered_output<CharT>& os)
     {
         begin_value(os);
-
-        bool quote = false;
-        if (parameters_.quote_style() == quote_styles::all || parameters_.quote_style() == quote_styles::nonnumeric ||
-            (parameters_.quote_style() == quote_styles::minimal && std::char_traits<CharT>::find(val, length, parameters_.field_delimiter()) != nullptr))
-        {
-            quote = true;
-            os.put(parameters_.quote_char());
-        }
-        jsoncons::csv::escape_string<CharT>(val, length, parameters_.quote_char(), parameters_.quote_escape_char(), os);
-        if (quote)
-        {
-            os.put(parameters_.quote_char());
-        }
-
+        write_string(val,length,os);
         end_value();
     }
 
-    void value(double val, buffered_ostream<CharT>& os)
+    void value(double val, buffered_output<CharT>& os)
     {
         begin_value(os);
 
@@ -362,7 +377,7 @@ private:
 
     }
 
-    void value(int64_t val, buffered_ostream<CharT>& os)
+    void value(int64_t val, buffered_output<CharT>& os)
     {
         begin_value(os);
 
@@ -373,7 +388,7 @@ private:
         end_value();
     }
 
-    void value(uint64_t val, buffered_ostream<CharT>& os)
+    void value(uint64_t val, buffered_output<CharT>& os)
     {
         begin_value(os);
 
@@ -384,7 +399,7 @@ private:
         end_value();
     }
 
-    void value(bool val, buffered_ostream<CharT>& os) 
+    void value(bool val, buffered_output<CharT>& os) 
     {
         begin_value(os);
 
@@ -402,7 +417,7 @@ private:
         end_value();
     }
 
-    void do_null_value(buffered_ostream<CharT>& os) 
+    void do_null_value(buffered_output<CharT>& os) 
     {
         begin_value(os);
         auto buf = json_text_traits<CharT>::null_literal();
@@ -411,7 +426,7 @@ private:
 
     }
 
-    void begin_value(buffered_ostream<CharT>& os)
+    void begin_value(buffered_output<CharT>& os)
     {
         if (!stack_.empty())
         {

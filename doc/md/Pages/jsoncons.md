@@ -1,10 +1,35 @@
 # jsoncons: a C++ library for json construction
 
+[Preliminaries](#A1)
+
+[Reading JSON text from a file](#A2)
+
+[Constructing json values in C++](#A3)
+
+[Converting to and from standard library containers](#A4)
+
+[Converting CSV files to json](#A5  )
+
+[Pretty print](#A6)
+
+[Filters](#A7)
+
+[JsonPath](#A8)
+
+[About jsoncons::json](#A9)
+
+[Wide character support](#A10)
+
+[ojson and owjson](#A11)
+
+[Convert json to/from user defined type](#A12)
+
+<div id="A1"/>
+### Preliminaries
+
 jsoncons is a C++ library for the construction of [JavaScript Object Notation (JSON)](http://www.json.org). It supports parsing a JSON file or string into a `json` value, building a `json` value in C++ code, and serializing a `json` value to a file or string. It supports converting to and from the standard library sequence and associative containers. It also provides an API for generating json read and write events in code, somewhat analogously to SAX processing in the XML world. Consult the wiki for the latest [documentation and tutorials](https://github.com/danielaparker/jsoncons/wiki) and [roadmap](https://github.com/danielaparker/jsoncons/wiki/Roadmap). 
 
 jsoncons uses some features that are new to C++ 11, particularly [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, and recent versions of clang. Note that `std::regex` isn't fully implemented in GCC 4.8., so `jsoncons_ext/jsonpath` regular expression filters aren't supported for that compiler.
-
-## Using the jsoncons library
 
 The jsoncons library is header-only: it consists solely of header files containing templates and inline functions, and requires no separately-compiled library binaries when linking. It has no dependence on other libraries. 
 
@@ -15,12 +40,14 @@ The jsoncons classes and functions are in namespace `jsoncons`. You need to incl
 #include <jsoncons/json.hpp>
 ```
 and, for convenience,
+```c++
+using jsoncons::json;
+```
 
-    using jsoncons::json;
-
+<div id="A2"/>
 ### Reading JSON text from a file
 
-Here is a sample file, `books.json`:
+Example file (`books.json`):
 ```c++
 [
     {
@@ -49,7 +76,7 @@ is >> books;
 ```
 Loop through the book array elements, using a range-based for loop
 ```c++
-for (const auto& book : books.elements())
+for (const auto& book : books.array_range())
 {
     std::string author = book["author"].as<std::string>();
     std::string title = book["title"].as<std::string>();
@@ -58,8 +85,8 @@ for (const auto& book : books.elements())
 ```
 or begin-end iterators
 ```c++
-for (auto it = books.elements().begin(); 
-     it != books.elements().end();
+for (auto it = books.array_range().begin(); 
+     it != books.array_range().end();
      ++it)
 {
     std::string author = (*it)["author"].as<std::string>();
@@ -87,9 +114,9 @@ Ivan Passer, Cutter's Way
 Loop through the members of the third book element, using a range-based for loop
 
 ```c++
-for (const auto& member : books[2].members())
+for (const auto& member : books[2].object_range())
 {
-    std::cout << member.name() << "=" 
+    std::cout << member.key() << "=" 
               << member.value() << std::endl;
 }
 ```
@@ -97,11 +124,11 @@ for (const auto& member : books[2].members())
 or begin-end iterators:
 
 ```c++
-for (auto it = books[2].members().begin(); 
-     it != books[2].members().end();
+for (auto it = books[2].object_range().begin(); 
+     it != books[2].object_range().end();
      ++it)
 {
-    std::cout << (*it).name() << "=" 
+    std::cout << (*it).key() << "=" 
               << (*it).value() << std::endl;
 } 
 ```
@@ -122,9 +149,9 @@ So if you want to show "n/a" for the missing price, you can use this accessor
 ```c++
 std::string price = book.get_with_default("price","n/a");
 ```
-Or you can check if book has a member "price" with the method `has_name`, and output accordingly,
+Or you can check if book has a member "price" with the method `has_key`, and output accordingly,
 ```c++
-if (book.has_name("price"))
+if (book.has_key("price"))
 {
     double price = book["price"].as<double>();
     std::cout << price;
@@ -134,6 +161,7 @@ else
     std::cout << "n/a";
 }
 ```
+<div id="A3"/>
 ### Constructing json values in C++
 
 The default `json` constructor produces an empty json object. For example 
@@ -223,6 +251,7 @@ produces
     }
 }
 ```
+<div id="A4"/>
 ### Converting to and from standard library containers
 
 The jsoncons library supports converting to and from the standard library sequence and associative containers.
@@ -280,10 +309,10 @@ one=1
 three=3
 two=2
 ```
-
+<div id="A5"/>
 ### Converting CSV files to json
 
-Here is a sample CSV file (tasks.csv):
+Example CSV file (tasks.csv):
 ```
 project_id, task_name, task_start, task_finish
 4001,task1,01/01/2003,01/31/2003
@@ -298,11 +327,11 @@ You can read the `CSV` file into a `json` value with the `csv_reader`.
 
 using jsoncons::csv::csv_parameters;
 using jsoncons::csv::csv_reader;
-using jsoncons::json_encoder;
+using jsoncons::json_decoder;
 
 std::fstream is("tasks.csv");
 
-json_encoder<json> encoder;
+json_decoder<json> decoder;
 
 csv_parameters params;
 params.assume_header(true)
@@ -310,7 +339,7 @@ params.assume_header(true)
       .ignore_empty_values(true)
       .column_types({"integer","string","string","string"});
 
-csv_reader reader(is,encoder,params);
+csv_reader reader(is,decoder,params);
 reader.read();
 json val = encoder.get_result();
 
@@ -356,6 +385,7 @@ There are a few things to note about the effect of the parameter settings.
 - `ignore_empty_values` `true` causes the empty last value in the `task_finish` column to be omitted.
 - The `column_types` setting specifies that column one ("project_id") contains integers and the remaining columns strings.
 
+<div id="A6"/>
 ### Pretty print
 
 The `pretty_print` function applies stylistic formatting to JSON text. For example
@@ -428,7 +458,7 @@ produces
     ]
 }
 ```
-
+<div id="A7"/>
 ### Filters
 
 You can rename object member names with the built in filter [rename_name_filter](https://github.com/danielaparker/jsoncons/wiki/rename_name_filter)
@@ -471,12 +501,12 @@ Output:
 (2) {"first":1,"second":2,"third":3,"fourth":4}
 ```
 Or define and use your own filters. See [json_filter](https://github.com/danielaparker/jsoncons/wiki/json_filter) for details.
-
+<div id="A8"/>
 ### JsonPath
 
 [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/) is an XPATH inspired query language for selecting parts of a JSON structure.
 
-Here is a sample JSON file (store.json):
+Example JSON file (store.json):
 ```json
 { "store": {
     "book": [ 
@@ -574,6 +604,7 @@ Output:
     "The Lord of the Rings"
 ]
 ```
+<div id="A9"/>
 ### About jsoncons::json
 
 The [json](https://github.com/danielaparker/jsoncons/wiki/json) class is an instantiation of the `basic_json` class template that uses `char` as the character type
@@ -609,6 +640,7 @@ This results in a json value being constucted with all memory being allocated fr
 
 Note that the underlying memory pool used by the `boost::fast_pool_allocator` is never freed. 
 
+<div id="A10"/>
 ### Wide character support
 
 jsoncons supports wide character strings and streams with `wjson` and `wjson_reader`. It supports `UTF16` encoding if `wchar_t` has size 2 (Windows) and `UTF32` encoding if `wchar_t` has size 4. You can construct a `wjson` value in exactly the same way as a `json` value, for instance:
@@ -626,6 +658,7 @@ which prints
 ```c++
 {"field1":"test","field2":3.9,"field3":true}
 ```
+<div id="A11"/>
 ### ojson and owjson
 
 The [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) ([owjson](https://github.com/danielaparker/jsoncons/wiki/owjson)) class is an instantiation of the `basic_json` class template that uses `char` (`wchar_t`) as the character type and keeps object members in their original order. 
@@ -685,6 +718,7 @@ Output:
 }
 ```
 
+<div id="A12"/>
 ### Convert `json` to/from user defined type
 
 In the json class, constructors, accessors and modifiers are templated, for example,
@@ -726,9 +760,9 @@ namespace jsoncons
         static bool is(const Json& rhs) noexcept
         {
             return rhs.is_object() &&
-                   rhs.has_name("author") && 
-                   rhs.has_name("title") && 
-                   rhs.has_name("price");
+                   rhs.has_key("author") && 
+                   rhs.has_key("title") && 
+                   rhs.has_key("price");
         }
         static book as(const Json& rhs)
         {

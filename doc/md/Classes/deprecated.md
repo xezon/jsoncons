@@ -23,15 +23,13 @@ json|add(size_t index, const json& val)|<em>&#x2713;</em>|Use add(array_iterator
     |is_numeric() const|<em>&#x2713;</em>|Use `is_number()`
     |remove_member(const std::string& name)|<em>&#x2713;</em>|Use erase(const std::string& name)
     |const json& get(const std::string& name) const|<em>&#x2713;</em>|Use const json get(const std::string& name, T default_val) const with default `json::null_type()`
-    |has_member(const std::string& name) const|<em>&#x2713;</em>|Use count(const std::string& name)
-    |begin_members()|<em>&#x2713;</em>|Use members().begin()
-    |begin_members() const|<em>&#x2713;</em>|Use members().begin()
-    |end_members()|<em>&#x2713;</em>|Use members().end()
-    |end_members() const|<em>&#x2713;</em>|Use members().end()
-    |begin_elements()|<em>&#x2713;</em>|Use elements().begin()
-    |begin_elements() const|<em>&#x2713;</em>|Use elements().begin()
-    |end_elements()|<em>&#x2713;</em>|Use elements().end()
-    |end_elements() const|<em>&#x2713;</em>|Use elements().end()
+    |has_member(const std::string& name) const|<em>&#x2713;</em>|Use has_name(const std::string& name)
+    |members()|<em>&#x2713;</em>|Use object_range()
+    |elements()|<em>&#x2713;</em>|Use array_range()
+    |begin_members()|<em>&#x2713;</em>|Use object_range().begin()
+    |end_members()|<em>&#x2713;</em>|Use object_range().end()
+    |begin_elements()|<em>&#x2713;</em>|Use array_range().begin()
+    |end_elements()|<em>&#x2713;</em>|Use array_range().end()
     |is_empty() const|<em>&#x2713;</em>|Use `empty()`
     |parse_string(const std::string& s)|<em>&#x2713;</em>|parse(const std::string& s)
     |parse_string(const std::string& s,parse_error_handler& err_handler)|<em>&#x2713;</em>|Use parse(const std::string& s,parse_error_handler& err_handler)
@@ -39,16 +37,17 @@ json|add(size_t index, const json& val)|<em>&#x2713;</em>|Use add(array_iterator
     |resize_array(size_t n, const json& val)|<em>&#x2713;</em>|Use resize(size_t n, const json& val)
     |to_stream|<em>&#x2713;</em>|Use write
     |`json` initializer-list constructor||Construct from `json::array` with initializer-list
-    |json_deserializer|<em>&#x2713;</em>|Use json_encoder<json>`
-    |wjson_deserializer|<em>&#x2713;</em>|Use `json_encoder<wjson>`
-    |ojson_deserializer|<em>&#x2713;</em>|Use `json_encoder<ojson>`
-    |wojson_deserializer|<em>&#x2713;</em>|Use `json_encoder<wojson>`
+    |json_deserializer|<em>&#x2713;</em>|Use json_decoder<json>`
+    |wjson_deserializer|<em>&#x2713;</em>|Use `json_decoder<wjson>`
+    |ojson_deserializer|<em>&#x2713;</em>|Use `json_decoder<ojson>`
+    |wojson_deserializer|<em>&#x2713;</em>|Use `json_decoder<wojson>`
     |wojson|<em>&#x2713;</em>|Use owjson`
+    |member_type name()|<em>&#x2713;</em>|Use key()
 json member types|any|<em>&#x2713;</em>|
 json member constants|null||Use static member function `json::null()`
     |an_object||Use the default constructor `json()` instead.
     |an_array||Use assignment to `json::array()` or `json::make_array()` instead.
-json_encoder|json& root()|<em>&#x2713;</em>|json get_result()
+json_decoder|json& root()|<em>&#x2713;</em>|json get_result()
 serialization|`output_format`|<em>&#x2713;</em>|Use `serialization_options`
 json_reader|max_depth() const|<em>&#x2713;</em>|Use max_nesting_depth() const
     |max_depth(depth)|<em>&#x2713;</em>|Use max_nesting_depth() const

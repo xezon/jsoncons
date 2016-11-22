@@ -16,15 +16,32 @@
 #include <iostream>
 #include <vector>
 #include <jsoncons/jsoncons.hpp>
+#include <jsoncons/json_error_category.hpp>
 
 namespace jsoncons {
 
-// json_text_traits
+inline
+static bool is_continuation_byte(unsigned char ch)
+{
+    return (ch & 0xC0) == 0x80;
+}
 
 const uint16_t min_lead_surrogate = 0xD800;
 const uint16_t max_lead_surrogate = 0xDBFF;
 const uint16_t min_trail_surrogate = 0xDC00;
 const uint16_t max_trail_surrogate = 0xDFFF;
+
+inline bool is_leading_surrogate(uint16_t c)
+{
+    return c >= min_lead_surrogate && c <= max_lead_surrogate;
+}
+
+inline bool is_trailing_surrogate(uint16_t c)
+{
+    return c >= min_trail_surrogate && c <= max_trail_surrogate;
+}
+
+// json_text_traits
 
 template <class CharT>
 struct json_text_traits
@@ -120,7 +137,7 @@ struct json_text_traits<char> : Json_text_traits_<char>
         return value;
     }
 
-    static size_t skip_bom(const char* it, size_t length)
+    static size_t detect_bom(const char* it, size_t length)
     {
         size_t count = 0;
         if (length >= 3)
@@ -243,7 +260,8 @@ struct json_wchar_traits
 template <>
 struct json_wchar_traits<wchar_t,2> // assume utf16
 {
-    static size_t skip_bom(const wchar_t* it, size_t length)
+
+    static size_t detect_bom(const wchar_t* it, size_t length)
     {
         size_t count = 0;
         if (length >= 1)
@@ -306,7 +324,8 @@ struct json_wchar_traits<wchar_t,2> // assume utf16
 template <>
 struct json_wchar_traits<wchar_t,4> // assume utf32
 {
-    static size_t skip_bom(const wchar_t* it, size_t length)
+
+    static size_t detect_bom(const wchar_t* it, size_t length)
     {
         size_t count = 0;
         if (length >= 1)
@@ -348,6 +367,7 @@ struct json_wchar_traits<wchar_t,4> // assume utf32
 template <>
 struct json_text_traits<wchar_t>  : Json_text_traits_<wchar_t>
 {
+
     static const std::pair<const wchar_t*,size_t>& null_literal() 
     {
         static const std::pair<const wchar_t*,size_t> value = {L"null",4};
@@ -366,9 +386,9 @@ struct json_text_traits<wchar_t>  : Json_text_traits_<wchar_t>
         return value;
     }
 
-    static size_t skip_bom(const wchar_t* it, size_t length)
+    static size_t detect_bom(const wchar_t* it, size_t length)
     {
-        return json_wchar_traits<wchar_t,sizeof(wchar_t)>::skip_bom(it, length);
+        return json_wchar_traits<wchar_t,sizeof(wchar_t)>::detect_bom(it, length);
     }
 
     static void append_codepoint_to_string(uint32_t cp, std::wstring& s)

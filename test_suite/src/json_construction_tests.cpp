@@ -144,9 +144,9 @@ BOOST_AUTO_TEST_CASE(test_another_object_iterator)
     obj["events_attended"] = 10;
     obj["accept_waiver_of_liability"] = true;
 
-    for (auto it = obj.members().begin(); it != obj.members().end(); ++it)
+    for (auto it = obj.object_range().begin(); it != obj.object_range().end(); ++it)
     {
-        std::cout << "name=" << it->name() << ", value=" << it->value().as<std::string>() << std::endl;
+        std::cout << "name=" << it->key() << ", value=" << it->value().as<std::string>() << std::endl;
     }
 }
 
@@ -158,7 +158,7 @@ BOOST_AUTO_TEST_CASE(test_another_array_iterator)
     arr.add("Ottawa");
     arr.add("Vancouver");
 
-    for (auto it = arr.elements().begin(); it != arr.elements().end(); ++it)
+    for (auto it = arr.array_range().begin(); it != arr.array_range().end(); ++it)
     {
         std::cout << it->as<std::string>() << std::endl;
     }
@@ -223,21 +223,21 @@ BOOST_AUTO_TEST_CASE(test_multiple)
 
     std::istringstream is(in);
 
-    jsoncons::json_encoder<json> encoder;
-    json_reader reader(is,encoder);
+    jsoncons::json_decoder<json> decoder;
+    json_reader reader(is,decoder);
 
     if (!reader.eof())
     {
         reader.read_next();
         BOOST_CHECK(!reader.eof());
-        json val = encoder.get_result();
+        json val = decoder.get_result();
         BOOST_CHECK_EQUAL(1,val["a"].as<int>());
     }
     if (!reader.eof())
     {
         reader.read_next();
         BOOST_CHECK(!reader.eof());
-        json val = encoder.get_result();
+        json val = decoder.get_result();
         BOOST_CHECK_EQUAL(4,val["a"].as<int>());
     }
 

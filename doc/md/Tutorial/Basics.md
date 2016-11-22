@@ -38,7 +38,7 @@ book3.reserve(6);
 
 // Insert in name alphabetical order
 // Give set a hint where to insert the next member
-auto hint = book3.set(book3.members().begin(),"author", "Haruki Murakami");
+auto hint = book3.set(book3.object_range().begin(),"author", "Haruki Murakami");
 hint = book3.set(hint, "category", "Fiction");
 hint = book3.set(hint, "date", "2006-01-03");
 hint = book3.set(hint, "isbn", "1400079276");  
@@ -70,7 +70,7 @@ booklist.add(std::move(book1));
 booklist.add(std::move(book2));    
 
 // Add the third book to the front
-auto pos = booklist.add(booklist.elements().begin(),std::move(book3));
+auto pos = booklist.add(booklist.array_range().begin(),std::move(book3));
 
 // and the last one immediately after
 booklist.add(pos+1,std::move(book4));    
@@ -81,7 +81,7 @@ std::cout << book1 << "," << book2 << "," << book3 << "," << book4 << std::endl;
 
 ++
 //Loop through the booklist elements using a range-based for loop    
-for (const auto& book : booklist.elements())
+for (const auto& book : booklist.array_range())
 {
     std::cout << book["title"].as<std::string>()
               << ","
@@ -92,20 +92,20 @@ for (const auto& book : booklist.elements())
 json& book = booklist[1];
 
 //Loop through the book's name-value pairs using a range-based for loop    
-for (const auto& member : book.members())
+for (const auto& member : book.object_range())
 {
-    std::cout << member.name()
+    std::cout << member.key()
               << ","
               << member.value() << std::endl;
 }
 
 auto it = book.find("author");
-if (it != book.members().end())
+if (it != book.object_range().end())
 {
     // member "author" found
 }
 
-if (book.has_name("author"))
+if (book.has_key("author"))
 {
     // book has a member "author"
 }
@@ -286,7 +286,7 @@ book3.reserve(6);
 
 // Insert in name alphabetical order
 // Give set a hint where to insert the next member
-auto hint = book3.set(book3.members().begin(), L"author", L"Haruki Murakami");
+auto hint = book3.set(book3.object_range().begin(), L"author", L"Haruki Murakami");
 hint = book3.set(hint, L"category", L"Fiction");
 hint = book3.set(hint, L"date", L"2006-01-03");
 hint = book3.set(hint, L"isbn", L"1400079276");
@@ -318,7 +318,7 @@ booklist.add(std::move(book1));
 booklist.add(std::move(book2));
 
 // Add the third book to the front
-auto pos = booklist.add(booklist.elements().begin(),std::move(book3));
+auto pos = booklist.add(booklist.array_range().begin(),std::move(book3));
 
 // and the last one immediately after
 booklist.add(pos+1,std::move(book4));    
@@ -328,7 +328,7 @@ std::wcout << book1 << L"," << book2 << L"," << book3 << L"," << book4 << std::e
 
 ++
 //Loop through the booklist elements using a range-based for loop    
-for (const auto& book : booklist.elements())
+for (const auto& book : booklist.array_range())
 {
     std::wcout << book[L"title"].as<std::wstring>()
                << L","
@@ -339,20 +339,20 @@ for (const auto& book : booklist.elements())
 wjson& book = booklist[1];
 
 //Loop through the book's name-value pairs using a range-based for loop    
-for (const auto& member : book.members())
+for (const auto& member : book.object_range())
 {
-    std::wcout << member.name()
+    std::wcout << member.key()
                << L","
                << member.value() << std::endl;
 }
 
 auto it = book.find(L"author");
-if (it != book.members().end())
+if (it != book.object_range().end())
 {
     // member "author" found
 }
 
-if (book.has_name(L"author"))
+if (book.has_key(L"author"))
 {
     // book has a member "author"
 }

@@ -16,6 +16,7 @@ The library has a number of features, which are listed below:
 - Correctly handles surrogate pairs in \uXXXX escape sequences
 - Supports event based JSON parsing and serializing with user defined input and output handlers
 - Accepts and ignores single line comments that start with //, and multi line comments that start with /* and end with */
+- Parses files with duplicate names but uses only the last entry
 - Supports optional escaping of the solidus (/) character
 - Supports Nan, Inf and -Inf replacement
 - Supports reading a sequence of JSON texts from a stream
@@ -33,20 +34,7 @@ As the `jsoncons` library has evolved, names have sometimes changed. To ease tra
 ## Benchmarks
 
 [json_benchmarks](https://github.com/danielaparker/json_benchmarks) provides some measurements about how `jsoncons` compares to other `json` libraries.
-
-## What's new on master
-
-Note that changes introduced to the `json_filter` class have been reversed, if you have implemented your own custom filters that extend `json_filter`, no changes are required.
-
-- The deprecated class `json::any` has been removed 
-- The jsoncons `boost` extension has been removed. That extension contained a sample `json_type_traits` specialization for `boost::gregorian::date`, which may still be found in the [Type Extensibility](https://github.com/danielaparker/jsoncons/wiki/Type-Extensibility) tutorial.  
-- The member `json_type_traits` member function `assign` has been removed and replaced by `to_json`. if you have implemented your own type specializations, you will also have to change your `assign` function to `to_json`.
-- `json_type_traits` specializations no longer require the `is_assignable` data member
-- The names `json_deserializer`,`ojson_deserializer`,`wjson_deserializer`,`wojson_deserializer` have been deprecated (they still work) and replaced by `json_encoder<json>`, `json_encoder<ojson>`, `json_encoder<wjson>` and `json_encoder<owjson>`.  
-- The name `output_format` has been deprecated (it still works) and renamed to `serialization_options`.  
-- The name `wojson` has been deprecated (it still works) and renamed to `owjson`.  
-- New `jsonpath` function `json_replace` that searches for all values that match a JsonPath expression and replaces them with a specified value.
-- The `json_filter` accessor `input_handler` has been deprecated (it still works) and renamed to `downstream_handler`.  
+Results for [JSONTestSuite](https://github.com/nst/JSONTestSuite) and [JSON_checker](http://www.json.org/JSON_checker/) tests may be found [here](https://danielaparker.github.io/json_benchmarks/).
 
 ## Get jsoncons
 
@@ -118,7 +106,7 @@ For a quick guide, see the article [jsoncons: a C++ library for json constructio
 
 [CMake](https://cmake.org/) is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a [Windows Installer package](https://cmake.org/download/). On Linux it is usually available as a package, e.g., on Ubuntu,
 ```
-    sudo apt-get install cmake
+sudo apt-get install cmake
 ```
 
 Instructions for building the test suite with CMake may be found in
@@ -141,11 +129,11 @@ The library includes four instantiations of `basic_json`:
 
 - [json](https://github.com/danielaparker/jsoncons/wiki/json) constructs a narrow character json value that sorts name-value members alphabetically
 
-- [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) constructs a narrow character json value that retains the original name-value insertion order
+- [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) constructs a narrow character json value that preserves the original name-value insertion order
 
 - [wjson](https://github.com/danielaparker/jsoncons/wiki/wjson) constructs a wide character json value that sorts name-value members alphabetically
 
-- [owjson](https://github.com/danielaparker/jsoncons/wiki/owjson) constructs a wide character json value that retains the original name-value insertion order
+- [owjson](https://github.com/danielaparker/jsoncons/wiki/owjson) constructs a wide character json value that preserves the original name-value insertion order
 
 ## Features
 
@@ -171,7 +159,7 @@ Extra comma at line 1 and column 10
 ```c++
 json j = json::array{1,2,3,4};
 
-for (auto element : book.elements())
+for (auto element : book.array_range())
 {
     std::cout << element << std::endl;
 }
@@ -186,9 +174,9 @@ json book = json::object{
     {"price", 25.17}
 };
 
-for (const auto& member : book.members())
+for (const auto& member : book.object_range())
 {
-    std::cout << member.name() << "=" 
+    std::cout << member.key() << "=" 
               << member.value() << std::endl;
 }
 ```
@@ -453,13 +441,13 @@ int main()
 {
     std::ifstream is("input/tasks.csv");
 
-    json_encoder<json> encoder;
+    json_decoder<json> decoder;
     csv_parameters params;
     params.assume_header(true)
           .trim(true)
           .ignore_empty_values(true) 
           .column_types({"integer","string","string","string"});
-    csv_reader reader(is,encoder,params);
+    csv_reader reader(is,decoder,params);
     reader.read();
     ojson tasks = encoder.get_result();
 

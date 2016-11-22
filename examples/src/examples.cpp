@@ -19,6 +19,7 @@ void unicode_examples();
 void csv_examples();
 void jsonpath_examples();
 void jsonx_examples();
+void json_is_as_examples();
 
 void first_example_a()
 {
@@ -103,7 +104,7 @@ void first_example_d()
             json& book = books[i];
             std::string author = book["author"].as<std::string>();
             std::string title = book["title"].as<std::string>();
-            if (book.has_name("price") && book["price"].is_number())
+            if (book.has_key("price") && book["price"].is_number())
             {
                 double price = book["price"].as<double>();
                 std::cout << author << ", " << title << ", " << price << std::endl;
@@ -166,15 +167,15 @@ void mulitple_json_objects()
         throw std::runtime_error("Cannot open file");
     }
 
-    json_encoder<json> encoder;
-    json_reader reader(is, encoder);
+    json_decoder<json> decoder;
+    json_reader reader(is, decoder);
 
     while (!reader.eof())
     {
         reader.read_next();
         if (!reader.eof())
         {
-            json val = encoder.get_result();
+            json val = decoder.get_result();
             std::cout << val << std::endl;
         }
     }
@@ -216,29 +217,6 @@ void more_examples()
     x[5] = 3;
 }
 
-void introspection_example()
-{
-    json val = json::parse_file("input/books.json");
-    std::cout << std::boolalpha;
-    std::cout << "Is this an object? " << val.is<json::object>() << ", or an array? " << val.is<json::array>() << std::endl;
-
-    if (val.is<json::array>())
-    {
-        for (size_t i = 0; i < val.size(); ++i)
-        {
-            json& elem = val[i];
-            std::cout << "Is element " << i << " an object? " << elem.is<json::object>() << std::endl;
-            if (elem.is<json::object>())
-            {
-                for (auto it = elem.members().begin(); it != elem.members().end(); ++it){
-                    std::cout << "Is member " << it->name() << " a string? " << it->value().is<std::string>() << ", or a double? " << it->value().is<double>() << ", or perhaps an int? " << it->value().is<int>() << std::endl;
-
-                }
-            }
-        }
-    }
-}
-
 void parse_exception_example()
 {
     std::string s = "[1,2,3,4,]";
@@ -258,6 +236,8 @@ int main()
 {
     try
     {
+        json_is_as_examples();
+/*
         basics_examples();
         ojson_examples();
 
@@ -293,6 +273,7 @@ int main()
         jsonpath_examples();
 
         jsonx_examples();
+*/
     }
     catch (const std::exception& e)
     {

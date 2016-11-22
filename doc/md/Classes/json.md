@@ -5,7 +5,7 @@ typedef basic_json<char,
                    JsonTraits = json_traits<char>,
                    Allocator = std::allocator<char>> json
 ```
-The `json` class is an instantiation of the `basic_json` class template that uses `char` as the character type. The supplied `JsonTraits` template parameter keeps object members in alphabetically sorted order. If you prefer to retain the original insertion order, use [ojson](ojson) instead.
+The `json` class is an instantiation of the `basic_json` class template that uses `char` as the character type. The order of an object's name/value pairs is not preserved, they are sorted alphabetically by name. If you want to preserve the original insertion order, use [ojson](ojson) instead.
 
 The `jsoncons` library will always rebind the supplied allocator from the template parameter to internal data structures.
 
@@ -32,10 +32,6 @@ Member type                         |Definition
 `const_object_iterator`|A bidirectional iterator to `const json::member_type`
 `array_iterator`|A random access iterator to `json`
 `const_array_iterator`|A random access iterator to `const json`
-`object_range`|An `object_range` provides a pair of bidirectional iterators, defined by `begin()` and `end()`, for accessing the members of a json object. An `object_range` supports range-based for loops over the members.
-`const_object_range`|A `const_object_range` provides a pair of const bidirectional iterators, defined by `begin()` and `end()`, for accessing the members of a json object.
-`array_range`|An `array_range` provides a pair of random access iterators, defined by `begin()` and `end()`, for accessing the elements of a json array. An `array_range` supports range-based for loops over the elements.
-`const_array_range`|A `const_array_range` provides a pair of const random access iterators, defined by `begin()` and `end()`, for accessing the elements of a json array. 
 
 ### Static member functions
 
@@ -136,13 +132,13 @@ Assigns the templated value to a `json` variable using [json_type_traits](json_t
 
 ### Ranges and Iterators
 
-    object_range members();  
-    const_object_range members() const;  
+    range<object_iterator> object_range();  
+    range<const_object_iterator> object_range() const;  
 Returns a "range" defined by `begin()` and `end()` over the members of a `json` object      
 Throws `std::runtime_error` if not an object.
 
-    array_range elements();
-    const_array_range elements() const;
+    range<array_iterator> array_range();
+    range<const_array_iterator> array_range() const;
 Returns a "range" defined by `begin()` and `end()` over the elements of a `json` array      
 Throws `std::runtime_error` if not an array.
 
@@ -168,7 +164,7 @@ Resizes a json array so that it contains `n` elements that are initialized to `v
 
 ### Accessors
 
-    bool has_name(const string_type& name) const
+    bool has_key(const string_type& name) const
 Returns `true` if an object has a member with the given `name`, otherwise `false`.    
 
     size_t count(const string_type& name) const
@@ -176,45 +172,32 @@ Returns the number of object members that match `name`.
 
     template <class T>
     bool is() const noexcept
-Returns `true` if the json value is compatible with value type `T` according to [json_type_traits](json_type_traits), `false` otherwise.  
+Returns `true` if the json value is the same as type `T` according to [json_type_traits](json_type_traits), `false` otherwise.  
 
-    bool is<char> const noexcept 
-    bool is<signed char> const noexcept
-    bool is<unsigned char> const noexcept
-    bool is<wchar_t> const noexcept
-    bool is<short> const noexcept
-    bool is<unsigned short> const noexcept 
-    bool is<int> const noexcept 
-    bool is<unsigned int> const noexcept 
-    bool is<long> const noexcept 
-    bool is<unsigned long> const noexcept 
-    bool is<long long> const noexcept 
-    bool is<unsigned long long> const noexcept 
-Return `true` if json value is of integral type and within the range of the template type, `false` otherwise.  
+    bool is<X> const noexcept 
+If the type `X` is integral, `is<X>()` returns `true` if the json value is integral and within the range of the type `X`, `false` otherwise.  
+If the type `X` is floating point, `is<X>()` returns `true` if the json value is floating point and within the range of the type `X`, `false` otherwise.  
 
-    is<double> 
-Return true if the json value is of floating point type and within the range of the template type, `false` otherwise.  
-
-    is<string_type> 
+    bool is<string_type> const noexcept 
 Returns `true` if the json value is of string type, `false` otherwise.  
 
-    is<bool>
+    bool is<bool> const noexcept 
 Returns `true` if the json value is of boolean type, `false` otherwise.  
 
-    is<json::null_type>
+    bool is<json::null_type> const noexcept
 Returns `true` if the json value is null, `false` otherwise.  
 
-    is<json::object> 
+    bool is<json::object> const noexcept 
 Returns `true` if the json value is an object, `false` otherwise.  
 
-    is<json::array> 
+    bool is<json::array> const noexcept 
 Returns `true` if the json value is an array, `false` otherwise.  
 
-    is<std::vector<T>>
-Returns `true` if the json value is an array and each element has type `T`, `false` otherwise.
+    bool is<X<T>> const noexcept
+If the type `X` is not `std::basic_string` but otherwise satisfies [SequenceContainer](http://en.cppreference.com/w/cpp/concept/SequenceContainer), `is<X<T>>()` returns `true` if the json value is an array and each element is the "same as" type `T` according to [json_type_traits](json_type_traits), `false` otherwise.
 
-    is<json::std::map<std::string,T>>
-Returns `true` if the json value is an object and each mapped value has type `T`, `false` otherwise.
+    bool is<X<string_type,T>> const noexcept
+If the type 'X' satisfies [AssociativeContainer](http://en.cppreference.com/w/cpp/concept/AssociativeContainer) or [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer), `is<X<T>>()` returns `true` if the json value is an object and each mapped value is the "same as" `T` according to [json_type_traits](json_type_traits), `false` otherwise.
 
     bool is_null() const noexcept
     bool is_string() const noexcept
@@ -226,6 +209,51 @@ Returns `true` if the json value is an object and each mapped value has type `T`
     bool is_object() const noexcept
     bool is_array() const noexcept
 Non-generic versions of `is_` methods
+
+    template <class T>
+    T as() const
+Attempts to convert the json value to the template value type using [json_type_traits](json_type_traits).
+
+    as<bool>
+Returns `true` if value is `bool` and `true`, or if value is integral and non-zero, or if value is floating point and non-zero, or if value is string and parsed value evaluates as `true`. 
+Returns `false` if value is `bool` and `false`, or if value is integral and zero, or if value is floating point and zero, or if value is string and parsed value evaluates as `false`. 
+Otherwise throws `std::runtime_exception`
+
+    as<double>
+If value is double, returns value, if value is signed or unsigned integer, casts to double, if value is `null`, returns `NaN`, otherwise throws.
+
+    char as<char> const
+    signed char as<signed char> const
+    unsigned char as<unsigned char> const
+    wchar_t as<wchar_t> const
+    short as<short> const
+    unsigned short as<unsigned short> const 
+    int as<int> const 
+    unsigned int as<unsigned int> const 
+    long as<long> const 
+    unsigned long as<unsigned long> const 
+    long long as<long long> const 
+    unsigned long long as<unsigned long long> const 
+Return integer value if value has integral type, performs cast if value has double type, returns 1 or 0 if value has bool type, otherwise throws.
+
+    string_type as<string_type>() const noexcept
+    string_type as<string_type>(const char_allocator& allocator) const noexcept
+If value is string, returns value, otherwise returns result of `to_string`.
+
+    as<X<T>>()
+If the type `X` is not `std::basic_string` but otherwise satisfies [SequenceContainer](http://en.cppreference.com/w/cpp/concept/SequenceContainer), `as<X<T>>()` returns the `json` value as an `X<T>` if the `json` value is an array and each element is convertible to type `T`, otherwise throws.
+
+    as<X<string_type,T>>()
+If the type 'X' satisfies [AssociativeContainer](http://en.cppreference.com/w/cpp/concept/AssociativeContainer) or [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer), `as<X<string_type,T>>()` returns the `json` value as an `X<string_type,T>` if the `json` value is an object and if each member value is convertible to type `T`, otherwise throws.
+
+    bool as_bool() const
+    int64_t as_integer() const
+    uint64_t as_uinteger() const
+    double as_double() const
+    string_type as_string() const noexcept
+    string_type as_string(const char_allocator& allocator) const noexcept
+    unsigned int as<unsigned int> const 
+Non-generic versions of `as` methods
 
     json& operator[](size_t i)
     const json& operator[](size_t i) const
@@ -262,62 +290,12 @@ Throws `std::runtime_error` if not an array.
 Throws `std::out_of_range` if the index is outside the bounds of the array.  
 
     template <class T>
-    const json get(const string_type& name, T&& default_val) const
-If `name` matches the name of a member in the json object, returns a copy of the json object, otherwise returns a copy of `default_val`.
-Throws `std::runtime_error` if not an object.
-
-    template <class T>
     T get_with_default(const string_type& name, const T& default_val) const
 If `name` matches the name of a member in the json object, returns the member value converted to the default's data type, otherwise returns `default_val`.
 Throws `std::runtime_error` if not an object.
 
     const char_type* get_with_default(const string_type& name, const char_type* default_val) const
 Make `get_with_default` do the right thing for string literals.
-
-    template <class T>
-    T as() const
-Attempts to convert the json value to the template value type using [json_type_traits](json_type_traits).
-
-    as<bool>
-Returns `true` if value is `bool` and `true`, or if value is integral and non-zero, or if value is floating point and non-zero, or if value is string and parsed value evaluates as `true`. 
-Returns `false` if value is `bool` and `false`, or if value is integral and zero, or if value is floating point and zero, or if value is string and parsed value evaluates as `false`. 
-Otherwise throws `std::runtime_exception`
-
-    as<double>
-If value is double, returns value, if value is signed or unsigned integer, casts to double, if value is `null`, returns `NaN`, otherwise throws.
-
-    char as<char> const
-    signed char as<signed char> const
-    unsigned char as<unsigned char> const
-    wchar_t as<wchar_t> const
-    short as<short> const
-    unsigned short as<unsigned short> const 
-    int as<int> const 
-    unsigned int as<unsigned int> const 
-    long as<long> const 
-    unsigned long as<unsigned long> const 
-    long long as<long long> const 
-    unsigned long long as<unsigned long long> const 
-Return integer value if value has integral type, performs cast if value has double type, returns 1 or 0 if value has bool type, otherwise throws.
-
-    string_type as<string_type>() const noexcept
-    string_type as<string_type>(const char_allocator& allocator) const noexcept
-If value is string, returns value, otherwise returns result of `to_string`.
-
-    as<std::vector<T>>()
-Returns `json` value as an `std::vector<T>`.
-
-    as<json::std::map<std::string,T>>()
-Returns `json` object value as an `std::map`.
-
-    bool as_bool() const
-    int64_t as_integer() const
-    uint64_t as_uinteger() const
-    double as_double() const
-    string_type as_string() const noexcept
-    string_type as_string(const char_allocator& allocator) const noexcept
-    unsigned int as<unsigned int> const 
-Non-generic versions of `as` methods
 
 ### Modifiers
 
@@ -423,13 +401,73 @@ As the `jsoncons` library has evolved, names have sometimes changed. To ease tra
 
 ### See also
 
-- [ojson](ojson) constructs a json value that retains the original name-value insertion order
+- [ojson](ojson) constructs a json value that preserves the original name-value insertion order
 
 - [wjson](wjson) constructs a wide character json value that sorts name-value members alphabetically
 
-- [owjson](owjson) constructs a wide character json value that retains the original name-value insertion order
+- [owjson](owjson) constructs a wide character json value that preserves the original name-value insertion order
 
 ## Examples
+
+### is and as
+```c++
+    json j = json::parse(R"(
+    {
+        "k1" : 2147483647,
+        "k2" : 2147483648,
+        "k3" : -10,
+        "k4" : 10.5,
+        "k5" : true,
+        "k6" : "10.5"
+    }
+    )");
+
+    std::cout << std::boolalpha << "(1) " << j["k1"].is<int32_t>() << '\n';
+    std::cout << std::boolalpha << "(2) " << j["k2"].is<int32_t>() << '\n';
+    std::cout << std::boolalpha << "(3) " << j["k2"].is<long long>() << '\n';
+    std::cout << std::boolalpha << "(4) " << j["k3"].is<signed char>() << '\n';
+    std::cout << std::boolalpha << "(5) " << j["k3"].is<uint32_t>() << '\n';
+    std::cout << std::boolalpha << "(6) " << j["k4"].is<int32_t>() << '\n';
+    std::cout << std::boolalpha << "(7) " << j["k4"].is<double>() << '\n';
+    std::cout << std::boolalpha << "(8) " << j["k5"].is<int>() << '\n';
+    std::cout << std::boolalpha << "(9) " << j["k5"].is<bool>() << '\n';
+    std::cout << std::boolalpha << "(10) " << j["k6"].is<double>() << '\n';
+    std::cout << '\n';
+    std::cout << "(1) " << j["k1"].as<int32_t>() << '\n';
+    std::cout << "(2) " << j["k2"].as<int32_t>() << '\n';
+    std::cout << "(3) " << j["k2"].as<long long>() << '\n';
+    std::cout << "(4) " << j["k3"].as<signed char>() << '\n';
+    std::cout << "(5) " << j["k3"].as<uint32_t>() << '\n';
+    std::cout << "(6) " << j["k4"].as<int32_t>() << '\n';
+    std::cout << "(7) " << j["k4"].as<double>() << '\n';
+    std::cout << std::boolalpha << "(8) " << j["k5"].as<int>() << '\n';
+    std::cout << std::boolalpha << "(9) " << j["k5"].as<bool>() << '\n';
+    std::cout << "(10) " << j["k6"].as<double>() << '\n';
+```
+Output:
+```
+(1) true
+(2) false
+(3) true
+(4) true
+(5) false
+(6) false
+(7) true
+(8) false
+(9) true
+(10) false
+
+(1) 2147483647
+(2) -2147483648
+(3) 2147483648
+(4) ÷
+(5) 4294967286
+(6) 10
+(7) 10.5
+(8) 1
+(9) true
+(10) 10.5
+```
 
 ### Range-based for loop over members of an object
 ```c++
@@ -444,9 +482,9 @@ json book = json::parse(R"(
 }
 )");
 
-for (const auto& member: book.members())
+for (const auto& member: book.object_range())
 {
-    std::cout << member.name() << ":" << member.value().as<string>() << std::endl;
+    std::cout << member.key() << ":" << member.value().as<string>() << std::endl;
 } 
 ```
 ### Range-based for loop over elements of an array
@@ -469,28 +507,28 @@ book3["author"] = "Haruki Murakami";
 // Constructing a json array with an initializer-list 
 json booklist = json::array{book1, book2, book3};    
 
-for (const auto& book: booklist.elements())
+for (const auto& book: booklist.array_range())
 {
     std::cout << book["title"].as<string_type>() << std::end;
 } 
    
 ### Accessors and defaults
 ```c++
-json obj;
+json val;
 
-obj["field1"] = 1;
-obj["field3"] = "Toronto";
+val["field1"] = 1;
+val["field3"] = "Toronto";
 
-double x1 = obj.count("field1") > 0 ? obj["field1"].as<double>() : 10.0;
-double x2 = obj.count("field2") > 0 ? obj["field2"].as<double>() : 20.0;
+double x1 = obj.has_key("field1") ? val["field1"].as<double>() : 10.0;
+double x2 = obj.has_key("field2") ? val["field2"].as<double>() : 20.0;
 
 std::string x3 = obj.get_with_default("field3","Montreal");
 std::string x4 = obj.get_with_default("field4","San Francisco");
 
-std::cout << "x1=" << x1 << std::endl;
-std::cout << "x2=" << x2 << std::endl;
-std::cout << "x3=" << x3 << std::endl;
-std::cout << "x4=" << x4 << std::endl;
+std::cout << "x1=" << x1 << '\n';
+std::cout << "x2=" << x2 << '\n';
+std::cout << "x3=" << x3 << '\n';
+std::cout << "x4=" << x4 << '\n';
 ```
 Output:
 ```c++
@@ -544,9 +582,9 @@ obj["city"] = "Toronto";
 obj["province"] = "Ontario";
 obj["country"] = "Canada";
 
-for (auto it = obj.members().begin(); it != obj.members().end(); ++it)
+for (auto it = obj.object_range().begin(); it != obj.object_range().end(); ++it)
 {
-    std::cout << it->name() << "=" << it->value().as<string_type>() << std::endl;
+    std::cout << it->key() << "=" << it->value().as<string_type>() << std::endl;
 }
 ```
 Output:
@@ -559,7 +597,7 @@ province=Ontario
 ```c++
 json arr = json::array{"Toronto", "Vancouver", "Montreal"};
 
-for (auto it = arr.elements().begin(); it != arr.elements().end(); ++it)
+for (auto it = arr.array_range().begin(); it != arr.array_range().end(); ++it)
 {
     std::cout << it->as<string_type>() << std::endl;
 }

@@ -4,8 +4,8 @@
 
 // See https://github.com/danielaparker/jsoncons for latest version
 
-#ifndef JSONCONS_JSON_ENCODER_HPP
-#define JSONCONS_JSON_ENCODER_HPP
+#ifndef JSONCONS_JSON_DECODER_HPP
+#define JSONCONS_JSON_DECODER_HPP
 
 #include <string>
 #include <sstream>
@@ -19,7 +19,7 @@
 namespace jsoncons {
 
 template <class Json>
-class json_encoder : public basic_json_input_handler<typename Json::char_type>
+class json_decoder : public basic_json_input_handler<typename Json::char_type>
 {
     static const int default_stack_size = 1000;
 
@@ -51,7 +51,7 @@ class json_encoder : public basic_json_input_handler<typename Json::char_type>
     bool is_valid_;
 
 public:
-    json_encoder(const char_allocator& sa = char_allocator(),
+    json_decoder(const char_allocator& sa = char_allocator(),
                             const allocator_type& allocator = allocator_type())
         : sa_(sa),
           oa_(allocator),
@@ -59,7 +59,7 @@ public:
           top_(0),
           stack_(default_stack_size),
           stack2_(),
-          is_valid_(true) // initial json value is an empty object
+          is_valid_(false) 
 
     {
         stack2_.reserve(100);
@@ -192,8 +192,8 @@ private:
             stack_[stack2_.back()].value_.resize(count);
 
             auto s = stack_.begin() + (stack2_.back()+1);
-            auto dend = stack_[stack2_.back()].value_.elements().end();
-            for (auto it = stack_[stack2_.back()].value_.elements().begin();
+            auto dend = stack_[stack2_.back()].value_.array_range().end();
+            for (auto it = stack_[stack2_.back()].value_.array_range().begin();
                  it != dend; ++it, ++s)
             {
                 *it = std::move(s->value_);

@@ -1,6 +1,5 @@
 // Copyright 2013 Daniel Parker
 // Distributed under Boost license
-#define JSONCONS_NO_DEPRECATED
 #ifdef __linux__
 #define BOOST_TEST_DYN_LINK
 #endif
@@ -72,7 +71,16 @@ BOOST_AUTO_TEST_CASE(test_assignment_to_initializer_list3)
     val["data"]["id"] = json::array{0,1,2,3,4,5,6,7};
     val["data"]["item"] = json::array{json::object{{"first",1},{"second",2}}};
 
-    std::cout << val << std::endl;
+    json expected_id = json::parse(R"(
+[0,1,2,3,4,5,6,7]
+    )");
+
+    json expected_item = json::parse(R"(
+    [{"first":1,"second":2}]
+    )");
+
+    BOOST_CHECK(expected_id == val["data"]["id"]);
+    BOOST_CHECK(expected_item == val["data"]["item"]);
 }
 
 BOOST_AUTO_TEST_CASE(test_assign_initializer_list_of_object)
@@ -133,7 +141,7 @@ BOOST_AUTO_TEST_CASE(test_add_element_to_array)
     BOOST_CHECK(arr.is<json::array>());
     arr.add("Toronto");
     arr.add("Vancouver");
-    arr.add(arr.elements().begin(),"Montreal");
+    arr.add(arr.array_range().begin(),"Montreal");
 
     BOOST_CHECK(arr.size() == 3);
 
@@ -149,7 +157,7 @@ BOOST_AUTO_TEST_CASE(test_array_add_pos)
     BOOST_CHECK(arr.is<json::array>());
     arr.add("Toronto");
     arr.add("Vancouver");
-    arr.add(arr.elements().begin(),"Montreal");
+    arr.add(arr.array_range().begin(),"Montreal");
 
     BOOST_CHECK(arr.size() == 3);
 
@@ -165,11 +173,11 @@ BOOST_AUTO_TEST_CASE(test_array_erase_range)
     BOOST_CHECK(arr.is<json::array>());
     arr.add("Toronto");
     arr.add("Vancouver");
-    arr.add(arr.elements().begin(),"Montreal");
+    arr.add(arr.array_range().begin(),"Montreal");
 
     BOOST_CHECK(arr.size() == 3);
 
-    arr.erase(arr.elements().begin()+1,arr.elements().end());
+    arr.erase(arr.array_range().begin()+1,arr.array_range().end());
 
     BOOST_CHECK(arr.size() == 1);
     BOOST_CHECK(arr[0].as<std::string>() == std::string("Montreal"));
@@ -208,7 +216,7 @@ BOOST_AUTO_TEST_CASE(test_reserve_array_capacity)
     BOOST_CHECK(cities.capacity() == 10);
     BOOST_CHECK(cities.size() == 1);
     cities.add("Vancouver");
-    cities.add(cities.elements().begin(),"Montreal");
+    cities.add(cities.array_range().begin(),"Montreal");
     BOOST_CHECK(cities.capacity() == 10);
     BOOST_CHECK(cities.size() == 3);
 }
