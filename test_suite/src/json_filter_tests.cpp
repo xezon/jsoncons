@@ -18,7 +18,7 @@
 
 using namespace jsoncons;
 
-BOOST_AUTO_TEST_SUITE(json_filter_test_suite)
+BOOST_AUTO_TEST_SUITE(json_filter_tests)
 
 struct warning
 {
@@ -38,43 +38,42 @@ public:
     }
 
 private:
-    void do_name(const char* p, size_t length,
+    void do_name(string_view_type name,
                  const parsing_context& context) override
     {
-        member_name_ = std::string(p, length);
+        member_name_ = name;
         if (member_name_ != "name")
         {
-            this->downstream_handler().name(p, length,context);
+            this->downstream_handler().name(name,context);
         }
     }
 
-    void do_string_value(const char* p, size_t length,
-                 const parsing_context& context) override
+    void do_string_value(string_view_type s,
+                         const parsing_context& context) override
     {
         if (member_name_ == "name")
         {
-            std::string value(p, length);
-            size_t end_first = value.find_first_of(" \t");
-            size_t start_last = value.find_first_not_of(" \t", end_first);
-            this->downstream_handler().name("first-name",context);
-            std::string first = value.substr(0, end_first);
-            this->downstream_handler().value(first,context);
-            if (start_last != std::string::npos)
+            size_t end_first = s.find_first_of(" \t");
+            size_t start_last = s.find_first_not_of(" \t", end_first);
+            this->downstream_handler().name("first-name", context);
+            string_view_type first = s.substr(0, end_first);
+            this->downstream_handler().value(first, context);
+            if (start_last != string_view_type::npos)
             {
-                this->downstream_handler().name("last-name",context);
-                std::string last = value.substr(start_last);
-                this->downstream_handler().value(last,context);
+                this->downstream_handler().name("last-name", context);
+                string_view_type last = s.substr(start_last);
+                this->downstream_handler().value(last, context);
             }
             else
             {
-                warnings.push_back(warning{value,
-                                           context.line_number(),
-                                           context.column_number()});
+                warnings.push_back(warning{s,
+                                   context.line_number(),
+                                   context.column_number()});
             }
         }
         else
         {
-            this->downstream_handler().value(p, length,context);
+            this->downstream_handler().value(s,context);
         }
     }
 
@@ -148,7 +147,7 @@ BOOST_AUTO_TEST_CASE(test_rename_name)
     std::stringstream ss;
     json_serializer serializer(ss, false);
     rename_name_filter filter("price","price2",serializer);
-    j.write(filter);
+    j.dump(filter);
 
     json j2 = json::parse_stream(ss);
     BOOST_CHECK_CLOSE(31.96,j2["store"]["book"][0]["price2"].as<double>(),0.001);
@@ -163,7 +162,7 @@ BOOST_AUTO_TEST_CASE(test_chained_filters)
     rename_name_filter filter2("fifth", "fourth", decoder);
     rename_name_filter filter1("fourth", "third", filter2);
 
-    j.write(filter1);
+    j.dump(filter1);
     ojson j2 = decoder.get_result();
     BOOST_CHECK(j2.size() == 4);
     BOOST_CHECK(j2["first"] == 1);

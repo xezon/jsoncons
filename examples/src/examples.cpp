@@ -18,8 +18,8 @@ void ojson_examples();
 void unicode_examples();
 void csv_examples();
 void jsonpath_examples();
-void jsonx_examples();
 void json_is_as_examples();
+void binary_examples();
 
 void first_example_a()
 {
@@ -68,7 +68,6 @@ void first_example_c()
     json books = json::parse_file("input/books.json");
 
     serialization_options format;
-    //format.floatfield(std::ios::fixed);
     format.precision(2);
 
     for (size_t i = 0; i < books.size(); ++i)
@@ -78,7 +77,8 @@ void first_example_c()
             json& book = books[i];
             std::string author = book["author"].as<std::string>();
             std::string title = book["title"].as<std::string>();
-            std::string price = book.get("price", "N/A").to_string(format);
+            std::string price;
+            book.get("price", "N/A").dump(price,format);
             std::cout << author << ", " << title << ", " << price << std::endl;
         }
         catch (const std::exception& e)
@@ -126,7 +126,7 @@ void second_example_a()
 {
     try
     {
-        json books = json::make_array();
+        json books = json::array();
 
         {
             json book;
@@ -157,6 +157,40 @@ void second_example_a()
     {
         std::cerr << e.what() << std::endl;
     }
+}
+
+void construction_in_code()
+{
+    // A null value
+    json null_val = json::null();
+
+    // A boolean value
+    json flag(true);
+
+    // A numeric value
+    json number(10.5);
+
+    // An object value with four members
+    json obj;
+    obj["first_name"] = "Jane";
+    obj["last_name"] = "Roe";
+    obj["events_attended"] = 10;
+    obj["accept_waiver_of_liability"] = true;
+
+    std::string first_name = obj["first_name"].as<std::string>();
+    std::string last_name = obj.at("last_name").as<std::string>();
+    int events_attended = obj["events_attended"].as<int>();
+    bool accept_waiver_of_liability = obj["accept_waiver_of_liability"].as<bool>();
+
+    // An array value with four elements
+    json arr = json::array();
+    arr.add(null_val);
+    arr.add(flag);
+    arr.add(number);
+    arr.add(obj);
+
+    serialization_options format;
+    std::cout << pretty_print(arr) << std::endl;
 }
 
 void mulitple_json_objects()
@@ -237,7 +271,7 @@ int main()
     try
     {
         json_is_as_examples();
-/*
+
         basics_examples();
         ojson_examples();
 
@@ -248,6 +282,8 @@ int main()
 
         second_example_a();
 
+        construction_in_code();
+
         array_examples();
         container_examples();
 
@@ -255,8 +291,6 @@ int main()
 
         more_examples();
         mulitple_json_objects();
-
-        introspection_example();
 
         wjson_examples();
 
@@ -272,8 +306,8 @@ int main()
 
         jsonpath_examples();
 
-        jsonx_examples();
-*/
+        binary_examples();
+
     }
     catch (const std::exception& e)
     {

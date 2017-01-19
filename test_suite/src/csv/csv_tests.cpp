@@ -6,7 +6,6 @@
 #endif
 
 #include <boost/test/unit_test.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
 #include <jsoncons_ext/csv/csv_reader.hpp>
 #include <jsoncons_ext/csv/csv_serializer.hpp>
 #include <jsoncons/json_reader.hpp>
@@ -18,7 +17,7 @@
 using namespace jsoncons;
 using namespace jsoncons::csv;
 
-BOOST_AUTO_TEST_SUITE(csv_test_suite)
+BOOST_AUTO_TEST_SUITE(csv_tests)
 
 BOOST_AUTO_TEST_CASE(csv_test_empty_values)
 {
@@ -657,7 +656,7 @@ BOOST_AUTO_TEST_CASE(serialize_comma_delimited_file)
 
     std::stringstream ss;
     csv_serializer serializer(ss,params);
-    countries1.write(serializer);
+    countries1.dump(serializer);
 
     json_decoder<ojson> encoder2;
     csv_reader reader2(ss,encoder2,params);
@@ -705,7 +704,7 @@ BOOST_AUTO_TEST_CASE(serialize_tab_delimited_file)
 
     std::stringstream ss;
     csv_serializer serializer(ss,params);
-    employees1.write(serializer);
+    employees1.dump(serializer);
 
     json_decoder<ojson> encoder2;
     csv_reader reader2(ss,encoder2,params);

@@ -15,31 +15,38 @@
 #include <jsoncons/serialization_options.hpp>
 #include <jsoncons/parse_error_handler.hpp>
 #include <string>
+#include <vector>
 
 namespace jsoncons {
 
 template <class CharT>
 struct json_traits
 {
-    typedef typename std::char_traits<CharT> char_traits_type;
-    typedef std::allocator<CharT> char_allocator;
-    typedef std::basic_string<CharT,char_traits_type,char_allocator> string_type;
-
     static const bool preserve_order = false;
 
-    typedef basic_default_parse_error_handler<CharT> parse_error_handler_type;
+    typedef CharT char_type;
+
+    template <class T,class Allocator>
+    using object_storage = std::vector<T,Allocator>;
+
+    template <class T,class Allocator>
+    using array_storage = std::vector<T,Allocator>;
+
+    typedef typename std::char_traits<char_type> char_traits_type;
+
+    template <class Allocator>
+    using key_storage = std::basic_string<char_type,char_traits_type,Allocator>;
+
+    template <class Allocator>
+    using string_storage = std::basic_string<char_type,char_traits_type,Allocator>;
+
+    typedef basic_default_parse_error_handler<char_type> parse_error_handler_type;
 };
 
 template <class CharT>
-struct o_json_traits 
+struct o_json_traits : public json_traits<CharT>
 {
-    typedef typename std::char_traits<CharT> char_traits_type;
-    typedef std::allocator<CharT> char_allocator;
-    typedef std::basic_string<CharT,char_traits_type,char_allocator> string_type;
-
     static const bool preserve_order = true;
-
-    typedef basic_default_parse_error_handler<CharT> parse_error_handler_type;
 };
 
 }

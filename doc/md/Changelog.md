@@ -1,3 +1,61 @@
+0.99.7
+------
+
+Bug fixes
+
+- Issues with precedence in JsonPath filter evaluations have been fixed
+- An issue with (a - expression) in JsonPath filter evaluations has been fixed
+
+New feature
+
+- The new binary extension supports encoding to and decoding from the MessagePack binary serialization format.
+- An extension to JsonPath to allow filter expressions over a single object.
+- Added support for `*` and `/` operators to jsonpath filter
+- literal operators _json and _ojson have been introduced
+
+Non-breaking changes
+
+- The `json` `write` functions have been renamed to `dump`. The old names have been deprecated but still work.
+- Support for stateful allocators
+- json function object_range() now returns a pair of RandomAccessIterator (previously BidirectionalIterator)
+- json operator [size_t i] applied to a json object now returns the ith object (previously threw) 
+
+Breaking change (if you've implemented your own input and output handlers)
+
+In basic_json_input_handler, the virtual functions
+```c++
+virtual void do_name(const CharT* value, size_t length, 
+                     const basic_parsing_context<CharT>& context)
+
+virtual void do_string_value(const CharT* value, size_t length, 
+                             const basic_parsing_context<CharT>& context)
+```
+have been changed to
+```c++
+virtual void do_name(string_view_type val, 
+                     const basic_parsing_context<CharT>& context) 
+
+virtual void do_string_value(string_view_type val, 
+                             const basic_parsing_context<CharT>& context) 
+```
+
+In basic_json_output_handler, the virtual functions
+```c++
+virtual void do_name(const CharT* value, size_t length) 
+
+virtual void do_string_value(const CharT* value, size_t length) 
+```
+have been changed to
+```c++
+virtual void do_name(string_view_type val)
+
+virtual void do_string_value(string_view_type val)
+```
+
+Removed features:
+
+- The jsonx extension has been removed 
+
 0.99.5
 ------
 

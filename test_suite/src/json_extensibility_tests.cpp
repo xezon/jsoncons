@@ -42,12 +42,7 @@ namespace jsoncons
 
         static Json to_json(boost::gregorian::date val)
         {
-            return Json::make_string(to_iso_extended_string(val));
-        }
-
-        static Json to_json(boost::gregorian::date val, typename Json::allocator_type allocator)
-        {
-            return Json::make_string(to_iso_extended_string(val),allocator);
+            return Json(to_iso_extended_string(val));
         }
     };
 
@@ -115,7 +110,7 @@ namespace jsoncons
 
         static Json to_json(const boost::numeric::ublas::matrix<T>& val)
         {
-            Json a = Json::make_array<2>(val.size1(), val.size2(), T());
+            Json a = Json::template make_array<2>(val.size1(), val.size2(), T());
             for (size_t i = 0; i < val.size1(); ++i)
             {
                 for (size_t j = 0; j < val.size1(); ++j)
@@ -131,11 +126,11 @@ namespace jsoncons
 using namespace jsoncons;
 using boost::numeric::ublas::matrix;
 
-BOOST_AUTO_TEST_SUITE(json_extensibility_test_suite)
+BOOST_AUTO_TEST_SUITE(json_extensibility_tests)
 
 BOOST_AUTO_TEST_CASE(test_add_extensibility)
 {
-    json a = json::make_array();
+    json a = json::array();
     a.add(boost::gregorian::date(2013,10,14));
     auto d = a[0].as<boost::gregorian::date>();
     BOOST_CHECK_EQUAL(boost::gregorian::date(2013,10,14),d);
@@ -151,11 +146,13 @@ BOOST_AUTO_TEST_CASE(test_add_extensibility)
 
     json deal;
     deal["maturity"] = boost::gregorian::date(2015,1,1);
-    json observation_dates = json::make_array();
+    json observation_dates = json::array();
     observation_dates.add(boost::gregorian::date(2013,10,21));
     observation_dates.add(boost::gregorian::date(2013,10,28));
     deal["observation_dates"] = std::move(observation_dates);
-    std::cout << pretty_print(deal) << std::endl;
+
+
+    //std::cout << pretty_print(deal) << std::endl;
 }
 
 BOOST_AUTO_TEST_CASE(test_set_extensibility)
@@ -184,28 +181,21 @@ BOOST_AUTO_TEST_CASE(test_example)
         json deal;
         deal["Maturity"] = date(2014,10,14);
 
-        json observation_dates = json::make_array();
+        json observation_dates = json::array();
         observation_dates.add(date(2014,2,14));
         observation_dates.add(date(2014,2,21));
 
         deal["ObservationDates"] = std::move(observation_dates);
 
         date maturity = deal["Maturity"].as<date>();
-        std::cout << "Maturity: " << maturity << std::endl << std::endl;
 
-        std::cout << "Observation dates: " << std::endl << std::endl;
-        json::array_iterator it = deal["ObservationDates"].array_range().begin();
-        json::array_iterator end = deal["ObservationDates"].array_range().end();
+        BOOST_CHECK(deal["Maturity"].as<date>() == date(2014,10,14));
+        BOOST_REQUIRE(deal["ObservationDates"].is_array());
+        BOOST_REQUIRE(deal["ObservationDates"].size() == 2);
+        BOOST_CHECK(deal["ObservationDates"][0].as<date>() == date(2014,2,14));
+        BOOST_CHECK(deal["ObservationDates"][1].as<date>() == date(2014,2,21));
 
-        while (it != end)
-        {
-            date d = it->as<date>();
-            std::cout << d << std::endl;
-            ++it;
-        }
-        std::cout << std::endl;
-
-        std::cout << pretty_print(deal) << std::endl;
+        //std::cout << pretty_print(deal) << std::endl;
 }
 
 BOOST_AUTO_TEST_CASE(test_boost_matrix)
@@ -218,14 +208,6 @@ BOOST_AUTO_TEST_CASE(test_boost_matrix)
 
     json a = A;
 
-    std::cout << "(1) " << std::boolalpha << a.is<matrix<double>>() << "\n\n";
-
-    std::cout << "(2) " << std::boolalpha << a.is<matrix<int>>() << "\n\n";
-
-    std::cout << "(3) \n\n";
-
-    std::cout << pretty_print(a) << "\n\n";
-
     BOOST_CHECK(a.is<matrix<double>>());
     BOOST_CHECK(!a.is<matrix<int>>());
 
@@ -235,21 +217,6 @@ BOOST_AUTO_TEST_CASE(test_boost_matrix)
     BOOST_CHECK_EQUAL(a[1][1].as<double>(),A(1,1));
 
     matrix<double> B = a.as<matrix<double>>();
-
-    std::cout << "(4) \n\n";
-    for (size_t i = 0; i < B.size1(); ++i)
-    {
-        for (size_t j = 0; j < B.size2(); ++j)
-        {
-            if (j > 0)
-            {
-                std::cout << ",";
-            }
-            std::cout << B(i, j);
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n\n";
 
     BOOST_CHECK_EQUAL(B.size1(),a.size());
     BOOST_CHECK_EQUAL(B.size2(),a[0].size());

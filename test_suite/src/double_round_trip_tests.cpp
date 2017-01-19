@@ -6,7 +6,6 @@
 #endif
 
 #include <boost/test/unit_test.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
 #include <sstream>
 #include <vector>
 #include <utility>
@@ -16,7 +15,7 @@
 
 using namespace jsoncons;
 
-BOOST_AUTO_TEST_SUITE(double_round_trip_test_suite)
+BOOST_AUTO_TEST_SUITE(double_round_trip_tests)
 
 BOOST_AUTO_TEST_CASE(test_precision)
 {

@@ -15,7 +15,7 @@
 
 using namespace jsoncons;
 
-BOOST_AUTO_TEST_SUITE(unicode_test_suite)
+BOOST_AUTO_TEST_SUITE(unicode_tests)
 
 BOOST_AUTO_TEST_CASE( test_surrogate_pair )
 {
@@ -23,7 +23,8 @@ BOOST_AUTO_TEST_CASE( test_surrogate_pair )
     json value = json::parse(input);
     serialization_options format;
     format.escape_all_non_ascii(true);
-    std::string output = value.to_string(format);
+    std::string output;
+    value.dump(output,format);
 
     BOOST_CHECK_EQUAL(input,output);
 }
@@ -36,21 +37,14 @@ BOOST_AUTO_TEST_CASE(test_skip_bom)
     BOOST_CHECK_EQUAL(3,value.size());
 }
 
-BOOST_AUTO_TEST_CASE(test_skip_bom2)
-{
-    std::wstring input = L"\xFEFF[1,2,3]";
-    wjson value = wjson::parse(input);
-    BOOST_CHECK_EQUAL(true,value.is_array());
-    BOOST_CHECK_EQUAL(3,value.size());
-}
-
 BOOST_AUTO_TEST_CASE(test_wide_surrogate_pair)
 {
     std::wstring input = L"[\"\\u8A73\\u7D30\\u95B2\\u89A7\\uD800\\uDC01\\u4E00\"]";
     wjson value = wjson::parse(input);
     wserialization_options format;
     format.escape_all_non_ascii(true);
-    std::wstring output = value.to_string(format);
+    std::wstring output;
+    value.dump(output,format);
 
     BOOST_CHECK(input == output);
 }

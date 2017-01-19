@@ -14,42 +14,13 @@
 #include <cstdlib>
 #include <map>
 #include <limits> // std::numeric_limits
-#include <jsoncons/json_text_traits.hpp>
+#include <jsoncons/jsoncons.hpp>
 #include <jsoncons/serialization_options.hpp>
 #include <jsoncons/json_output_handler.hpp>
 #include <jsoncons_ext/csv/csv_parameters.hpp>
 
 namespace jsoncons { namespace csv {
 
-template <class CharT>
-struct csv_string_traits
-{
-};
-
-template <>
-struct csv_string_traits<char>
-{
-    static const std::string all_literal() {return "all";};
-
-    static const std::string minimal_literal() {return "minimal";};
-
-    static const std::string none_literal() {return "none";};
-
-    static const std::string nonnumeric_literal() {return "nonumeric";};
-};
-
-template <>
-struct csv_string_traits<wchar_t>
-{
-    static const std::wstring all_literal() {return L"all";};
-
-    static const std::wstring minimal_literal() {return L"minimal";};
-
-    static const std::wstring none_literal() {return L"none";};
-
-    static const std::wstring nonnumeric_literal() {return L"nonumeric";};
-};
- 
 template <class CharT>
 void escape_string(const CharT* s,
                    size_t length,
@@ -76,6 +47,9 @@ void escape_string(const CharT* s,
 template<class CharT>
 class basic_csv_serializer : public basic_json_output_handler<CharT>
 {
+public:
+    using typename basic_json_output_handler<CharT>::string_view_type                                 ;
+private:
     struct stack_item
     {
         stack_item(bool is_object)
@@ -98,7 +72,11 @@ class basic_csv_serializer : public basic_json_output_handler<CharT>
     std::basic_ostringstream<CharT> header_oss_;
     buffered_output<CharT> header_os_;
     std::map<std::basic_string<CharT>,size_t> column_name_pos_map_;
-    float_printer<CharT> fp_;
+    print_double<CharT> fp_;
+
+    // Noncopyable and nonmoveable
+    basic_csv_serializer(const basic_csv_serializer&) = delete;
+    basic_csv_serializer& operator=(const basic_csv_serializer&) = delete;
 public:
     basic_csv_serializer(std::basic_ostream<CharT>& os)
        :
@@ -202,7 +180,7 @@ private:
         end_value();
     }
 
-    void do_name(const CharT* name, size_t length) override
+    void do_name(string_view_type name) override
     {
         if (stack_.size() == 2)
         {
@@ -212,12 +190,12 @@ private:
                 {
                     os_.put(parameters_.field_delimiter());
                 }
-                write_string(name, length, os_);
+                write_string(name.data(), name.length(), os_);
                 column_name_pos_map_[name] = stack_.back().count_;
             }
             else
             {
-                auto it = column_name_pos_map_.find(std::basic_string<CharT>(name,length));
+                auto it = column_name_pos_map_.find(std::basic_string<CharT>(name));
                 if (it == column_name_pos_map_.end())
                 {
                     stack_.back().skip_ = true;
@@ -268,17 +246,17 @@ private:
         }
     }
 
-    void do_string_value(const CharT* val, size_t length) override
+    void do_string_value(string_view_type val) override
     {
         if (stack_.size() == 2 && !stack_.back().skip_)
         {
             if (stack_.back().is_object() && stack_[0].count_ == 0 && parameters_.column_names().size() == 0)
             {
-                value(val,length,header_os_);
+                value(val,header_os_);
             }
             else
             {
-                value(val,length,os_);
+                value(val,os_);
             }
         }
     }
@@ -345,10 +323,10 @@ private:
         }
     }
 
-    void value(const CharT* val, size_t length, buffered_output<CharT>& os)
+    void value(string_view_type value, buffered_output<CharT>& os)
     {
         begin_value(os);
-        write_string(val,length,os);
+        write_string(value.data(),value.length(),os);
         end_value();
     }
 
@@ -356,21 +334,21 @@ private:
     {
         begin_value(os);
 
-        if (is_nan(val) && format_.replace_nan())
+        if ((std::isnan)(val))
         {
             os.write(format_.nan_replacement());
         }
-        else if (is_pos_inf(val) && format_.replace_pos_inf())
+        else if (val == std::numeric_limits<double>::infinity())
         {
             os.write(format_.pos_inf_replacement());
         }
-        else if (is_neg_inf(val) && format_.replace_neg_inf())
+        else if (!(std::isfinite)(val))
         {
             os.write(format_.neg_inf_replacement());
         }
         else
         {
-            fp_.print(val,format_.precision(),os);
+            fp_(val,format_.precision(),os);
         }
 
         end_value();
@@ -405,12 +383,12 @@ private:
 
         if (val)
         {
-            auto buf = json_text_traits<CharT>::true_literal();
+            auto buf = json_literals<CharT>::true_literal();
             os.write(buf.first,buf.second);
         }
         else
         {
-            auto buf = json_text_traits<CharT>::false_literal();
+            auto buf = json_literals<CharT>::false_literal();
             os.write(buf.first,buf.second);
         }
 
@@ -420,7 +398,7 @@ private:
     void do_null_value(buffered_output<CharT>& os) 
     {
         begin_value(os);
-        auto buf = json_text_traits<CharT>::null_literal();
+        auto buf = json_literals<CharT>::null_literal();
         os.write(buf.first,buf.second);
         end_value();
 

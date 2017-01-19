@@ -5,7 +5,7 @@ typedef basic_serialization_options<char> serialization_options
 ```
 The `serialization_options` class is an instantiation of the `basic_serialization_options` class template that uses `char` as the character type.
 
-The default floating point formatting produces digits in decimal format if possible, if not, it produces digits in exponential format. Trailing zeros are removed, except the one immediately following the decimal point. The period character (‘.’) is always used as the decimal point, non English locales are ignored.  A `precision` gives the maximum number of significant digits, the default precision is `16`. On most modern machines, 17 digits is usually enough to capture a floating-point number's value exactly, however, if you change precision to 17, conversion to text becomes an issue for floating point numbers that do not have an exact representation, e.g. 1.1 read may become 1.1000000000000001 when written. 
+The default floating point formatting produces digits in decimal format if possible, if not, it produces digits in exponential format. Trailing zeros are removed, except the one immediately following the decimal point. The period character (‘.’) is always used as the decimal point, non English locales are ignored.  A `precision` gives the maximum number of significant digits, the default precision is `15`. On most modern machines, 17 digits is usually enough to capture a floating-point number's value exactly, however, if you change precision to 17, conversion to text becomes an issue for floating point numbers that do not have an exact representation, e.g. 1.1 read may become 1.1000000000000001 when written. 
 
 When parsing text, the precision of the fractional number is retained, and used for subsequent serialization, to allow round-trip.
 
@@ -16,7 +16,7 @@ When parsing text, the precision of the fractional number is retained, and used 
 ### Member constants
 
     default_precision
-The default precision is 16
+The default precision is 15
 
     default_indent
 The default indent is 4
@@ -40,15 +40,6 @@ The default is false
     bool escape_solidus() const
 The default is false
 
-    bool replace_nan() const
-The defult is `true`
-
-    bool replace_pos_inf() const
-The defult is `true`
-
-    bool replace_neg_inf() const
-The defult is `true`
-
     std::string nan_replacement() const 
 The default is "null"
 
@@ -65,14 +56,6 @@ The default is "null"
     serialization_options& escape_all_non_ascii(bool value)
 
     serialization_options& escape_solidus(bool value)
-
-    serialization_options& replace_nan(bool replace)
-
-    serialization_options& replace_inf(bool replace)
-
-    serialization_options& replace_pos_inf(bool replace)
-
-    serialization_options& replace_neg_inf(bool replace)
 
     serialization_options& nan_replacement(const std::string& replacement)
 
@@ -117,12 +100,12 @@ Output:
     obj["field2"] = 1.79e308*1000;
     obj["field3"] = -1.79e308*1000;
 
-    serialization_options format;
+    serialization_options options;
     format.nan_replacement("null");        // default is "null"
     format.pos_inf_replacement("1e9999");  // default is "null"
     format.neg_inf_replacement("-1e9999"); // default is "null"
 
-    std::cout << pretty_print(obj,format) << std::endl;
+    std::cout << pretty_print(obj,options) << std::endl;
 ```
 
 Output:

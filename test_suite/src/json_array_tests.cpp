@@ -5,7 +5,6 @@
 #endif
 
 #include <boost/test/unit_test.hpp>
-#include <boost/numeric/ublas/matrix.hpp>
 #include <jsoncons/json.hpp>
 #include <jsoncons/json_serializer.hpp>
 #include <sstream>
@@ -15,7 +14,7 @@
 
 using namespace jsoncons;
 
-BOOST_AUTO_TEST_SUITE(json_array_test_suite)
+BOOST_AUTO_TEST_SUITE(json_array_tests)
 
 BOOST_AUTO_TEST_CASE(test_initializer_list_of_integers)
 {
@@ -125,7 +124,7 @@ BOOST_AUTO_TEST_CASE(test_array_constructor)
 
 BOOST_AUTO_TEST_CASE(test_make_array)
 {
-    json arr = json::make_array();
+    json arr = json::array();
     BOOST_CHECK(arr.size() == 0);
     arr.resize(10,10.0);
     BOOST_CHECK(arr.is_array());
@@ -136,7 +135,7 @@ BOOST_AUTO_TEST_CASE(test_make_array)
 
 BOOST_AUTO_TEST_CASE(test_add_element_to_array)
 {
-    json arr = json::make_array();
+    json arr = json::array();
     BOOST_CHECK(arr.is_array());
     BOOST_CHECK(arr.is<json::array>());
     arr.add("Toronto");
@@ -152,7 +151,7 @@ BOOST_AUTO_TEST_CASE(test_add_element_to_array)
 
 BOOST_AUTO_TEST_CASE(test_array_add_pos)
 {
-    json arr = json::make_array();
+    json arr = json::array();
     BOOST_CHECK(arr.is_array());
     BOOST_CHECK(arr.is<json::array>());
     arr.add("Toronto");
@@ -168,7 +167,7 @@ BOOST_AUTO_TEST_CASE(test_array_add_pos)
 
 BOOST_AUTO_TEST_CASE(test_array_erase_range)
 {
-    json arr = json::make_array();
+    json arr = json::array();
     BOOST_CHECK(arr.is_array());
     BOOST_CHECK(arr.is<json::array>());
     arr.add("Toronto");
@@ -183,27 +182,9 @@ BOOST_AUTO_TEST_CASE(test_array_erase_range)
     BOOST_CHECK(arr[0].as<std::string>() == std::string("Montreal"));
 }
 
-BOOST_AUTO_TEST_CASE(test_object_erase_range)
-{
-    json o;
-    o["key1"] = "value1";
-    o["key2"] = "value2";
-    o["key3"] = "value3";
-    o["key4"] = "value4";
-
-    auto first = o.find("key2");
-    auto last = o.find("key4");
-
-    o.erase(first,last);
-    
-    BOOST_CHECK_EQUAL(2,o.size());
-    BOOST_CHECK_EQUAL(1,o.count("key1"));
-    BOOST_CHECK_EQUAL(1,o.count("key4"));
-}
-
 BOOST_AUTO_TEST_CASE(test_reserve_array_capacity)
 {
-    json cities = json::make_array();
+    json cities = json::array();
     BOOST_CHECK(cities.is_array());
     BOOST_CHECK(cities.is<json::array>());
     cities.reserve(10);  // storage is allocated
@@ -310,6 +291,40 @@ BOOST_AUTO_TEST_CASE(test_assign_vector_of_bool)
     BOOST_CHECK_EQUAL(val[1].as<bool>(), false);
     BOOST_CHECK_EQUAL(val[2].as<bool>(), true);
 
+}
+
+BOOST_AUTO_TEST_CASE(test_add_null)
+{
+    json a = json::array();
+    a.add(jsoncons::null_type());
+    a.add(json::null());
+    BOOST_CHECK(a[0].is_null());
+    BOOST_CHECK(a[1].is_null());
+}
+
+BOOST_AUTO_TEST_CASE(test_from_container)
+{
+    std::vector<int> vec;
+    vec.push_back(10);
+    vec.push_back(20);
+    vec.push_back(30);
+
+    json val1(vec.begin(), vec.end());
+    BOOST_REQUIRE(vec.size() == 3);
+    BOOST_CHECK(vec[0] == 10);
+    BOOST_CHECK(vec[1] == 20);
+    BOOST_CHECK(vec[2] == 30);
+
+    std::list<double> list;
+    list.push_back(10.5);
+    list.push_back(20.5);
+    list.push_back(30.5);
+
+    json val2(list.begin(), list.end());
+    BOOST_REQUIRE(val2.size() == 3);
+    BOOST_CHECK_CLOSE(val2[0].as<double>(),10.5,0.000001);
+    BOOST_CHECK_CLOSE(val2[1].as<double>(),20.5,0.000001);
+    BOOST_CHECK_CLOSE(val2[2].as<double>(),30.5,0.000001);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

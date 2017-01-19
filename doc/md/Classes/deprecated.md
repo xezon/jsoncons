@@ -35,7 +35,8 @@ json|add(size_t index, const json& val)|<em>&#x2713;</em>|Use add(array_iterator
     |parse_string(const std::string& s,parse_error_handler& err_handler)|<em>&#x2713;</em>|Use parse(const std::string& s,parse_error_handler& err_handler)
     |resize_array(size_t n)|<em>&#x2713;</em>|resize(size_t n)
     |resize_array(size_t n, const json& val)|<em>&#x2713;</em>|Use resize(size_t n, const json& val)
-    |to_stream|<em>&#x2713;</em>|Use write
+    |to_stream|<em>&#x2713;</em>|Use dump
+    |write|<em>&#x2713;</em>|Use dump
     |`json` initializer-list constructor||Construct from `json::array` with initializer-list
     |json_deserializer|<em>&#x2713;</em>|Use json_decoder<json>`
     |wjson_deserializer|<em>&#x2713;</em>|Use `json_decoder<wjson>`
@@ -43,7 +44,8 @@ json|add(size_t index, const json& val)|<em>&#x2713;</em>|Use add(array_iterator
     |wojson_deserializer|<em>&#x2713;</em>|Use `json_decoder<wojson>`
     |wojson|<em>&#x2713;</em>|Use owjson`
     |member_type name()|<em>&#x2713;</em>|Use key()
-json member types|any|<em>&#x2713;</em>|
+json member types|any||
+                 |member_type|<em>&#x2713;</em>|Use kvp_type
 json member constants|null||Use static member function `json::null()`
     |an_object||Use the default constructor `json()` instead.
     |an_array||Use assignment to `json::array()` or `json::make_array()` instead.

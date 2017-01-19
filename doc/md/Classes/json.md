@@ -22,21 +22,21 @@ Member type                         |Definition
 `allocator_type`|Allocator type
 `char_allocator`|String allocator type
 `array_allocator`|Array allocator type
-`object_allocator`|Object allocator type
-`string_type`|Default `string_type` is `std::string`
-`member_type`|[member_type](json_member_type) is a class that stores a name and a json value
+`object_allocator`|Object allocator 
+`string_view_type`|A non-owning view of a string, holds a pointer to character data and length. Supports conversion to and from strings. Will be typedefed to the C++ 17 [string view](http://en.cppreference.com/w/cpp/string/basic_string_view) if `JSONCONS_HAS_STRING_VIEW` is defined in `jsoncons_config.hpp`, otherwise proxied.  
+`kvp_type `|[kvp_type ](kvp_type ) is a class that stores a name and a json value
 `null_type`|An alias for `jsoncons::null_type`
 `object`|json object type
 `array`|json array type
-`object_iterator`|A bidirectional iterator to `json::member_type`
-`const_object_iterator`|A bidirectional iterator to `const json::member_type`
-`array_iterator`|A random access iterator to `json`
-`const_array_iterator`|A random access iterator to `const json`
+`object_iterator`|A [RandomAccessIterator](http://en.cppreference.com/w/cpp/concept/RandomAccessIterator) to [kvp_type ](kvp_type )
+`const_object_iterator`|A const [RandomAccessIterator](http://en.cppreference.com/w/cpp/concept/RandomAccessIterator) to const [kvp_type ](kvp_type )
+`array_iterator`|A [RandomAccessIterator](http://en.cppreference.com/w/cpp/concept/RandomAccessIterator) to `json`
+`const_array_iterator`|A const [RandomAccessIterator](http://en.cppreference.com/w/cpp/concept/RandomAccessIterator) to `const json`
 
 ### Static member functions
 
-    static json parse(const string_type& s)
-    static json parse(const string_type& s, 
+    static json parse(string_view_type s)
+    static json parse(string_view_type s, 
                       parse_error_handler& err_handler)
 Parses a string of JSON text and returns a json object or array value. 
 Throws [parse_exception](parse_exception) if parsing fails.
@@ -52,25 +52,24 @@ Throws [parse_exception](parse_exception) if parsing fails.
                            parse_error_handler& err_handler)
 Opens a binary input stream to a JSON unicode file, parsing the file assuming UTF-8, and returns a json object or array value. This method expects that the file contains UTF-8 (or clean 7 bit ASCII), if that is not the case, use the `parse` method that takes an `std::istream` instead, imbue your stream with the appropriate facet for handling unicode conversions.
 Throws [parse_exception](parse_exception) if parsing fails.
+```c++
+template <class T>
+static json make_array(size_ n, const T& val)
 
-    static json make_array()
+template <class T>
+static json make_array(size_ n, const T& val, 
+                       const allocator_type& alloc = allocator_type())
 
-    static json make_array(size_t n, const array_allocator& allocator = array_allocator())
+template <size_t N>
+static json make_array(size_t size1 ... size_t sizeN)
 
-    template <class T>
-    static json make_array(size_ n, const T& val)
+template <size_t N,typename T>
+static json make_array(size_t size1 ... size_t sizeN, const T& val)
 
-    template <class T>
-    static json make_array(size_ n, const T& val, const array_allocator& allocator = array_allocator())
-
-    template <size_t N>
-    static json make_array(size_t size1 ... size_t sizeN)
-
-    template <size_t N,typename T>
-    static json make_array(size_t size1 ... size_t sizeN, const T& val)
-
-    template <size_t N,typename T>
-    static json make_array(size_t size1 ... size_t sizeN, const T& val, const array_allocator& allocator)
+template <size_t N,typename T>
+static json make_array(size_t size1 ... size_t sizeN, const T& val, 
+                       const allocator_type& alloc)
+```
 Makes a multidimensional array with the number of dimensions specified as a template parameter. The size of each dimension is passed as a parameter, and optionally an inital value. If no initial value, the default is an empty json object. The elements may be accessed using familiar C++ native array syntax.
 
     static const json& null()
@@ -164,10 +163,10 @@ Resizes a json array so that it contains `n` elements that are initialized to `v
 
 ### Accessors
 
-    bool has_key(const string_type& name) const
+    bool has_key(string_view_type name) const
 Returns `true` if an object has a member with the given `name`, otherwise `false`.    
 
-    size_t count(const string_type& name) const
+    size_t count(string_view_type name) const
 Returns the number of object members that match `name`.    
 
     template <class T>
@@ -175,10 +174,10 @@ Returns the number of object members that match `name`.
 Returns `true` if the json value is the same as type `T` according to [json_type_traits](json_type_traits), `false` otherwise.  
 
     bool is<X> const noexcept 
-If the type `X` is integral, `is<X>()` returns `true` if the json value is integral and within the range of the type `X`, `false` otherwise.  
-If the type `X` is floating point, `is<X>()` returns `true` if the json value is floating point and within the range of the type `X`, `false` otherwise.  
+Type `X` is integral: returns `true` if the json value is integral and within the range of the type `X`, `false` otherwise.  
+Type `X` is floating point: returns `true` if the json value is floating point and within the range of the type `X`, `false` otherwise.  
 
-    bool is<string_type> const noexcept 
+    bool is<std::string> const noexcept 
 Returns `true` if the json value is of string type, `false` otherwise.  
 
     bool is<bool> const noexcept 
@@ -196,7 +195,7 @@ Returns `true` if the json value is an array, `false` otherwise.
     bool is<X<T>> const noexcept
 If the type `X` is not `std::basic_string` but otherwise satisfies [SequenceContainer](http://en.cppreference.com/w/cpp/concept/SequenceContainer), `is<X<T>>()` returns `true` if the json value is an array and each element is the "same as" type `T` according to [json_type_traits](json_type_traits), `false` otherwise.
 
-    bool is<X<string_type,T>> const noexcept
+    bool is<X<std::string,T>> const noexcept
 If the type 'X' satisfies [AssociativeContainer](http://en.cppreference.com/w/cpp/concept/AssociativeContainer) or [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer), `is<X<T>>()` returns `true` if the json value is an object and each mapped value is the "same as" `T` according to [json_type_traits](json_type_traits), `false` otherwise.
 
     bool is_null() const noexcept
@@ -214,71 +213,55 @@ Non-generic versions of `is_` methods
     T as() const
 Attempts to convert the json value to the template value type using [json_type_traits](json_type_traits).
 
-    as<bool>
+    X as<X>() const
+Type X is integeral: returns integer value if value is integral, performs cast if value has double type, returns 1 or 0 if value has bool type, attempts conversion if value is string, otherwise throws.
+Type X is floating point: returns value cast to X if value is integral, returns `NaN` if value is `null`, attempts conversion if value is string, otherwise throws.
+
+    as<bool>()
 Returns `true` if value is `bool` and `true`, or if value is integral and non-zero, or if value is floating point and non-zero, or if value is string and parsed value evaluates as `true`. 
 Returns `false` if value is `bool` and `false`, or if value is integral and zero, or if value is floating point and zero, or if value is string and parsed value evaluates as `false`. 
 Otherwise throws `std::runtime_exception`
 
-    as<double>
-If value is double, returns value, if value is signed or unsigned integer, casts to double, if value is `null`, returns `NaN`, otherwise throws.
-
-    char as<char> const
-    signed char as<signed char> const
-    unsigned char as<unsigned char> const
-    wchar_t as<wchar_t> const
-    short as<short> const
-    unsigned short as<unsigned short> const 
-    int as<int> const 
-    unsigned int as<unsigned int> const 
-    long as<long> const 
-    unsigned long as<unsigned long> const 
-    long long as<long long> const 
-    unsigned long long as<unsigned long long> const 
-Return integer value if value has integral type, performs cast if value has double type, returns 1 or 0 if value has bool type, otherwise throws.
-
-    string_type as<string_type>() const noexcept
-    string_type as<string_type>(const char_allocator& allocator) const noexcept
-If value is string, returns value, otherwise returns result of `to_string`.
+    std::string as<std::string>() const noexcept
+    std::string as<std::string>(const char_allocator& allocator) const noexcept
+If value is string, returns value, otherwise returns result of `dump`.
 
     as<X<T>>()
 If the type `X` is not `std::basic_string` but otherwise satisfies [SequenceContainer](http://en.cppreference.com/w/cpp/concept/SequenceContainer), `as<X<T>>()` returns the `json` value as an `X<T>` if the `json` value is an array and each element is convertible to type `T`, otherwise throws.
 
-    as<X<string_type,T>>()
-If the type 'X' satisfies [AssociativeContainer](http://en.cppreference.com/w/cpp/concept/AssociativeContainer) or [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer), `as<X<string_type,T>>()` returns the `json` value as an `X<string_type,T>` if the `json` value is an object and if each member value is convertible to type `T`, otherwise throws.
+    as<X<std::string,T>>()
+If the type 'X' satisfies [AssociativeContainer](http://en.cppreference.com/w/cpp/concept/AssociativeContainer) or [UnorderedAssociativeContainer](http://en.cppreference.com/w/cpp/concept/UnorderedAssociativeContainer), `as<X<std::string,T>>()` returns the `json` value as an `X<std::string,T>` if the `json` value is an object and if each member value is convertible to type `T`, otherwise throws.
 
     bool as_bool() const
     int64_t as_integer() const
     uint64_t as_uinteger() const
     double as_double() const
-    string_type as_string() const noexcept
-    string_type as_string(const char_allocator& allocator) const noexcept
+    string_view_type as_string_view() const
     unsigned int as<unsigned int> const 
 Non-generic versions of `as` methods
 
     json& operator[](size_t i)
     const json& operator[](size_t i) const
 Returns a reference to the value at position i in a json object or array.
-Throws `std::runtime_error` if not an object.
+Throws `std::runtime_error` if not an object or array.
 
-    json& operator[](const string_type& name)
+    json& operator[](string_view_type name)
 Returns a proxy to a keyed value. If written to, inserts or updates with the new value. If read, evaluates to a reference to the keyed value, if it exists, otherwise throws. 
 Throws `std::runtime_error` if not an object.
 If read, throws `std::out_of_range` if the object does not have a member with the specified name.  
 
-    const json& operator[](const string_type& name) const
+    const json& operator[](string_view_type name) const
 If `name` matches the name of a member in the json object, returns a reference to the json object, otherwise throws.
 Throws `std::runtime_error` if not an object.
 Throws `std::out_of_range` if the object does not have a member with the specified name.  
 
-    object_iterator find(const string_type& name)
-    object_iterator find(const char* name)
-    const_object_iterator find(const string_type& name) const
-    const_object_iterator find(const char* name) const
+    object_iterator find(string_view_type name)
+    const_object_iterator find(string_view_type name) const
 Returns an object iterator to a member whose name compares equal to `name`. If there is no such member, returns `end_member()`.
 Throws `std::runtime_error` if not an object.
 
-    json& at(const string_type& name)
-    const json& at(const string_type& name) const
+    json& at(string_view_type name)
+    const json& at(string_view_type name) const
 Returns a reference to the value with the specifed name in a json object.
 Throws `std::runtime_error` if not an object.
 Throws `std::out_of_range` if the object does not have a member with the specified name.  
@@ -290,11 +273,13 @@ Throws `std::runtime_error` if not an array.
 Throws `std::out_of_range` if the index is outside the bounds of the array.  
 
     template <class T>
-    T get_with_default(const string_type& name, const T& default_val) const
+    T get_with_default(string_view_type name, 
+                       const T& default_val) const
 If `name` matches the name of a member in the json object, returns the member value converted to the default's data type, otherwise returns `default_val`.
 Throws `std::runtime_error` if not an object.
 
-    const char_type* get_with_default(const string_type& name, const char_type* default_val) const
+    const char_type* get_with_default(string_view_type name, 
+                                      const char_type* default_val) const
 Make `get_with_default` do the right thing for string literals.
 
 ### Modifiers
@@ -310,7 +295,7 @@ Throws `std::runtime_error` if not an object.
 Remove the members from an object in the range '[first,last)'.
 Throws `std::runtime_error` if not an object.
 
-    void erase(const string_type& name)
+    void erase(string_view_type name)
 Remove a member with the specified name from an object
 Throws `std::runtime_error` if not an object.
 
@@ -318,16 +303,12 @@ Throws `std::runtime_error` if not an object.
 Requests the removal of unused capacity.
 
     template <class T>
-    void set(const string_type& name, T&& val)
-    template <class T>
-    void set(string_type&& name, T&& val)
+    void set(string_view_type name, T&& val)
 Inserts a new member or replaces an existing member in a json object.
 Throws `std::runtime_error` if not an object.
 
     template <class T>
-    object_iterator set(object_iterator hint, const string_type& name, T&& val)
-    template <class T>
-    object_iterator set(object_iterator hint, string_type&& name, T&& val)
+    object_iterator set(object_iterator hint, string_view_type name, T&& val)
 Inserts a new member or replaces an existing member in a json object.
 Insertion time is optimized if `hint` points to the member that will precede the inserted member.
 Returns a `member_iterator` pointing at the member that was inserted or updated
@@ -358,22 +339,25 @@ Returns `true` if two json objects do not compare equal, `false` otherwise.
 
 ### Serialization
 
-    string_type to_string(const char_allocator& allocator = char_allocator()) const noexcept
-Inserts json value into string.
+    template <class SAllocator>
+    void dump(std::basic_string<char_type,char_traits_type,SAllocator>& s) const
+Inserts json value into string using default serialization_options.
 
-    string_type to_string(const serialization_options& format, const char_allocator& allocator = char_allocator()) const
+    template <class SAllocator>
+    void dump(std::basic_string<char_type,char_traits_type,SAllocator>& s, 
+              const serialization_options& options) const
 Inserts json value into string using specified [serialization_options](serialization_options).
 
-    void write(basic_json_output_handler<char_type>& output_handler) const
+    void dump(basic_json_output_handler<char_type>& output_handler) const
 Calls `begin_json()` on `output_handler`, emits json value to `output_handler`, and calls `end_json()` on `output_handler`.
 
-    write write(std::ostream& os) const
+    void dump(std::ostream& os) const
 Inserts json value into stream with default serialization options.
 
-    write write(std::ostream<CharT> os, const serialization_options& format) const
+    void dump(std::ostream<CharT> os, const serialization_options& options) const
 Inserts json value into stream using specified [serialization_options](serialization_options).
 
-    void write_body(json_output_handler& handler) const
+    void dump_body(json_output_handler& handler) const
 Emits JSON events for JSON objects, arrays, object members and array elements to a [json_output_handler](json_output_handler), such as a [json_serializer](json_serializer).
 
 ### Non member functions
@@ -385,11 +369,11 @@ Reads a `json` value from a stream.
 Inserts json value into stream.
 
     std::ostream& print(const json& val)  
-    std::ostream& print(const json& val, const serialization_options<CharT>& format)  
+    std::ostream& print(const json& val, const serialization_options<CharT>& options)  
 Inserts json value into stream using the specified [serialization_options](serialization_options) if supplied.
 
     std::ostream& pretty_print(const json& val)  
-    std::ostream& pretty_print(const json& val, const serialization_options<CharT>& format)  
+    std::ostream& pretty_print(const json& val, const serialization_options<CharT>& options)  
 Inserts json value into stream using the specified [serialization_options](serialization_options) if supplied.
 
     void swap(json& a, json& b)
@@ -482,9 +466,9 @@ json book = json::parse(R"(
 }
 )");
 
-for (const auto& member: book.object_range())
+for (const auto& kvp: book.object_range())
 {
-    std::cout << member.key() << ":" << member.value().as<string>() << std::endl;
+    std::cout << kvp.key() << ":" << kvp.value().as<string>() << std::endl;
 } 
 ```
 ### Range-based for loop over elements of an array
@@ -509,7 +493,7 @@ json booklist = json::array{book1, book2, book3};
 
 for (const auto& book: booklist.array_range())
 {
-    std::cout << book["title"].as<string_type>() << std::end;
+    std::cout << book["title"].as<std::string>() << std::end;
 } 
    
 ### Accessors and defaults
@@ -549,7 +533,7 @@ Output:
 ```
 ### Array
 ```c++
-json arr = json::make_array();
+json arr = json::array();
 arr.add(10);
 arr.add(20);
 arr.add(30);
@@ -584,7 +568,7 @@ obj["country"] = "Canada";
 
 for (auto it = obj.object_range().begin(); it != obj.object_range().end(); ++it)
 {
-    std::cout << it->key() << "=" << it->value().as<string_type>() << std::endl;
+    std::cout << it->key() << "=" << it->value().as<std::string>() << std::endl;
 }
 ```
 Output:
@@ -599,7 +583,7 @@ json arr = json::array{"Toronto", "Vancouver", "Montreal"};
 
 for (auto it = arr.array_range().begin(); it != arr.array_range().end(); ++it)
 {
-    std::cout << it->as<string_type>() << std::endl;
+    std::cout << it->as<std::string>() << std::endl;
 }
 ```
 Output:
@@ -612,7 +596,7 @@ Montreal
 ```c++
 json root;
 
-root["persons"] = json::make_array();
+root["persons"] = json::array();
 
 json person;
 person["first_name"] = "John";

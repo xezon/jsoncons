@@ -22,7 +22,7 @@
 using namespace jsoncons;
 using namespace jsoncons::jsonpath;
 
-BOOST_AUTO_TEST_SUITE(jsonpath_test_suite)
+BOOST_AUTO_TEST_SUITE(jsonpath_tests)
 
 struct jsonpath_fixture
 {
@@ -238,15 +238,19 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_union)
     json root = json::parse(jsonpath_fixture::store_text());
 
     json result = json_query(root,"$['store']..['author','title']");
-    std::cout << "!!!test_jsonpath_store_book_union" << std::endl;
-    std::cout << pretty_print(result) << std::endl;
 
-    //json expected = json::array();
-    //expected.add(fixture.book());
-    //expected.add(fixture.bicycle());
-    //BOOST_CHECK_EQUAL(expected,result);
-
-    //std::cout << pretty_print(result) << std::endl;
+    json expected = json::parse(R"(
+[
+    "Nigel Rees",
+    "Sayings of the Century",
+    "Evelyn Waugh",
+    "Sword of Honour",
+    "Herman Melville",
+    "Moby Dick",
+    "J. R. R. Tolkien",
+    "The Lord of the Rings"
+]
+    )");
 }
 
 BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_star)
@@ -605,9 +609,6 @@ BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_tests)
     json result4 = json_query(root,"$.store.book[ ?(@.category != @.category) ]");
     json expected4 = json::array();
     BOOST_CHECK_EQUAL(expected4,result4);
-
-    json result5 = json_query(root,"$.store.book[ ?(@.category != @) ]");
-    BOOST_CHECK_EQUAL(fixture.book(),result5);
 }
 
 BOOST_AUTO_TEST_CASE(test_jsonpath_store_book_tests2)

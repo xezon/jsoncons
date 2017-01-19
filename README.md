@@ -6,10 +6,13 @@ jsoncons uses some features that are new to C++ 11, including [move semantics](h
 
 The [code repository](https://github.com/danielaparker/jsoncons) and [releases](https://github.com/danielaparker/jsoncons/releases) are on github. It is distributed under the [Boost Software License](http://www.boost.org/users/license.html)
 
-The library has a number of features, which are listed below:
+Features:
 
 - Uses the standard C++ input/output streams library
-- Supports converting to and from the standard library sequence and associative containers
+- Supports conversion from and to the standard library sequence and associative containers
+- Supports conversion from and to user defined types
+- Passes all tests from [JSON_checker](http://www.json.org/JSON_checker/) except `fail1.json`, which is allowed in [RFC7159](http://www.ietf.org/rfc/rfc7159.txt)
+- Returns the expected results for all tests from [JSONTestSuite](https://github.com/nst/JSONTestSuite)
 - Supports object members sorted alphabetically by name or in original order
 - Implements parsing and serializing JSON text in UTF-8 for narrow character strings and streams
 - Supports UTF16 (UTF32) encodings with size 2 (size 4) wide characters
@@ -21,13 +24,25 @@ The library has a number of features, which are listed below:
 - Supports Nan, Inf and -Inf replacement
 - Supports reading a sequence of JSON texts from a stream
 - Supports optional escaping of non-ascii UTF-8 octets
-- Allows extensions to the types accepted by the json class constructors, accessors and modifiers
-- Supports reading (writing) JSON values from (to) CSV files
-- Supports serializing JSON values to [JSONx](http://www.ibm.com/support/knowledgecenter/SS9H2Y_7.5.0/com.ibm.dp.doc/json_jsonx.html) (XML)
-- Passes all tests from [JSON_checker](http://www.json.org/JSON_checker/) except `fail1.json`, which is allowed in [RFC7159](http://www.ietf.org/rfc/rfc7159.txt)
+- Supports conversion from and to user defined types
 - Handles JSON texts of arbitrarily large depth of nesting, a limit can be set if desired
-- Supports [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/)
-- Supports search (by JsonPath) and replace
+
+Extensions:
+
+- The [jsonpath](#user-content-ext_jsonpath) extension supports search using [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/).  It also supports search and replace using JsonPath expressions.
+- The [csv](#user-content-ext_csv) extension supports reading (writing) JSON values from (to) CSV files
+- The [binary](#user-content-ext_binary) extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+
+## Get jsoncons
+
+The jsoncons library is header-only: it consists solely of header files containing templates and inline functions, and requires no separately-compiled library binaries when linking. It has no dependence on other libraries. The accompanying test suite uses boost, but not the library itself.
+
+To install the jsoncons library, download the zip file, unpack the release, under `src` find the directory `jsoncons`, and copy it to your `include` directory. If you wish to use extensions, copy the `jsoncons_ext` directory as well. 
+
+## How to use it
+
+- For a quick guide, see [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons). 
+- Consult the [tutorials and reference](https://github.com/danielaparker/jsoncons/wiki) for the details. 
 
 As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the [deprecated list](https://github.com/danielaparker/jsoncons/wiki/deprecated) for the status of old names. The deprecated names can be suppressed by defining macro `JSONCONS_NO_DEPRECATED`, which is recommended for new code.
 
@@ -35,12 +50,6 @@ As the `jsoncons` library has evolved, names have sometimes changed. To ease tra
 
 [json_benchmarks](https://github.com/danielaparker/json_benchmarks) provides some measurements about how `jsoncons` compares to other `json` libraries.
 Results for [JSONTestSuite](https://github.com/nst/JSONTestSuite) and [JSON_checker](http://www.json.org/JSON_checker/) tests may be found [here](https://danielaparker.github.io/json_benchmarks/).
-
-## Get jsoncons
-
-The jsoncons library is header-only: it consists solely of header files containing templates and inline functions, and requires no separately-compiled library binaries when linking. It has no dependence on other libraries. The accompanying test suite uses boost, but not the library itself.
-
-To install the jsoncons library, download the zip file, unpack the release, under `src` find the directory `jsoncons`, and copy it to your `include` directory. If you wish to use extensions, copy the `jsoncons_ext` directory as well. 
 
 ## A simple program using jsoncons
 
@@ -100,8 +109,6 @@ Output:
 (3) Dimension 2 = n/a
 ```
 
-For a quick guide, see the article [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons). Consult the [wiki](https://github.com/danielaparker/jsoncons/wiki) for the latest documentation, tutorials and roadmap. 
-
 ## Building the test suite and examples with CMake
 
 [CMake](https://cmake.org/) is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a [Windows Installer package](https://cmake.org/download/). On Linux it is usually available as a package, e.g., on Ubuntu,
@@ -153,19 +160,18 @@ Output:
 ```
 Extra comma at line 1 and column 10
 ```
-
-### Use range-based for loops with arrays
+### Range-based for loops with arrays
 
 ```c++
 json j = json::array{1,2,3,4};
 
-for (auto element : book.array_range())
+for (auto val : book.array_range())
 {
-    std::cout << element << std::endl;
+    std::cout << val << std::endl;
 }
 ```
 
-### Use range-based for loops with objects
+### Range-based for loops with objects
 
 ```c++
 json book = json::object{
@@ -174,14 +180,31 @@ json book = json::object{
     {"price", 25.17}
 };
 
-for (const auto& member : book.object_range())
+for (const auto& kvp : book.object_range())
 {
-    std::cout << member.key() << "=" 
-              << member.value() << std::endl;
+    std::cout << kvp.key() << "=" 
+              << kvp.value() << std::endl;
 }
 ```
+### _json and _ojson literal operators
 
-### Construct multi-dimensional json arrays
+```c++
+json j1 = R"(
+{
+    "StartDate" : "2017-03-01",
+    "MaturityDate" : "2020-12-30"          
+}
+)"_json;
+
+ojson j2 = R"(
+{
+    "StartDate" : "2017-03-01",
+    "MaturityDate" : "2020-12-30"          
+}
+)"_ojson;
+```
+
+### Multi-dimensional json arrays
 ```c++
 json a = json::make_array<3>(4, 3, 2, 0.0);
 double val = 1.0;
@@ -314,7 +337,7 @@ int main()
     // or a json_output_handler    
     std::cout << "(2) ";
     ojson j = ojson::parse(s);
-    j.write(filter1);
+    j.dump(filter1);
     std::cout << std::endl;
 }
 ```
@@ -326,6 +349,8 @@ Output:
 Or define and use your own filters. See [json_filter](https://github.com/danielaparker/jsoncons/wiki/json_filter) for details.
 
 ## Extensions
+
+<div id="ext_jsonpath"/>
 
 ### jsonpath
 
@@ -417,6 +442,8 @@ Output:
 
 See [json_query](https://github.com/danielaparker/jsoncons/wiki/json_query), [json_replace](https://github.com/danielaparker/jsoncons/wiki/json_replace), and [Basics](https://github.com/danielaparker/jsoncons/wiki/Basics) for details.
 
+<div id="ext_csv"/>
+
 ### csv
 Example file (tasks.csv)
 ```csv
@@ -455,7 +482,7 @@ int main()
 
     std::cout << "(2)\n";
     csv_serializer serializer(std::cout);
-    tasks.write(serializer);
+    tasks.dump(serializer);
 }
 ```
 Output:
@@ -503,6 +530,79 @@ project_id,task_name,task_start,task_finish
 ```
 
 See [csv_reader](https://github.com/danielaparker/jsoncons/wiki/csv_reader) and [csv_serializer](https://github.com/danielaparker/jsoncons/wiki/csv_serializer) for details.
+
+<div id="ext_binary"/>
+
+### binary
+
+The `binary` extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+
+#### MessagePack example
+
+Example file (book.json):
+```json
+[
+    {
+        "category": "reference",
+        "author": "Nigel Rees",
+        "title": "Sayings of the Century",
+        "price": 8.95
+    },
+    {
+        "category": "fiction",
+        "author": "Evelyn Waugh",
+        "title": "Sword of Honour",
+        "price": 12.99
+    }
+]
+```
+```c++
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/binary/message_pack.hpp>
+
+using namespace jsoncons;
+using namespace jsoncons::binary;
+
+int main()
+{
+    std::ifstream is("input/book.json");
+    ojson j1;
+    is >> j1;
+
+    // Encode ojson to MessagePack
+    std::vector<uint8_t> v = encode_message_pack(j1);
+
+    // Decode MessagePack to ojson 
+    ojson j2 = decode_message_pack<ojson>(v);
+
+    std::cout << pretty_print(j2) << std::endl;
+
+    // or to json (now alphabetically sorted)
+    json j3 = decode_message_pack<json>(v);
+
+    // or to wjson (converts from utf8 to wide characters)
+    wjson j4 = decode_message_pack<wjson>(v);
+}
+```
+Output:
+```json
+[
+    {
+        "category": "reference",
+        "author": "Nigel Rees",
+        "title": "Sayings of the Century",
+        "price": 8.95
+    },
+    {
+        "category": "fiction",
+        "author": "Evelyn Waugh",
+        "title": "Sword of Honour",
+        "price": 12.99
+    }
+]
+```
+
+See [encode_message_pack](https://github.com/danielaparker/jsoncons/wiki/encode_message_pack) and [decode_message_pack](https://github.com/danielaparker/jsoncons/wiki/decode_message_pack) for details.
 
 ## Acknowledgements
 

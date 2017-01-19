@@ -17,43 +17,42 @@ public:
     }
 
 private:
-    void do_name(const char* p, size_t length, 
+    void do_name(string_view_type name, 
                  const parsing_context& context) override
     {
-        member_name_ = std::string(p, length);
+        member_name_ = name;
         if (member_name_ != "name")
         {
-            this->downstream_handler().name(p, length, context);
+            this->downstream_handler().name(name, context);
         }
     }
 
-    void do_string_value(const char* p, size_t length, 
+    void do_string_value(string_view_type s, 
                          const parsing_context& context) override
     {
         if (member_name_ == "name")
         {
-            std::string value(p, length);
-            size_t end_first = value.find_first_of(" \t");
-            size_t start_last = value.find_first_not_of(" \t", end_first);
+            size_t end_first = s.find_first_of(" \t");
+            size_t start_last = s.find_first_not_of(" \t", end_first);
             this->downstream_handler().name("first-name", context);
-            std::string first = value.substr(0, end_first);
+            string_view_type first = s.substr(0, end_first);
             this->downstream_handler().value(first, context);
-            if (start_last != std::string::npos)
+            if (start_last != string_view_type::npos)
             {
                 this->downstream_handler().name("last-name", context);
-                std::string last = value.substr(start_last);
+                string_view_type last = s.substr(start_last);
                 this->downstream_handler().value(last, context);
             }
             else
             {
-                std::cerr << "Incomplete name \"" << value
+                std::cerr << "Incomplete name \"" << s
                    << "\" at line " << context.line_number()
                    << " and column " << context.column_number() << std::endl;
             }
         }
         else
         {
-            this->downstream_handler().value(p, length, context);
+            this->downstream_handler().value(s, context);
         }
     }
 
@@ -85,7 +84,7 @@ void name_fix_up_example2()
 
     json_serializer serializer(os, true);
     name_fix_up_filter filter(serializer);
-    j.write(filter);
+    j.dump(filter);
 }
 
 void change_member_name_example()
@@ -109,7 +108,7 @@ void change_member_name_example()
     // or a json_output_handler    
     std::cout << "(2) ";
     ojson j = ojson::parse(s);
-    j.write(filter1);
+    j.dump(filter1);
     std::cout << std::endl;
 }
 

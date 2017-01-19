@@ -3,6 +3,8 @@ jsoncons::csv::csv_serializer
 ```
 The `csv_serializer` class is an instantiation of the `basic_csv_serializer` class template that uses `char` as the character type.  It implements [json_output_handler](json_output_handler) and supports formatting a JSON value as a [CSV file](http://tools.ietf.org/html/rfc4180).
 
+`csv_serializer` is noncopyable and nonmoveable.
+
 ### Header
 ```c++
 #include <jsoncons_ext/csv/csv_serializer.hpp>
@@ -57,7 +59,7 @@ json countries = encoder.get_result();
 
 csv_serializer serializer(std::cout);
 
-countries.write(serializer);
+countries.dump(serializer);
 ```
 #### Output 
 ```
@@ -122,7 +124,7 @@ json employees = encoder.get_result();
 
 csv_serializer serializer(std::cout,params);
 
-employees.write(serializer);
+employees.dump(serializer);
 ```
 #### Tab delimited output file
 ```

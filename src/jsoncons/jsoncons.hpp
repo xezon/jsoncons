@@ -15,8 +15,9 @@
 #include <cstdint> 
 #include <iostream>
 #include <vector>
+#include <jsoncons/unicode_traits.hpp>
 #include <jsoncons/jsoncons_config.hpp>
-#include <jsoncons/jsoncons_io.hpp>
+#include <jsoncons/jsoncons.hpp>
 
 namespace jsoncons {
 

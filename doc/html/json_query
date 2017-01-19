@@ -468,50 +468,31 @@ vertical-align:1px;
 </style>
 </head>
 <body>
-<pre><code>jsoncons::jsonpath::json_query
-</code></pre>
-
+<div class="highlight highlight-source-c++"><pre>jsoncons::jsonpath::json_query</pre></div>
 <p>Returns a <code>json</code> array of <code>json</code> values selected from a root <code>json</code> structure.</p>
-
 <h3>Header</h3>
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/jsonpath/json_query.hpp<span class="pl-pds">&gt;</span></span>
 
-<pre><code>#include &lt;jsoncons/jsonpath/json_query.hpp&gt;
-
-template&lt;Json&gt;
-Json json_query(const Json&amp; root, 
-                const typename Json::string_type&amp; path);
-</code></pre>
-
-<p><a href="http://goessner.net/articles/JsonPath/">JsonPath</a> is a creation of Stefan Goessner. JSONPath expressions refer to a JSON text in the same way as XPath expressions refer to an XML document. </p>
-
+<span class="pl-k">template</span>&lt;Json&gt;
+Json <span class="pl-en">json_query</span>(<span class="pl-k">const</span> Json&amp; root, 
+                <span class="pl-k">typename</span> Json::string_view_type path);</pre></div>
+<p><a href="http://goessner.net/articles/JsonPath/">JsonPath</a> is a creation of Stefan Goessner. JSONPath expressions refer to a JSON text in the same way as XPath expressions refer to an XML document.</p>
 <p>Stefan Goessner's javascript implemention returns <code>false</code> in case of no match, but in a note he suggests an alternative is to return an empty array. The <code>jsoncons</code> implementation takes that alternative and returns an empty array in case of no match.</p>
-
 <h3>Stefan Goessner's JsonPath</h3>
-
 <p>Unlike XML, the root of a JSON text is usually an anonymous object or array, so JSONPath identifies the outermost level of the text with the symbol $.</p>
-
 <p>JSONPath expressions can use the dot–notation</p>
-
 <pre><code>$.store.book.0.title
 </code></pre>
-
-<p>or the bracket–notation </p>
-
+<p>or the bracket–notation</p>
 <pre><code>$[store][book][0][title]
 </code></pre>
-
-<p>or </p>
-
+<p>or</p>
 <pre><code>$['store']['book'][0]['title']
 </code></pre>
-
 <p>or</p>
-
 <pre><code>$["store"]["book"][0]["title"]
 </code></pre>
-
 <p>Note that Stefan Goessner's original implementation supports unquoted or single quoted names inside of square brackets, the jsoncons implementation in addition supports double quoted names.</p>
-
 <table>
 <thead>
 <tr>
@@ -529,9 +510,7 @@ Json json_query(const Json&amp; root,
 <td>the current object</td>
 </tr>
 <tr>
-<td>
-<code>.</code> or <code>[]</code>
-</td>
+<td><code>.</code> or <code>[]</code></td>
 <td>Child operator</td>
 </tr>
 <tr>
@@ -561,14 +540,9 @@ Json json_query(const Json&amp; root,
 <tr>
 <td><code>?()</code></td>
 <td>Applies a filter expression.</td>
-</tr>
-</tbody>
-</table>
-
+</tr></tbody></table>
 <h3>jsoncons filter expressions</h3>
-
-<p><a href="http://goessner.net/articles/JsonPath/">Stefan Goessner's JsonPath</a> does not provide any specification for the allowable filter expressions, simply stating that expressions can be anything that the underlying script engine can handle. <code>jsoncons</code> expressions support the following comparision and arithmetic operators. </p>
-
+<p><a href="http://goessner.net/articles/JsonPath/">Stefan Goessner's JsonPath</a> does not provide any specification for the allowable filter expressions, simply stating that expressions can be anything that the underlying script engine can handle. <code>jsoncons</code> expressions support the following comparision and arithmetic operators.</p>
 <table>
 <thead>
 <tr>
@@ -577,6 +551,14 @@ Json json_query(const Json&amp; root,
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>*</code></td>
+<td>Left times right</td>
+</tr>
+<tr>
+<td><code>/</code></td>
+<td>Left divided by right</td>
+</tr>
 <tr>
 <td><code>+</code></td>
 <td>Left plus right</td>
@@ -618,14 +600,10 @@ Json json_query(const Json&amp; root,
 <td>Left is greater than or equal to right</td>
 </tr>
 <tr>
-<td>'=~'</td>
-<td>Left matches regular expression [?(@.author =~ /Evelyn.*?/)]</td>
-</tr>
-</tbody>
-</table>
-
+<td>'=<del>'    |Left matches regular expression [?(@.author =</del> /Evelyn.*?/)]</td>
+<td></td>
+</tr></tbody></table>
 <p>Unary operators</p>
-
 <table>
 <thead>
 <tr>
@@ -637,18 +615,65 @@ Json json_query(const Json&amp; root,
 <tr>
 <td>!</td>
 <td>Not right</td>
+</tr></tbody></table>
+<ul>
+<li>
+<pre><code>  |Negates right
+</code></pre>
+</li>
+</ul>
+<p>Operator precedence</p>
+<table>
+<thead>
+<tr>
+<th>Precedence</th>
+<th>Operator</th>
+<th>Associativity</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><code>!</code> unary <code>-</code></td>
+<td>Right</td>
 </tr>
 <tr>
-<td>-</td>
-<td>Negates right</td>
+<td>2</td>
+<td><code>=~</code></td>
+<td>Left</td>
 </tr>
-</tbody>
-</table>
-
+<tr>
+<td>3</td>
+<td><code>*</code> <code>/</code></td>
+<td>Left</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>+</code> <code>-</code></td>
+<td>Left</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>&lt;</code> <code>&gt;</code> <code>&lt;=</code> <code>&gt;=</code></td>
+<td>Left</td>
+</tr>
+<tr>
+<td>6</td>
+<td><code>==</code> <code>!=</code></td>
+<td>Left</td>
+</tr>
+<tr>
+<td>7</td>
+<td><code>&amp;&amp;</code></td>
+<td>Left</td>
+</tr>
+<tr>
+<td>8</td>
+<td><code>||</code></td>
+<td>Left</td>
+</tr></tbody></table>
 <h3>Examples</h3>
-
 <p>The examples below use the JSON text from <a href="http://goessner.net/articles/JsonPath/">Stefan Goessner's JsonPath</a> (store.json).</p>
-
 <pre><code>{ "store": {
     "book": [ 
       { "category": "reference",
@@ -681,11 +706,9 @@ Json json_query(const Json&amp; root,
   }
 }
 </code></pre>
-
-<p>Our first example returns all authors whose books are cheaper than $10. </p>
-
+<p>Our first example returns all authors whose books are cheaper than $10.</p>
 <pre><code>#include &lt;jsoncons/json.hpp&gt;
-#include "jsoncons_ext/jsonpath/json_query.hpp"
+#include &lt;jsoncons_ext/jsonpath/json_query.hpp&gt;
 
 using namespace jsoncons;
 using namespace jsoncons::jsonpath;
@@ -696,14 +719,10 @@ json result = json_query(root,"$.store.book[?(@.price &lt; 10)].author");
 
 std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 </code></pre>
-
 <p>The result is</p>
-
 <pre><code>["Nigel Rees","Herman Melville"]
 </code></pre>
-
 <p>A list of sample JSON paths and results follows.</p>
-
 <table>
 <thead>
 <tr>
@@ -716,14 +735,12 @@ std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 <tr>
 <td><code>$..book.length</code></td>
 <td>The number of books</td>
-<td>
-<code>length</code> is a property of an array</td>
+<td><code>length</code> is a property of an array</td>
 </tr>
 <tr>
 <td><code>$.store.*</code></td>
 <td>Everything in the store, including books and a bicycle.</td>
-<td>
-<code>*</code> is a wildcard symbol</td>
+<td><code>*</code> is a wildcard symbol</td>
 </tr>
 <tr>
 <td><code>$..author</code></td>
@@ -743,8 +760,7 @@ std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 <tr>
 <td><code>$..book[2]</code></td>
 <td>The third book</td>
-<td>Indices start at <code>0</code>
-</td>
+<td>Indices start at <code>0</code></td>
 </tr>
 <tr>
 <td><code>$..book.2</code></td>
@@ -769,8 +785,7 @@ std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 <tr>
 <td><code>$..book[:2]</code></td>
 <td>All books from index 0 (inclusive) to index 2 (exclusive)</td>
-<td>
-<code>start</code> defaults to 0</td>
+<td><code>start</code> defaults to 0</td>
 </tr>
 <tr>
 <td><code>$..book[1:2]</code></td>
@@ -785,9 +800,7 @@ std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 <tr>
 <td><code>$..book[2:]</code></td>
 <td>Last two books</td>
-<td>
-<code>end</code> defaults to <code>length</code>
-</td>
+<td><code>end</code> defaults to <code>length</code></td>
 </tr>
 <tr>
 <td><code>$..book[?(@.isbn)]</code></td>
@@ -817,8 +830,7 @@ std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 <tr>
 <td><code>$.store.book[?((@.author =~ /evelyn.*?/i))]</code></td>
 <td>All books whose author's name starts with Evelyn, evelyn etc.</td>
-<td>
-<code>i</code> indicates case insensitive</td>
+<td><code>i</code> indicates case insensitive</td>
 </tr>
 <tr>
 <td><code>$.store.book[?(!(@.author =~ /Evelyn.*?/))]</code></td>
@@ -829,9 +841,7 @@ std::cout &lt;&lt; pretty_print(result) &lt;&lt; std::endl;
 <td><code>$['store']['book']..['author','title']</code></td>
 <td>All authors and titles of books in the store</td>
 <td></td>
-</tr>
-</tbody>
-</table>
+</tr></tbody></table>
 </body>
 </html>
 <!-- This document was created with MarkdownPad, the Markdown editor for Windows (http://markdownpad.com) -->

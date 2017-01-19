@@ -22,12 +22,19 @@
 // Uncomment the following line to suppress deprecated names (recommended for new code)
 //#define JSONCONS_NO_DEPRECATED
 
-#define JSONCONS_NO_MACRO_EXP
-
 namespace jsoncons
 {
 
-// Follow boost
+#if _MSC_VER > 1800 // _MSC_VER == 1800 -> MS Visual Studio 2013
+#else
+#define JSONCONS_NO_CONSTEXPR
+#endif
+
+//#define JSONCONS_HAS_STRING_VIEW
+
+#if defined(ANDROID) || defined(__ANDROID__)
+#define JSONCONS_HAS_STRTOD_L
+#endif
 
 #if defined (__clang__)
 #if defined(_GLIBCXX_USE_NOEXCEPT)
@@ -48,7 +55,7 @@ namespace jsoncons
 #endif
 
 #if defined(_MSC_VER)
-#define JSONCONS_HAS__ECVT_S
+//#define JSONCONS_HAS__ECVT_S
 #define JSONCONS_HAS_FOPEN_S
 #define JSONCONS_HAS_WCSTOMBS_S
 #if _MSC_VER >= 1900
@@ -62,19 +69,6 @@ namespace jsoncons
 
 #ifdef _MSC_VER
 #pragma warning( disable : 4290 )
-inline bool is_nan(double x) { return _isnan(x) != 0; }
-inline bool is_inf(double x)
-{
-    return !_finite(x) && !_isnan(x);
-}
-inline bool is_pos_inf(double x)
-{
-    return is_inf(x) && x > 0;
-}
-inline bool is_neg_inf(double x)
-{
-    return is_inf(x) && x < 0;
-}
 
 inline
 int c99_vsnprintf(char *str, size_t size, const char *format, va_list ap)
@@ -100,13 +94,6 @@ int c99_snprintf(char *str, size_t size, const char *format, ...)
     return count;
 }
 #else
-inline bool is_nan(double x)
-{ return std::isnan( x ); }
-inline bool is_pos_inf(double x)
-{return std::isinf(x) && x > 0;}
-inline bool is_neg_inf(double x)
-{return  std::isinf(x) && x > 0;}
-
 #if __cplusplus >= 201103L
 #define c99_snprintf snprintf
 #else

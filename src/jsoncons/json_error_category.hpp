@@ -8,6 +8,7 @@
 #define JSONCONS_JSON_ERROR_CATEGORY_HPP
 
 #include <system_error>
+#include <jsoncons/jsoncons_config.hpp>
 
 namespace jsoncons {
 
@@ -36,12 +37,15 @@ namespace jsoncons {
         unexpected_right_bracket = 21,
         unexpected_right_brace = 22,
         illegal_comment = 23,
-        unexpected_continuation_byte = 24,
-        expected_continuation_byte = 25,
-        over_long_utf8_sequence = 26,
-        illegal_codepoint = 27,
-        unexpected_trailing_surrogate = 28,
-        expected_trailing_surrogate = 29
+        expected_continuation_byte = 24,
+        over_long_utf8_sequence = 25,
+        illegal_codepoint = 26,
+        illegal_surrogate_value = 27,
+        unpaired_high_surrogate = 28,
+        expected_u8_found_u16 = 29,
+        expected_u8_found_u32 = 30,
+        expected_u16_found_fffe = 31,
+        expected_u32_found_fffe = 32
     };
 
 class json_error_category_impl
@@ -102,18 +106,24 @@ public:
             return "Unexpected right bracket ']'";
         case json_parser_errc::illegal_comment:
             return "Illegal comment";
-        case json_parser_errc::unexpected_continuation_byte:
-            return "Lead utf8 continuation byte";
         case json_parser_errc::expected_continuation_byte:
             return "Expected continuation byte";
         case json_parser_errc::over_long_utf8_sequence:
             return "Over long UTF-8 sequence";
         case json_parser_errc::illegal_codepoint:
             return "Illegal codepoint (>= 0xd800 && <= 0xdfff)";
-        case json_parser_errc::unexpected_trailing_surrogate:
-            return "Unexpected trailing surrogate";
-        case json_parser_errc::expected_trailing_surrogate:
-            return "Expected trailing surrogate";
+        case json_parser_errc::illegal_surrogate_value:
+            return "UTF-16 surrogate values are illegal in UTF-32";
+        case json_parser_errc::unpaired_high_surrogate:
+            return "Expected low surrogate following the high surrogate";
+        case json_parser_errc::expected_u8_found_u16:
+            return "Expected UTF-8, found UTF-16";
+        case json_parser_errc::expected_u8_found_u32:
+            return "Expected UTF-8, found UTF-32";
+        case json_parser_errc::expected_u16_found_fffe:
+            return "Expected UTF-16, found non character";
+        case json_parser_errc::expected_u32_found_fffe:
+            return "Expected UTF-32, found non character";
         default:
             return "Unknown JSON parser error";
         }

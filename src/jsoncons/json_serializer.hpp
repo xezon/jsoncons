@@ -15,7 +15,8 @@
 #include <cstdlib>
 #include <limits> // std::numeric_limits
 #include <fstream>
-#include <jsoncons/json_text_traits.hpp>
+#include <jsoncons/jsoncons.hpp>
+#include <jsoncons/jsoncons_util.hpp>
 #include <jsoncons/serialization_options.hpp>
 #include <jsoncons/json_output_handler.hpp>
 
@@ -24,6 +25,10 @@ namespace jsoncons {
 template<class CharT>
 class basic_json_serializer : public basic_json_output_handler<CharT>
 {
+public:
+    using typename basic_json_output_handler<CharT>::string_view_type                                 ;
+
+private:
     static const size_t default_buffer_length = 16384;
 
     struct stack_item
@@ -77,8 +82,12 @@ class basic_json_serializer : public basic_json_output_handler<CharT>
     std::vector<stack_item> stack_;
     int indent_;
     bool indenting_;
-    float_printer<CharT> fp_;
+    print_double<CharT> fp_;
     buffered_output<CharT> bos_;
+
+    // Noncopyable and nonmoveable
+    basic_json_serializer(const basic_json_serializer&) = delete;
+    basic_json_serializer& operator=(const basic_json_serializer&) = delete;
 public:
     basic_json_serializer(std::basic_ostream<CharT>& os)
        : indent_(0), 
@@ -96,16 +105,16 @@ public:
     {
     }
 
-    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_serialization_options<CharT>& format)
-       : format_(format), 
+    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_serialization_options<CharT>& options)
+       : format_(options), 
          indent_(0), 
          indenting_(false),  
          fp_(format_.precision()),
          bos_(os)
     {
     }
-    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_serialization_options<CharT>& format, bool indenting)
-       : format_(format), 
+    basic_json_serializer(std::basic_ostream<CharT>& os, const basic_serialization_options<CharT>& options, bool indenting)
+       : format_(options), 
          indent_(0), 
          indenting_(indenting),  
          fp_(format_.precision()),
@@ -258,7 +267,7 @@ private:
         end_value();
     }
 
-    void do_name(const CharT* name, size_t length) override
+    void do_name(string_view_type name) override
     {
         if (!stack_.empty())
         {
@@ -276,7 +285,7 @@ private:
         }
 
         bos_.put('\"');
-        escape_string<CharT>(name, length, format_, bos_);
+        escape_string<CharT>(name.data(), name.length(), format_, bos_);
         bos_.put('\"');
         bos_.put(':');
         if (indenting_)
@@ -292,13 +301,13 @@ private:
             begin_scalar_value();
         }
 
-        auto buf = json_text_traits<CharT>::null_literal();
+        auto buf = json_literals<CharT>::null_literal();
         bos_.write(buf.first,buf.second);
 
         end_value();
     }
 
-    void do_string_value(const CharT* value, size_t length) override
+    void do_string_value(string_view_type value) override
     {
         if (!stack_.empty() && !stack_.back().is_object())
         {
@@ -306,7 +315,7 @@ private:
         }
 
         bos_. put('\"');
-        escape_string<CharT>(value, length, format_, bos_);
+        escape_string<CharT>(value.data(), value.length(), format_, bos_);
         bos_. put('\"');
 
         end_value();
@@ -319,21 +328,21 @@ private:
             begin_scalar_value();
         }
 
-        if (is_nan(value) && format_.replace_nan())
+        if ((std::isnan)(value))
         {
             bos_.write(format_.nan_replacement());
         }
-        else if (is_pos_inf(value) && format_.replace_pos_inf())
+        else if (value == std::numeric_limits<double>::infinity())
         {
             bos_.write(format_.pos_inf_replacement());
         }
-        else if (is_neg_inf(value) && format_.replace_neg_inf())
+        else if (!(std::isfinite)(value))
         {
             bos_.write(format_.neg_inf_replacement());
         }
         else
         {
-            fp_.print(value,precision,bos_);
+            fp_(value,precision,bos_);
         }
 
         end_value();
@@ -368,12 +377,12 @@ private:
 
         if (value)
         {
-            auto buf = json_text_traits<CharT>::true_literal();
+            auto buf = json_literals<CharT>::true_literal();
             bos_.write(buf.first,buf.second);
         }
         else
         {
-            auto buf = json_text_traits<CharT>::false_literal();
+            auto buf = json_literals<CharT>::false_literal();
             bos_.write(buf.first,buf.second);
         }
 
