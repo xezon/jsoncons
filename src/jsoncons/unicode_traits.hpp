@@ -236,14 +236,18 @@ is_legal_utf8(Iterator first, size_t length)
     uint8_t a;
     Iterator srcptr = first+length;
     switch (length) {
-    default: return conv_errc::over_long_utf8_sequence;
-        /* Everything else falls through when "true"... */
-    case 4: if (((a = (*--srcptr))& 0xC0) != 0x80) 
-        return conv_errc::expected_continuation_byte;
-    case 3: if (((a = (*--srcptr))& 0xC0) != 0x80) 
-        return conv_errc::expected_continuation_byte;
-    case 2: if (((a = (*--srcptr))& 0xC0) != 0x80) 
-        return conv_errc::expected_continuation_byte;
+    default:
+        return conv_errc::over_long_utf8_sequence;
+    /* Everything else falls through when "true"... */
+    case 4:
+        if (((a = (*--srcptr))& 0xC0) != 0x80)
+            return conv_errc::expected_continuation_byte;
+    case 3:
+        if (((a = (*--srcptr))& 0xC0) != 0x80)
+            return conv_errc::expected_continuation_byte;
+    case 2:
+        if (((a = (*--srcptr))& 0xC0) != 0x80)
+            return conv_errc::expected_continuation_byte;
 
         switch (static_cast<uint8_t>(*first)) 
         {
@@ -255,8 +259,9 @@ is_legal_utf8(Iterator first, size_t length)
             default:   if (a < 0x80) return conv_errc::source_illegal;
         }
 
-    case 1: if (static_cast<uint8_t>(*first) >= 0x80 && static_cast<uint8_t>(*first) < 0xC2) 
-        return conv_errc::source_illegal;
+    case 1:
+        if (static_cast<uint8_t>(*first) >= 0x80 && static_cast<uint8_t>(*first) < 0xC2)
+            return conv_errc::source_illegal;
     }
     if (static_cast<uint8_t>(*first) > 0xF4) 
         return conv_errc::source_illegal;
@@ -274,30 +279,45 @@ struct is_output_iterator<I, E, void_t<
     typename std::iterator_traits<I>::iterator_category,
     decltype(*std::declval<I>() = std::declval<E>())>> : std::true_type {};
 
+// is_same_size fixes issue with vs2013
+
+// primary template
+template<class T1, class T2, class Enable = void>
+struct is_same_size : std::false_type 
+{
+};
+ 
+// specialization for non void types
+template<class T1, class T2>
+struct is_same_size<T1, T2, typename std::enable_if<!std::is_void<T1>::value && !std::is_void<T2>::value>::type>
+{
+    static const bool value = (sizeof(T1) == sizeof(T2));
+}; 
+
 template<class OutputIt, class CharT, class Enable = void>
 struct is_compatible_output_iterator : std::false_type {};
 
 template<class OutputIt, class CharT>
 struct is_compatible_output_iterator<OutputIt,CharT,
-    typename std::enable_if<(is_output_iterator<OutputIt,CharT>::value
-                             && std::is_void<typename std::iterator_traits<OutputIt>::value_type>::value
-                             && std::is_integral<typename OutputIt::container_type::value_type>::value 
-                             && !std::is_void<typename OutputIt::container_type::value_type>::value
-                             && sizeof(typename OutputIt::container_type::value_type) == sizeof(CharT))>::type
+    typename std::enable_if<is_output_iterator<OutputIt,CharT>::value
+                            && std::is_void<typename std::iterator_traits<OutputIt>::value_type>::value
+                            && std::is_integral<typename OutputIt::container_type::value_type>::value 
+                            && !std::is_void<typename OutputIt::container_type::value_type>::value
+                            && is_same_size<typename OutputIt::container_type::value_type,CharT>::value>::type
 > : std::true_type {};
 
 template<class OutputIt, class CharT>
 struct is_compatible_output_iterator<OutputIt,CharT,
     typename std::enable_if<is_output_iterator<OutputIt,CharT>::value
                             && std::is_integral<typename std::iterator_traits<OutputIt>::value_type>::value 
-                            && sizeof(typename std::iterator_traits<OutputIt>::value_type) == sizeof(CharT)>::type
+                            && is_same_size<typename std::iterator_traits<OutputIt>::value_type,CharT>::value>::type
 > : std::true_type {};
 
 template<class OutputIt, class CharT>
 struct is_compatible_output_iterator<OutputIt,CharT,
-    typename std::enable_if<(is_output_iterator<OutputIt,CharT>::value
-                             && std::is_void<typename std::iterator_traits<OutputIt>::value_type>::value
-                             && sizeof(typename OutputIt::char_type) == sizeof(CharT))>::type
+    typename std::enable_if<is_output_iterator<OutputIt,CharT>::value
+                            && std::is_void<typename std::iterator_traits<OutputIt>::value_type>::value
+                            && is_same_size<typename OutputIt::char_type,CharT>::value>::type
 > : std::true_type {};
 
 // convert

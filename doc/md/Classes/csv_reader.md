@@ -53,7 +53,7 @@ Returns `true` when there is no more data to be read from the stream, `false` ot
 
     void read()
 Reports JSON related events for JSON objects, arrays, object members and array elements to a [json_input_handler](json_input_handler), such as a [json_decoder](json_decoder).
-Throws [parse_exception](parse_exception) if parsing fails.
+Throws [parse_error](parse_error) if parsing fails.
 
     size_t buffer_capacity() const
 
@@ -85,7 +85,7 @@ json_decoder<json> decoder;
 
 csv_reader reader(is,decoder);
 reader.read();
-json countries = encoder.get_result();
+json countries = decoder.get_result();
 
 std::cout << pretty_print(countries) << std::endl;
 ```
@@ -127,7 +127,7 @@ params.field_delimiter = '\t'
 
 csv_reader reader(is,decoder,params);
 reader.read();
-json employees = encoder.get_result();
+json employees = decoder.get_result();
 
 std::cout << pretty_print(employees) << std::endl;
 ```
@@ -186,7 +186,7 @@ params.column_names({"Country Code","Name"})
 
 csv_reader reader(is,decoder,params);
 reader.read();
-json countries = encoder.get_result();
+json countries = decoder.get_result();
 
 std::cout << pretty_print(countries) << std::endl;
 ```
@@ -211,4 +211,92 @@ std::cout << pretty_print(countries) << std::endl;
         "Name":"WALLIS & FUTUNA ISLANDS"
     }
 ]
+```
+
+
+### Reading a comma delimited file with different mapping options
+
+#### Input
+
+```csv
+Date,1Y,2Y,3Y,5Y
+2017-01-09,0.0062,0.0075,0.0083,0.011
+2017-01-08,0.0063,0.0076,0.0084,0.0112
+2017-01-08,0.0063,0.0076,0.0084,0.0112
+```
+
+#### Code
+
+```c++
+json_decoder<ojson> decoder;
+csv_parameters params;
+params.assume_header(true)
+       .column_types({"string","float","float","float","float"});
+
+params.mapping(mapping_type::n_rows);
+std::istringstream is1("bond_yields.csv");
+csv_reader reader1(is1,decoder,params);
+reader1.read();
+ojson val1 = decoder.get_result();
+std::cout << "\n(1)\n"<< pretty_print(val1) << "\n";
+
+params.mapping(mapping_type::n_objects);
+std::istringstream is2("bond_yields.csv");
+csv_reader reader2(is2,decoder,params);
+reader2.read();
+ojson val2 = decoder.get_result();
+std::cout << "\n(2)\n"<< pretty_print(val2) << "\n";
+
+params.mapping(mapping_type::m_columns);
+std::istringstream is3("bond_yields.csv");
+csv_reader reader3(is3, decoder, params);
+reader3.read();
+ojson val3 = decoder.get_result();
+std::cout << "\n(3)\n" << pretty_print(val3) << "\n";
+```
+
+#### Output
+
+```json
+(1)
+[
+    ["Date","1Y","2Y","3Y","5Y"],
+    ["2017-01-09",0.0062,0.0075,0.0083,0.011],
+    ["2017-01-08",0.0063,0.0076,0.0084,0.0112],
+    ["2017-01-08",0.0063,0.0076,0.0084,0.0112]
+]
+
+(2)
+[
+    {
+        "Date": "2017-01-09",
+        "1Y": 0.0062,
+        "2Y": 0.0075,
+        "3Y": 0.0083,
+        "5Y": 0.011
+    },
+    {
+        "Date": "2017-01-08",
+        "1Y": 0.0063,
+        "2Y": 0.0076,
+        "3Y": 0.0084,
+        "5Y": 0.0112
+    },
+    {
+        "Date": "2017-01-08",
+        "1Y": 0.0063,
+        "2Y": 0.0076,
+        "3Y": 0.0084,
+        "5Y": 0.0112
+    }
+]
+
+(3)
+{
+    "Date": ["2017-01-09","2017-01-08","2017-01-08"],
+    "1Y": [0.0062,0.0063,0.0063],
+    "2Y": [0.0075,0.0076,0.0076],
+    "3Y": [0.0083,0.0084,0.0084],
+    "5Y": [0.011,0.0112,0.0112]
+}
 ```

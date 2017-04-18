@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <stdexcept>
 #include <system_error>
+#include <ios>
 #include <jsoncons/jsoncons.hpp>
 #include <jsoncons/json_input_handler.hpp>
 #include <jsoncons/parse_error_handler.hpp>
@@ -33,7 +34,7 @@ class basic_json_reader
     std::vector<CharT> buffer_;
     size_t buffer_length_;
     size_t buffer_capacity_;
-    size_t index_;
+    bool begin_;
 
     // Noncopyable and nonmoveable
     basic_json_reader(const basic_json_reader&) = delete;
@@ -48,7 +49,7 @@ public:
           eof_(false),
           buffer_length_(0),
           buffer_capacity_(default_max_buffer_length),
-          index_(0)
+          begin_(true)
     {
         buffer_.resize(buffer_capacity_);
     }
@@ -61,7 +62,7 @@ public:
          eof_(false),
          buffer_length_(0),
          buffer_capacity_(default_max_buffer_length),
-         index_(0)
+         begin_(true)
     {
         buffer_.resize(buffer_capacity_);
     }
@@ -89,20 +90,41 @@ public:
 
     void read_next()
     {
-        parser_.begin_parse();
+        std::error_code ec;
+        read_next(ec);
+        if (ec)
+        {
+            throw parse_error(ec,parser_.line_number(),parser_.column_number());
+        }
+    }
+
+    void read_next(std::error_code& ec)
+    {
+        parser_.reset();
         while (!eof_ && !parser_.done())
         {
-            if (!(index_ < buffer_length_))
+            if (parser_.source_exhausted())
             {
                 if (!is_.eof())
                 {
+                    if (is_.fail())
+                    {
+                        ec = json_parser_errc::source_error;
+                        return;
+                    }        
                     is_.read(buffer_.data(), buffer_capacity_);
                     buffer_length_ = static_cast<size_t>(is_.gcount());
+                    parser_.set_source(buffer_.data(),buffer_length_);
                     if (buffer_length_ == 0)
                     {
                         eof_ = true;
                     }
-                    index_ = 0;
+                    else if (begin_)
+                    {
+                        parser_.skip_bom(ec);
+                        if (ec) return;
+                        begin_ = false;
+                    }
                 }
                 else
                 {
@@ -111,34 +133,64 @@ public:
             }
             if (!eof_)
             {
-                parser_.parse(buffer_.data(),index_,buffer_length_);
-                index_ = parser_.index();
+                parser_.parse(ec);
+                if (ec) return;
             }
         }
-        parser_.end_parse();
+        if (eof_)
+        {
+            parser_.end_parse(ec);
+            if (ec) return;
+        }
     }
 
     void check_done()
     {
+        std::error_code ec;
+        check_done(ec);
+        if (ec)
+        {
+            throw parse_error(ec,parser_.line_number(),parser_.column_number());
+        }
+    }
+
+    size_t line_number() const
+    {
+        return parser_.line_number();
+    }
+
+    size_t column_number() const
+    {
+        return parser_.column_number();
+    }
+
+    void check_done(std::error_code& ec)
+    {
         if (eof_)
         {
-            parser_.check_done(buffer_.data(),0,0);
+            parser_.check_done(ec);
+            if (ec) return;
         }
         else
         {
             while (!eof_)
             {
-                if (!(index_ < buffer_length_))
+                if (parser_.source_exhausted())
                 {
                     if (!is_.eof())
                     {
+                        if (is_.fail())
+                        {
+                            ec = json_parser_errc::source_error;
+                            return;
+                        }        
                         is_.read(buffer_.data(), buffer_capacity_);
                         buffer_length_ = static_cast<size_t>(is_.gcount());
+                        parser_.set_source(buffer_.data(),buffer_length_);
                         if (buffer_length_ == 0)
                         {
                             eof_ = true;
                         }
-                        index_ = 0;
                     }
                     else
                     {
@@ -147,8 +199,8 @@ public:
                 }
                 if (!eof_)
                 {
-                    parser_.check_done(buffer_.data(),index_,buffer_length_);
-                    index_ = parser_.index();
+                    parser_.check_done(ec);
+                    if (ec) return;
                 }
             }
         }
@@ -163,6 +215,15 @@ public:
     {
         read_next();
         check_done();
+    }
+
+    void read(std::error_code& ec)
+    {
+        read_next(ec);
+        if (!ec)
+        {
+            check_done(ec);
+        }
     }
 
 #if !defined(JSONCONS_NO_DEPRECATED)

@@ -561,9 +561,9 @@ BOOST_AUTO_TEST_CASE(test_is)
     obj["field2"] = -10;
     obj["field3"] = 10U;
 
-    BOOST_CHECK(obj["field1"].type_id() == jsoncons::value_types::integer_t);
-    BOOST_CHECK(obj["field2"].type_id() == jsoncons::value_types::integer_t);
-    BOOST_CHECK(obj["field3"].type_id() == jsoncons::value_types::uinteger_t);
+    BOOST_CHECK(obj["field1"].type_id() == jsoncons::value_type::integer_t);
+    BOOST_CHECK(obj["field2"].type_id() == jsoncons::value_type::integer_t);
+    BOOST_CHECK(obj["field3"].type_id() == jsoncons::value_type::uinteger_t);
 
     BOOST_CHECK(!obj["field1"].is<std::string>());
     BOOST_CHECK(obj["field1"].is<short>());
@@ -601,7 +601,7 @@ BOOST_AUTO_TEST_CASE(test_is2)
 {
     json obj = json::parse("{\"field1\":10}");
 
-    BOOST_CHECK(obj["field1"].type_id() == jsoncons::value_types::uinteger_t);
+    BOOST_CHECK(obj["field1"].type_id() == jsoncons::value_type::uinteger_t);
 
     BOOST_CHECK(!obj["field1"].is<std::string>());
     BOOST_CHECK(obj["field1"].is<int>());
@@ -843,6 +843,19 @@ BOOST_AUTO_TEST_CASE(test_value_not_found_and_defaults)
     BOOST_CHECK_EXCEPTION(obj["first_aid_certification"].as<std::string>(),
                           std::out_of_range,
                           [](const std::exception& ex ) { return ex.what() == std::string("first_aid_certification not found"); });
+}
+
+BOOST_AUTO_TEST_CASE(test_set_override)
+{
+    json obj;
+    obj["first_name"] = "Jane";
+    obj["height"] = 0.9;
+
+    obj["first_name"] = "Joe";
+    obj["height"] = "0.3";
+
+    BOOST_CHECK(obj["first_name"] == "Joe");
+    BOOST_CHECK_CLOSE(obj["height"].as<double>(),0.3,0.00000000001);
 }
 
 BOOST_AUTO_TEST_SUITE_END()

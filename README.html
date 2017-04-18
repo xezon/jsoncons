@@ -475,7 +475,7 @@ vertical-align:1px;
 <p>Features:</p>
 <ul>
 <li>Uses the standard C++ input/output streams library</li>
-<li>Supports conversion from and to the standard library sequence and associative containers</li>
+<li>Supports conversion from and to the standard library sequence containers, associative containers, and std::tuple</li>
 <li>Supports conversion from and to user defined types</li>
 <li>Passes all tests from <a href="http://www.json.org/JSON_checker/">JSON_checker</a> except <code>fail1.json</code>, which is allowed in <a href="http://www.ietf.org/rfc/rfc7159.txt">RFC7159</a></li>
 <li>Returns the expected results for all tests from <a href="https://github.com/nst/JSONTestSuite">JSONTestSuite</a></li>
@@ -497,7 +497,7 @@ vertical-align:1px;
 <ul>
 <li>The <a href="#user-content-ext_jsonpath">jsonpath</a> extension supports search using <a href="http://goessner.net/articles/JsonPath/">Stefan Goessner's JsonPath</a>.  It also supports search and replace using JsonPath expressions.</li>
 <li>The <a href="#user-content-ext_csv">csv</a> extension supports reading (writing) JSON values from (to) CSV files</li>
-<li>The <a href="#user-content-ext_binary">binary</a> extension supports encoding to and decoding from the <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format.</li>
+<li>The <a href="#user-content-ext_msgpack">msgpack</a> extension supports encoding to and decoding from the <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format.</li>
 </ul>
 <h2>Get jsoncons</h2>
 <p>The jsoncons library is header-only: it consists solely of header files containing templates and inline functions, and requires no separately-compiled library binaries when linking. It has no dependence on other libraries. The accompanying test suite uses boost, but not the library itself.</p>
@@ -590,7 +590,7 @@ Results for <a href="https://github.com/nst/JSONTestSuite">JSONTestSuite</a> and
 <p><a href="https://github.com/danielaparker/jsoncons/wiki/wjson">wjson</a> constructs a wide character json value that sorts name-value members alphabetically</p>
 </li>
 <li>
-<p><a href="https://github.com/danielaparker/jsoncons/wiki/owjson">owjson</a> constructs a wide character json value that preserves the original name-value insertion order</p>
+<p><a href="https://github.com/danielaparker/jsoncons/wiki/wojson">wojson</a> constructs a wide character json value that preserves the original name-value insertion order</p>
 </li>
 </ul>
 <h2>Features</h2>
@@ -693,6 +693,14 @@ std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1) <span cla
 std::unordered_map&lt;std::string,<span class="pl-k">int</span>&gt; um = j.as&lt;std::unordered_map&lt;std::string,<span class="pl-k">int</span>&gt;&gt;();</pre></div>
 <p>Output:</p>
 <pre><code>(1) {"one":1,"three":3,"two":2}
+</code></pre>
+<h3>Convert from and to std::tuple</h3>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">auto</span> t = std::make_tuple(<span class="pl-c1">false</span>,<span class="pl-c1">1</span>,<span class="pl-s"><span class="pl-pds">"</span>foo<span class="pl-pds">"</span></span>);
+json <span class="pl-en">j</span>(t);
+std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1) <span class="pl-pds">"</span></span>&lt;&lt; j &lt;&lt; std::endl;
+<span class="pl-k">auto</span> t2 = j.as&lt;std::tuple&lt;<span class="pl-k">bool</span>,<span class="pl-k">int</span>,std::string&gt;&gt;();</pre></div>
+<p>Output:</p>
+<pre><code>(1) [false,1,"foo"]
 </code></pre>
 <h3>Convert from and to user defined types (and standard library containers of user defined types)</h3>
 <div class="highlight highlight-source-c++"><pre><span class="pl-k">struct</span> <span class="pl-en">book</span>
@@ -842,7 +850,7 @@ std::list&lt;book&gt; l = j.as&lt;std::list&lt;book&gt;&gt;();</pre></div>
 <div id="user-content-ext_csv">
 <h3>csv</h3>
 <p>Example file (tasks.csv)</p>
-<pre><code class="language-csv">project_id, task_name, task_start, task_finish
+<pre lang="csv"><code>project_id, task_name, task_start, task_finish
 4001,task1,01/01/2003,01/31/2003
 4001,task2,02/01/2003,02/28/2003
 4001,task3,03/01/2003,03/31/2003
@@ -869,7 +877,7 @@ std::list&lt;book&gt; l = j.as&lt;std::list&lt;book&gt;&gt;();</pre></div>
           .<span class="pl-c1">column_types</span>({<span class="pl-s"><span class="pl-pds">"</span>integer<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>string<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>string<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>string<span class="pl-pds">"</span></span>});
     csv_reader <span class="pl-smi">reader</span>(is,decoder,params);
     reader.<span class="pl-c1">read</span>();
-    ojson tasks = encoder.<span class="pl-c1">get_result</span>();
+    ojson tasks = decoder.<span class="pl-c1">get_result</span>();
 
     std::cout &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span>(1)<span class="pl-cce">\n</span><span class="pl-pds">"</span></span> &lt;&lt; <span class="pl-c1">pretty_print</span>(tasks) &lt;&lt; <span class="pl-s"><span class="pl-pds">"</span><span class="pl-cce">\n\n</span><span class="pl-pds">"</span></span>;
 
@@ -910,7 +918,7 @@ std::list&lt;book&gt; l = j.as&lt;std::list&lt;book&gt;&gt;();</pre></div>
         <span class="pl-s"><span class="pl-pds">"</span>task_start<span class="pl-pds">"</span></span>: <span class="pl-s"><span class="pl-pds">"</span>05/01/2003<span class="pl-pds">"</span></span>
     }
 ]</pre></div>
-<pre><code class="language-csv">(2)
+<pre lang="csv"><code>(2)
 project_id,task_name,task_start,task_finish
 4001,task2,02/01/2003,02/28/2003
 4001,task3,03/01/2003,03/31/2003
@@ -918,9 +926,9 @@ project_id,task_name,task_start,task_finish
 4002,task2,05/01/2003,
 </code></pre>
 <p>See <a href="https://github.com/danielaparker/jsoncons/wiki/csv_reader">csv_reader</a> and <a href="https://github.com/danielaparker/jsoncons/wiki/csv_serializer">csv_serializer</a> for details.</p>
-<div id="user-content-ext_binary">
-<h3>binary</h3>
-<p>The <code>binary</code> extension supports encoding to and decoding from the <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format.</p>
+<div id="user-content-ext_msgpack">
+<h3>msgpack</h3>
+<p>The <code>msgpack</code> extension supports encoding to and decoding from the <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format.</p>
 <h4>MessagePack example</h4>
 <p>Example file (book.json):</p>
 <div class="highlight highlight-source-json"><pre>[
@@ -938,10 +946,10 @@ project_id,task_name,task_start,task_finish
     }
 ]</pre></div>
 <div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/json.hpp<span class="pl-pds">&gt;</span></span>
-#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons_ext/binary/message_pack.hpp<span class="pl-pds">&gt;</span></span>
+#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons_ext/msgpack/message_pack.hpp<span class="pl-pds">&gt;</span></span>
 
 <span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span><span class="pl-k">;</span>
-<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span>::binary<span class="pl-k">;</span>
+<span class="pl-k">using</span> <span class="pl-k">namespace</span> <span class="pl-en">jsoncons</span>::msgpack<span class="pl-k">;</span>
 
 <span class="pl-k">int</span> <span class="pl-en">main</span>()
 {

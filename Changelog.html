@@ -468,6 +468,25 @@ vertical-align:1px;
 </style>
 </head>
 <body>
+<p>master</p>
+<ul>
+<li>The name <code>owjson</code> has been deprecated (still works) and changed to <code>wojson</code>. Rationale: naming consistency</li>
+</ul>
+<h2>0.99.7.2</h2>
+<p>Bug fix</p>
+<ul>
+<li>A bug was introduced in 0.99.7 causing the values of existing object members to not be changed wiht set or assignment operations. This has been fixed.</li>
+</ul>
+<p>Change</p>
+<ul>
+<li>jsoncons_ext/binary changed to jsoncons_ext/msgpack</li>
+<li>namespace jsoncons::binary changed to jsoncons::msgpack</li>
+</ul>
+<h2>0.99.7.1</h2>
+<ul>
+<li>Workarounds in unicode_traits and jsonpath to maintain support for vs2013</li>
+<li>Added <code>mapping_type::n_rows</code>, <code>mapping_type::n_objects</code>, and <code>mapping_type::m_columns</code> options for csv to json</li>
+</ul>
 <h2>0.99.7</h2>
 <p>Bug fixes</p>
 <ul>

@@ -19,6 +19,50 @@ using namespace jsoncons::csv;
 
 BOOST_AUTO_TEST_SUITE(csv_tests)
 
+BOOST_AUTO_TEST_CASE(n_columns_test)
+{
+    const std::string bond_yields = R"(Date,1Y,2Y,3Y,5Y
+2017-01-09,0.0062,0.0075,0.0083,0.011
+2017-01-08,0.0063,0.0076,0.0084,0.0112
+2017-01-08,0.0063,0.0076,0.0084,0.0112
+)";
+
+    json_decoder<ojson> decoder;
+    csv_parameters params;
+    params.assume_header(true)
+           .column_types({"string","float","float","float","float"});
+
+    params.mapping(mapping_type::n_rows);
+    std::istringstream is1(bond_yields);
+    csv_reader reader1(is1,decoder,params);
+    reader1.read();
+    ojson val1 = decoder.get_result();
+    //std::cout << "\n(1)\n"<< pretty_print(val1) << "\n";
+    BOOST_CHECK(val1.size() == 4);
+
+    params.mapping(mapping_type::n_objects);
+    std::istringstream is2(bond_yields);
+    csv_reader reader2(is2,decoder,params);
+    reader2.read();
+    ojson val2 = decoder.get_result();
+    //std::cout << "\n(2)\n"<< pretty_print(val2) << "\n";
+    BOOST_REQUIRE(val2.size() == 3);
+    BOOST_CHECK("2017-01-09" == val2[0]["Date"].as<std::string>());
+
+    params.mapping(mapping_type::m_columns);
+    std::istringstream is3(bond_yields);
+    csv_reader reader3(is3, decoder, params);
+    reader3.read();
+    ojson val3 = decoder.get_result();
+    //std::cout << "\n(3)\n"<< pretty_print(val3) << "\n";
+    BOOST_CHECK(5 == val3.size());
+    BOOST_CHECK(3 == val3["Date"].size());
+    BOOST_CHECK(3 == val3["1Y"].size());
+    BOOST_CHECK(3 == val3["2Y"].size());
+    BOOST_CHECK(3 == val3["3Y"].size());
+    BOOST_CHECK(3 == val3["5Y"].size());
+}
+
 BOOST_AUTO_TEST_CASE(csv_test_empty_values)
 {
     std::string input = "bool-f,int-f,float-f,string-f"

@@ -9,7 +9,7 @@ The [code repository](https://github.com/danielaparker/jsoncons) and [releases](
 Features:
 
 - Uses the standard C++ input/output streams library
-- Supports conversion from and to the standard library sequence and associative containers
+- Supports conversion from and to the standard library sequence containers, associative containers, and std::tuple
 - Supports conversion from and to user defined types
 - Passes all tests from [JSON_checker](http://www.json.org/JSON_checker/) except `fail1.json`, which is allowed in [RFC7159](http://www.ietf.org/rfc/rfc7159.txt)
 - Returns the expected results for all tests from [JSONTestSuite](https://github.com/nst/JSONTestSuite)
@@ -31,7 +31,7 @@ Extensions:
 
 - The [jsonpath](#user-content-ext_jsonpath) extension supports search using [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/).  It also supports search and replace using JsonPath expressions.
 - The [csv](#user-content-ext_csv) extension supports reading (writing) JSON values from (to) CSV files
-- The [binary](#user-content-ext_binary) extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+- The [msgpack](#user-content-ext_msgpack) extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
 
 ## Get jsoncons
 
@@ -140,7 +140,7 @@ The library includes four instantiations of `basic_json`:
 
 - [wjson](https://github.com/danielaparker/jsoncons/wiki/wjson) constructs a wide character json value that sorts name-value members alphabetically
 
-- [owjson](https://github.com/danielaparker/jsoncons/wiki/owjson) constructs a wide character json value that preserves the original name-value insertion order
+- [wojson](https://github.com/danielaparker/jsoncons/wiki/wojson) constructs a wide character json value that preserves the original name-value insertion order
 
 ## Features
 
@@ -272,6 +272,19 @@ std::unordered_map<std::string,int> um = j.as<std::unordered_map<std::string,int
 Output:
 ```
 (1) {"one":1,"three":3,"two":2}
+```
+
+### Convert from and to std::tuple
+
+```c++
+auto t = std::make_tuple(false,1,"foo");
+json j(t);
+std::cout << "(1) "<< j << std::endl;
+auto t2 = j.as<std::tuple<bool,int,std::string>>();
+```
+Output:
+```
+(1) [false,1,"foo"]
 ```
 
 ### Convert from and to user defined types (and standard library containers of user defined types)
@@ -476,7 +489,7 @@ int main()
           .column_types({"integer","string","string","string"});
     csv_reader reader(is,decoder,params);
     reader.read();
-    ojson tasks = encoder.get_result();
+    ojson tasks = decoder.get_result();
 
     std::cout << "(1)\n" << pretty_print(tasks) << "\n\n";
 
@@ -531,11 +544,11 @@ project_id,task_name,task_start,task_finish
 
 See [csv_reader](https://github.com/danielaparker/jsoncons/wiki/csv_reader) and [csv_serializer](https://github.com/danielaparker/jsoncons/wiki/csv_serializer) for details.
 
-<div id="ext_binary"/>
+<div id="ext_msgpack"/>
 
-### binary
+### msgpack
 
-The `binary` extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+The `msgpack` extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
 
 #### MessagePack example
 
@@ -558,10 +571,10 @@ Example file (book.json):
 ```
 ```c++
 #include <jsoncons/json.hpp>
-#include <jsoncons_ext/binary/message_pack.hpp>
+#include <jsoncons_ext/msgpack/message_pack.hpp>
 
 using namespace jsoncons;
-using namespace jsoncons::binary;
+using namespace jsoncons::msgpack;
 
 int main()
 {

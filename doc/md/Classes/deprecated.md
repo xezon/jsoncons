@@ -42,7 +42,7 @@ json|add(size_t index, const json& val)|<em>&#x2713;</em>|Use add(array_iterator
     |wjson_deserializer|<em>&#x2713;</em>|Use `json_decoder<wjson>`
     |ojson_deserializer|<em>&#x2713;</em>|Use `json_decoder<ojson>`
     |wojson_deserializer|<em>&#x2713;</em>|Use `json_decoder<wojson>`
-    |wojson|<em>&#x2713;</em>|Use owjson`
+    |owjson|<em>&#x2713;</em>|Use wojson`
     |member_type name()|<em>&#x2713;</em>|Use key()
 json member types|any||
                  |member_type|<em>&#x2713;</em>|Use kvp_type
@@ -63,9 +63,9 @@ json_output_handler class|do_longlong_value(long long value)||Removed, override 
 basic_parsing_context|last_char()|<em>&#x2713;</em>|Use current_char()
 json_filter|parent()|<em>&#x2713;</em>|Use downstream_handler()
            |input_handler()|<em>&#x2713;</em>|Use downstream_handler()
-csv_parameters|`header(std::string value)`|<em>&#x2713;</em>|Use `column_names(std::vector<std::string>> value)`
-    |`data_types()`|<em>&#x2713;</em>|Use `column_types()`
-    |`data_types(std::string value)`|<em>&#x2713;</em>|Use `column_types(std::vector<std::string>> value)`
+csv_parameters|`header(std::string value)`||Use `column_names(std::vector<std::string>> value)`
+    |`data_types()`||Use `column_types()`
+    |`data_types(std::string value)`||Use `column_types(std::vector<std::string>> value)`
 output_format|`array_array_block_option accessor and modifier` accessor and modifier|<em>&#x2713;</em>|Use `array_array_split_lines` accessor and modifier
     |`array_object_block_option accessor and modifier`|<em>&#x2713;</em>|Use `array_object_split_lines` accessor and modifier
     |`object_array_block_option accessor and modifier`|<em>&#x2713;</em>|Use `object_array_split_lines` accessor and modifier
