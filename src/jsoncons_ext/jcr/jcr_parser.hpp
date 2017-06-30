@@ -145,13 +145,12 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     uint32_t cp_;
     uint32_t cp2_;
     std::basic_string<char_type> string_buffer_;
-    std::basic_string<char> number_buffer_;
     bool is_negative_;
     size_t index_;
     int initial_stack_capacity_;
     int max_depth_;
     int nesting_depth_;
-    float_reader float_reader_;
+    string_to_double<char_type> str_to_double_;
     const char_type* begin_input_;
     const char_type* end_input_;
     const char_type* p_;
@@ -756,11 +755,11 @@ public:
                         stack_.back() = states::minus;
                         break;
                     case '0': 
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::zero;
                         break;
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::integer;
                         break;
                     case '}':
@@ -904,9 +903,9 @@ public:
                     {
                     case '*':
                         {
-                            min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            min_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
                             max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
-                            number_buffer_.clear();
+                            string_buffer_.clear();
                             stack_.back() = states::expect_max_repetitions;
                             ++p_;
                             ++column_;
@@ -914,7 +913,7 @@ public:
                         break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         ++p_;
                         ++column_;
                         break;
@@ -930,13 +929,13 @@ public:
                     {
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         ++p_;
                         ++column_;
                         break;
                     default:
-                        max_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
-                        number_buffer_.clear();
+                        max_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
+                        string_buffer_.clear();
                         stack_.back() = states::expect_member_rule_or_name;
                         break;
                     }
@@ -1331,11 +1330,11 @@ public:
                         stack_.back() = states::minus;
                         break;
                     case '0': 
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::zero;
                         break;
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::integer;
                         break;
                     case ']':
@@ -1518,11 +1517,11 @@ public:
                     switch (*p_)
                     {
                     case '0': 
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::zero;
                         break;
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::integer;
                         break;
                     default:
@@ -1588,9 +1587,9 @@ public:
                         break;
                     case '*':
                         {
-                            min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            min_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
                             max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
-                            number_buffer_.clear();
+                            string_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;                        
                         }
                         break;
@@ -1612,13 +1611,13 @@ public:
                     ++column_;
                     break;
                 case '0': 
-                    number_buffer_.push_back(static_cast<char>(*p_));
+                    string_buffer_.push_back(static_cast<char>(*p_));
                     stack_.back() = states::zero;
                     ++p_;
                     ++column_;
                     break;
                 case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                    number_buffer_.push_back(static_cast<char>(*p_));
+                    string_buffer_.push_back(static_cast<char>(*p_));
                     stack_.back() = states::integer;
                     ++p_;
                     ++column_;
@@ -1639,7 +1638,7 @@ public:
                     {
                         try
                         {
-                            auto val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                            auto val = string_to_integer(is_negative_, string_buffer_.data(), string_buffer_.length());
                             from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
                         }
                         catch (const std::exception&)
@@ -1651,7 +1650,7 @@ public:
                     {
                         try
                         {
-                            auto val = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            auto val = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
                             from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
                         }
                         catch (const std::exception&)
@@ -1662,13 +1661,13 @@ public:
 
                     stack_.back() = states::range_value;
                     stack_.push_back(states::dot_dot);
-                    number_buffer_.clear();
+                    string_buffer_.clear();
                     is_negative_ = false;
                 }
                     break;
                 default:
-                    precision_ = static_cast<uint8_t>(number_buffer_.length());
-                    number_buffer_.push_back(static_cast<char>(*p_));
+                    precision_ = static_cast<uint8_t>(string_buffer_.length());
+                    string_buffer_.push_back(static_cast<char>(*p_));
                     stack_.back() = states::fraction;
                     break;
                 }
@@ -1705,15 +1704,15 @@ public:
                         break;
                     case '*':
                         {
-                            min_repetitions_ = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                            min_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
                             max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
-                            number_buffer_.clear();
+                            string_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;
                         }
                         break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         break;
                     case '.':
                         stack_.back() = states::dot;
@@ -1729,7 +1728,7 @@ public:
                         begin_member_or_element();
                         break;
                     case 'e':case 'E':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp1;
                         break;
                     default:
@@ -1746,12 +1745,12 @@ public:
                     {
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         ++p_;
                         ++column_;
                         break;
                     default:
-                        size_t max_repeat = string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                        size_t max_repeat = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
                         switch (parent())
                         {
                         case states::array:
@@ -1763,7 +1762,7 @@ public:
                             break;
                         }
 
-                        number_buffer_.clear();
+                        string_buffer_.clear();
                         stack_.back() = states::expect_repeating_rule;
                         break;
                     }
@@ -1800,7 +1799,7 @@ public:
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
                         ++precision_;
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::fraction;
                         break;
                     case ',':
@@ -1814,7 +1813,7 @@ public:
                         begin_member_or_element();
                         break;
                     case 'e':case 'E':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp1;
                         break;
                     default:
@@ -1833,12 +1832,12 @@ public:
                         stack_.back() = states::exp2;
                         break;
                     case '-':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp2;
                         break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp3;
                         break;
                     default:
@@ -1855,7 +1854,7 @@ public:
                     {
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp3;
                         break;
                     default:
@@ -1906,7 +1905,7 @@ public:
                         break;
                     case '0': 
                     case '1':case '2':case '3':case '4':case '5':case '6':case '7':case '8': case '9':
-                        number_buffer_.push_back(static_cast<char>(*p_));
+                        string_buffer_.push_back(static_cast<char>(*p_));
                         stack_.back() = states::exp3;
                         break;
                     default:
@@ -1983,7 +1982,7 @@ private:
     {
         try
         {
-            double d = float_reader_.read(number_buffer_.data(), precision_);
+            double d = str_to_double_(string_buffer_.data(), precision_);
             if (is_negative_)
                 d = -d;
 
@@ -1994,7 +1993,7 @@ private:
         {
             err_handler_->error(std::error_code(jcr_parser_errc::invalid_number, jcr_error_category()), *this);
         }
-        number_buffer_.clear();
+        string_buffer_.clear();
         is_negative_ = false;
     }
 
@@ -2005,7 +2004,7 @@ private:
         {
             try
             {
-                int64_t val = string_to_integer(is_negative_, number_buffer_.data(), number_buffer_.length());
+                int64_t val = string_to_integer(is_negative_, string_buffer_.data(), string_buffer_.length());
 
                 if (parent() == states::range_value)
                 {
@@ -2028,7 +2027,7 @@ private:
         {
             try
             {
-                uint64_t val= string_to_uinteger(number_buffer_.data(), number_buffer_.length());
+                uint64_t val= string_to_uinteger(string_buffer_.data(), string_buffer_.length());
 
                 if (parent() == states::range_value)
                 {
@@ -2050,7 +2049,7 @@ private:
         end_rule(sequence_,rule_ptr);
 
         JSONCONS_ASSERT(stack_.size() >= 2);
-        number_buffer_.clear();
+        string_buffer_.clear();
         is_negative_ = false;
     }
 
