@@ -2317,6 +2317,7 @@ public:
         {
         case value_type::empty_object_t: 
             create_object_implicitly();
+            // FALLTHRU
         case value_type::object_t:
             return json_proxy<json_type>(*this, key_storage_type(name.begin(),name.end(),char_allocator_type(object_value().get_allocator())));
             break;
@@ -3207,6 +3208,7 @@ public:
         {
         case value_type::empty_object_t:
             create_object_implicitly();
+            // FALLTHRU
         case value_type::object_t:
             object_value().set(name, std::forward<T&&>(value));
             break;
@@ -3224,6 +3226,7 @@ public:
         {
         case value_type::empty_object_t:
             create_object_implicitly();
+            // FALLTHRU
         case value_type::object_t:
             object_value().set_(std::forward<key_storage_type&&>(name), std::forward<T&&>(value));
             break;
@@ -3757,6 +3760,7 @@ public:
         {
         case value_type::empty_object_t:
             create_object_implicitly();
+            // FALLTHRU
         case value_type::object_t:
             return var_.object_data_cast()->value();
         default:
@@ -3771,6 +3775,7 @@ public:
         {
         case value_type::empty_object_t:
             const_cast<json_type*>(this)->create_object_implicitly(); // HERE
+            // FALLTHRU
         case value_type::object_t:
             return var_.object_data_cast()->value();
         default:
@@ -3974,9 +3979,9 @@ typedef json_decoder<ojson> ojson_deserializer;
 typedef json_decoder<wojson> wojson_deserializer;
 #endif
 
-}
-
 #if defined(JSONCONS_HAS_USER_DEFINED_LITERALS)
+namespace literals {
+
 inline 
 jsoncons::json operator "" _json(const char* s, std::size_t n)
 {
@@ -4000,7 +4005,12 @@ jsoncons::wojson operator "" _ojson(const wchar_t* s, std::size_t n)
 {
     return jsoncons::wojson::parse(s, n);
 }
+
+}
 #endif
+
+}
+
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic pop
