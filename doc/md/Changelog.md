@@ -1,6 +1,25 @@
 master
 ------
 
+Bug fixes
+
+- Fixed operator== throws when comparing a string against an empty object
+- Fixed jsonpath issue with array 'length' (a.length worked but not a['length'])
+
+New features:
+
+- jsonpath `json_query` now supports returning normalized paths (with
+  optional return_type::path parameter)
+
+0.99.7.3
+--------
+
+- `json_type_traits` supports `std::pair` (convert to/from json array of size 2)
+
+- `parse_stream` renamed to `parse` (backwards compatible)
+
+- `kvp_type` renamed to `key_value_pair_type` (backwards compatible)
+
 - The `_json` and `_ojson` literal operators have been moved to the namespace `jsoncons::literals`.
   Access to these literals now requires
 ```c++
@@ -9,6 +28,9 @@ master
 Rationale: avoid name clashes with other `json` libraries        
 
 - The name `owjson` has been deprecated (still works) and changed to `wojson`. Rationale: naming consistency
+
+- Added json array functions `emplace_back` and `emplace`, and json object functions `try_emplace`
+  and `insert_or_assign`, which are analagous to the standard library vector and map functions. 
 
 0.99.7.2
 --------
@@ -316,7 +338,7 @@ Enhancements:
 - Adds getter and setter `max_depth` methods to allow setting the maximum JSON parse tree depth if desired, by default
 it is arbitrarily large (limited by heap memory.)
 
-- Modifies `json` static methods `parse_string`, `parse_file`, and `parse_stream` behaviour to throw if there are unconsumed non-whitespace characters after reading one JSON text.  
+- Modifies `json` static methods `parse_string`, `parse_file`, and `parse` behaviour to throw if there are unconsumed non-whitespace characters after reading one JSON text.  
 
 Changes to extensions:
 

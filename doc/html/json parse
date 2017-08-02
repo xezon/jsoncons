@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>kvp_type</title>
+<title>json parse</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <style type="text/css">
 /* GitHub stylesheet for MarkdownPad (http://markdownpad.com) */
@@ -468,27 +468,43 @@ vertical-align:1px;
 </style>
 </head>
 <body>
-<div class="highlight highlight-source-c++"><pre>jsoncons::json::kvp_type </pre></div>
-<p><code>kvp_type</code> stores a key (name) and a json value</p>
-<h3>Member types</h3>
-<table>
-<thead>
-<tr>
-<th>Member type</th>
-<th>Definition</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>string_view_type</code></td>
-<td>A non-owning view of a string, holds a pointer to character data and length. Supports conversion to and from strings. Will be typedefed to the C++ 17 <a href="http://en.cppreference.com/w/cpp/string/basic_string_view">string view</a> if <code>JSONCONS_HAS_STRING_VIEW</code> is defined in <code>jsoncons_config.hpp</code>, otherwise proxied.</td>
-</tr></tbody></table>
-<h3>Accessors</h3>
-<pre><code>string_view_type key() const
+<pre><code>static json parse(string_view_type s)
+static json parse(string_view_type s, 
+                  parse_error_handler&amp; err_handler)
+</code></pre>
+<p>Parses a string of JSON text and returns a json object or array value.<br>
+Throws <a href="parse_error">parse_error</a> if parsing fails.</p>
+<pre><code>static json parse(std::istream&amp; is)
+static json parse(std::istream&amp; is, 
+                  parse_error_handler&amp; err_handler)
+</code></pre>
+<p>Parses an input stream of JSON text and returns a json object or array value.<br>
+Throws <a href="parse_error">parse_error</a> if parsing fails.</p>
+<h2>Examples</h2>
+<h3>Parse from stream</h3>
+<p>Input example.json:</p>
+<div class="highlight highlight-source-json"><pre>{<span class="pl-s"><span class="pl-pds">"</span>File Format Options<span class="pl-pds">"</span></span>:{<span class="pl-s"><span class="pl-pds">"</span>Color Spaces<span class="pl-pds">"</span></span>:[<span class="pl-s"><span class="pl-pds">"</span>sRGB<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>AdobeRGB<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>ProPhoto RGB<span class="pl-pds">"</span></span>]}}</pre></div>
+<div class="highlight highlight-source-c++"><pre>std::ifstream <span class="pl-en">is</span>(<span class="pl-s"><span class="pl-pds">"</span>example.json<span class="pl-pds">"</span></span>);
+json j = json::parse(is);
 
-const json&amp; value() const
-
-json&amp; value()
+std::cout &lt;&lt; pretty_print(j) &lt;&lt; std::endl;</pre></div>
+<p>Output:</p>
+<div class="highlight highlight-source-json"><pre>{
+    <span class="pl-s"><span class="pl-pds">"</span>File Format Options<span class="pl-pds">"</span></span>: {
+        <span class="pl-s"><span class="pl-pds">"</span>Color Spaces<span class="pl-pds">"</span></span>: [<span class="pl-s"><span class="pl-pds">"</span>sRGB<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>AdobeRGB<span class="pl-pds">"</span></span>,<span class="pl-s"><span class="pl-pds">"</span>ProPhoto RGB<span class="pl-pds">"</span></span>]
+    }
+}</pre></div>
+<h3>Parse from string</h3>
+<div class="highlight highlight-source-c++"><pre><span class="pl-k">try</span> 
+{
+    json val = <span class="pl-c1">json::parse</span>(<span class="pl-s"><span class="pl-pds">"</span>[1,2,3,4,]<span class="pl-pds">"</span></span>);
+} 
+<span class="pl-k">catch</span>(<span class="pl-k">const</span> jsoncons::parse_error&amp; e) 
+{
+    std::cout &lt;&lt; e.<span class="pl-c1">what</span>() &lt;&lt; std::endl;
+}</pre></div>
+<p>Output:</p>
+<pre><code>Extra comma at line 1 and column 10
 </code></pre>
 </body>
 </html>

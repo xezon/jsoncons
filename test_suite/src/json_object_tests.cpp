@@ -291,6 +291,18 @@ BOOST_AUTO_TEST_CASE(test_set_and_proxy_set)
     BOOST_CHECK_EQUAL(std::string("value2"),a["object1"]["field2"].as<std::string>());
 }
 
+BOOST_AUTO_TEST_CASE(test_emplace_and_proxy_set)
+{
+    json a;
+
+    a.try_emplace("object1",json());
+    a.try_emplace("field1","value1");
+    a["object1"].try_emplace("field2","value2");
+
+    BOOST_CHECK_EQUAL(std::string("value1"),a["field1"].as<std::string>());
+    BOOST_CHECK_EQUAL(std::string("value2"),a["object1"]["field2"].as<std::string>());
+}
+
 BOOST_AUTO_TEST_CASE(test_const_member_read)
 {
     json a;
@@ -360,7 +372,7 @@ BOOST_AUTO_TEST_CASE(test_json_object_iterator_1)
     BOOST_CHECK((*it).value() == json("value2"));
     BOOST_CHECK((*(--it)).value() == json("value1"));
 
-    json::kvp_type  member = *it;
+    json::key_value_pair_type member = *it;
     BOOST_CHECK(member.key() == "name1");
     BOOST_CHECK(member.value() == json("value1"));
 }
@@ -388,7 +400,7 @@ BOOST_AUTO_TEST_CASE(test_json_object_iterator_2)
 
     BOOST_CHECK((*(--it)).value() == json("value1"));
 
-    json::kvp_type  member = *it;
+    json::key_value_pair_type member = *it;
     BOOST_CHECK(member.key() == "name1");
     BOOST_CHECK(member.value() == json("value1"));
 }
@@ -421,7 +433,7 @@ BOOST_AUTO_TEST_CASE(test_json_object_iterator_3)
     BOOST_CHECK((*(--it)).value() == json("value1"));
     BOOST_CHECK(it == a.object_range().begin());
 
-    json::kvp_type  member = *it;
+    json::key_value_pair_type member = *it;
     BOOST_CHECK(member.key() == "name1");
     BOOST_CHECK(member.value() == json("value1"));
 

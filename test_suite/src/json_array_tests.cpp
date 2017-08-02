@@ -149,6 +149,22 @@ BOOST_AUTO_TEST_CASE(test_add_element_to_array)
     BOOST_CHECK(arr[2].as<std::string>() == std::string("Vancouver"));
 }
 
+BOOST_AUTO_TEST_CASE(test_emplace_element_to_array)
+{
+    json a = json::array();
+    BOOST_CHECK(a.is_array());
+    BOOST_CHECK(a.is<json::array>());
+    a.emplace_back("Toronto");
+    a.emplace_back("Vancouver");
+    a.emplace(a.array_range().begin(),"Montreal");
+
+    BOOST_CHECK(a.size() == 3);
+
+    BOOST_CHECK(a[0].as<std::string>() == std::string("Montreal"));
+    BOOST_CHECK(a[1].as<std::string>() == std::string("Toronto"));
+    BOOST_CHECK(a[2].as<std::string>() == std::string("Vancouver"));
+}
+
 BOOST_AUTO_TEST_CASE(test_array_add_pos)
 {
     json arr = json::array();

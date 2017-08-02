@@ -26,16 +26,28 @@
 
 namespace jsoncons {
 
-template <class Json, class T, class Enable=void>
-struct json_string_type_traits
+template <class T, class Enable=void>
+struct string_requirement_traits
 {
-    typedef void char_traits_type;
+    typedef void value_type;
 };
 
-template <class Json, class T>
-struct json_string_type_traits<Json, T, typename std::enable_if<std::is_same<typename T::traits_type,typename Json::char_traits_type>::value>::type>
+template <class T>
+struct string_requirement_traits<T, typename std::enable_if<!std::is_void<typename T::traits_type>::value>::type>
 {
-    typedef typename Json::char_traits_type char_traits_type;
+    typedef typename T::traits_type value_type;
+};
+
+template <class T, class Enable=void>
+struct map_requirement_traits
+{
+    typedef void value_type;
+};
+
+template <class T>
+struct map_requirement_traits<T, typename std::enable_if<!std::is_void<typename T::mapped_type>::value>::type>
+{
+    typedef typename T::mapped_type value_type;
 };
 
 template <class Json, class T, class Enable=void>
@@ -67,7 +79,7 @@ struct is_compatible_string_type : std::false_type {};
 template<class Json, class T>
 struct is_compatible_string_type<Json,T, 
     typename std::enable_if<!std::is_same<T,typename Json::array>::value &&
-    !std::is_void<typename json_string_type_traits<Json,T>::char_traits_type>::value && 
+    !std::is_void<typename string_requirement_traits<T>::value_type>::value && 
     !is_incompatible<Json,typename std::iterator_traits<typename T::iterator>::value_type>::value
 >::type> : std::true_type {};
 
@@ -78,7 +90,8 @@ struct is_compatible_array_type : std::false_type {};
 template<class Json, class T>
 struct is_compatible_array_type<Json,T, 
     typename std::enable_if<!std::is_same<T,typename Json::array>::value &&
-    std::is_void<typename json_string_type_traits<Json,T>::char_traits_type>::value && 
+    std::is_void<typename map_requirement_traits<T>::value_type>::value && 
+    std::is_void<typename string_requirement_traits<T>::value_type>::value && 
     !is_incompatible<Json,typename std::iterator_traits<typename T::iterator>::value_type>::value
 >::type> : std::true_type {};
 
@@ -266,14 +279,10 @@ struct json_type_traits<Json, typename type_wrapper<typename Json::char_type>::c
     {
         return rhs.as_cstring();
     }
-    static Json to_json(const char_type* val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(const char_type* val, 
-                        const allocator_type& allocator)
-    {
-        return Json(typename Json::variant(val,allocator));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -287,14 +296,10 @@ struct json_type_traits<Json, typename type_wrapper<typename Json::char_type>::p
     {
         return rhs.is_string();
     }
-    static Json to_json(const char_type *val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(const char_type *val, 
-                        const allocator_type& allocator)
-    {
-        return Json(typename Json::variant(val,allocator));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -328,13 +333,10 @@ struct json_type_traits<Json, T,
     {
         return static_cast<T>(rhs.as_integer());
     }
-    static Json to_json(T val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(static_cast<int64_t>(val)));
-    }
-    static Json to_json(T val, allocator_type)
-    {
-        return Json(typename Json::variant(static_cast<int64_t>(val)));
+        return Json::from_integer(std::forward<Args>(args)...);
     }
 };
 
@@ -367,14 +369,10 @@ struct json_type_traits<Json, T,
         return static_cast<T>(rhs.as_uinteger());
     }
 
-    static Json to_json(T val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(static_cast<uint64_t>(val)));
-    }
-
-    static Json to_json(T val, allocator_type)
-    {
-        return Json(typename Json::variant(static_cast<uint64_t>(val)));
+        return Json::from_uinteger(std::forward<Args>(args)...);
     }
 };
 
@@ -393,13 +391,10 @@ struct json_type_traits<Json, T,
     {
         return static_cast<T>(rhs.as_double());
     }
-    static Json to_json(T val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(static_cast<double>(val)));
-    }
-    static Json to_json(T val, const allocator_type&)
-    {
-        return Json(typename Json::variant(static_cast<double>(val)));
+        return Json::from_floating_point(std::forward<Args>(args)...);
     }
 };
 
@@ -412,14 +407,10 @@ struct json_type_traits<Json, typename Json::object>
     {
         return rhs.is_object();
     }
-    static Json to_json(const typename Json::object& val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(const typename Json::object& val, 
-                        const allocator_type& allocator)
-    {
-        return Json(typename Json::variant(val,allocator));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -432,14 +423,10 @@ struct json_type_traits<Json, typename Json::array>
     {
         return rhs.is_array();
     }
-    static Json to_json(const typename Json::array& val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(const typename Json::array& val, 
-                        const allocator_type& allocator)
-    {
-        return Json(typename Json::variant(val,allocator));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -503,13 +490,10 @@ struct json_type_traits<Json, bool>
     {
         return rhs.as_bool();
     }
-    static Json to_json(bool val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(bool val, allocator_type)
-    {
-        return Json(typename Json::variant(val));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -529,13 +513,10 @@ struct json_type_traits<Json, T, typename std::enable_if<std::is_same<T,
     {
         return rhs.as_bool();
     }
-    static Json to_json(bool val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(bool val, allocator_type)
-    {
-        return Json(typename Json::variant(val));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -552,14 +533,10 @@ struct json_type_traits<Json, std::vector<bool>::reference>
     {
         return rhs.as_bool();
     }
-    static Json to_json(std::vector<bool>::reference val)
+    template <class ... Args>
+    static Json to_json(Args&&... args)
     {
-        return Json(typename Json::variant(val));
-    }
-    static Json to_json(std::vector<bool>::reference val, 
-                        allocator_type)
-    {
-        return Json(typename Json::variant(val));
+        return Json(typename Json::variant(std::forward<Args>(args)...));
     }
 };
 
@@ -828,6 +805,25 @@ public:
     }
 };
 
+template<class Json, class T1, class T2>
+struct json_type_traits<Json, std::pair<T1,T2>>
+{
+public:
+    static bool is(const Json& rhs) JSONCONS_NOEXCEPT
+    {
+        return rhs.is_array() && rhs.size() == 2;
+    }
+    
+    static std::pair<T1,T2> as(const Json& json)
+    {
+        return std::make_pair<T1,T2>(json[0]. template as<T1>(),json[1]. template as<T2>());
+    }
+    
+    static Json to_json(const std::pair<T1,T2>& value)
+    {
+        return typename Json::array{value.first,value.second};
+    }
+};
 }
 
 #if defined(__GNUC__)

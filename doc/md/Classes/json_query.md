@@ -1,21 +1,46 @@
 ```c++
 jsoncons::jsonpath::json_query
 ```
-Returns a `json` array of `json` values selected from a root `json` structure.
+Returns a `json` array of values or normalized path expressions selected from a root `json` structure.
 
 ### Header
 ```c++
 #include <jsoncons/jsonpath/json_query.hpp>
 
+enum class result_type {value,path};
+
 template<Json>
 Json json_query(const Json& root, 
-                typename Json::string_view_type path);
+                typename Json::string_view_type path,
+                result_type result_t = result_type::value);
 ```
+### Parameters
+
+<table>
+  <tr>
+    <td>root</td>
+    <td>JSON value</td> 
+  </tr>
+  <tr>
+    <td>path</td>
+    <td>JSONPath expression string</td> 
+  </tr>
+  <tr>
+    <td>result_t</td>
+    <td>Indicates whether results are matching values (the default) or normalized path expressions</td> 
+  </tr>
+</table>
+
+### Return value
+
+Returns a `json` array containing either values or normalized path expressions matching the input path expression. 
+Returns an empty array if there is no match.
+    
+## Stefan Goessner's JsonPath
+
 [JsonPath](http://goessner.net/articles/JsonPath/) is a creation of Stefan Goessner. JSONPath expressions refer to a JSON text in the same way as XPath expressions refer to an XML document. 
 
 Stefan Goessner's javascript implemention returns `false` in case of no match, but in a note he suggests an alternative is to return an empty array. The `jsoncons` implementation takes that alternative and returns an empty array in case of no match.
-    
-### Stefan Goessner's JsonPath
 
 Unlike XML, the root of a JSON text is usually an anonymous object or array, so JSONPath identifies the outermost level of the text with the symbol $.
 
@@ -63,7 +88,7 @@ Operator|       Description
 `+`     |Left plus right
 `-`     |Left minus right
 `&&`    |Left and right
-`||`    |Left or right
+&#124;&#124;    |Left or right
 `==`    |Left is equal to right 
 `!=`    |Left is not equal to right
 `<`     |Left is less than right
@@ -90,9 +115,9 @@ Precedence|Operator|Associativity
 5 |`<` `>` `<=` `>=`|Left 
 6 |`==` `!=`        |Left 
 7 |`&&`             |Left 
-8 |`||`             |Left 
+8 |&#124;&#124;             |Left 
 
-### Examples
+## Examples
 
 The examples below use the JSON text from [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/) (store.json).
 
@@ -128,23 +153,29 @@ The examples below use the JSON text from [Stefan Goessner's JsonPath](http://go
       }
     }
 
+### Return values
+
 Our first example returns all authors whose books are cheaper than $10. 
-    
-    #include <jsoncons/json.hpp>
-    #include <jsoncons_ext/jsonpath/json_query.hpp>
+```c++    
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpath/json_query.hpp>
 
-    using namespace jsoncons;
-    using namespace jsoncons::jsonpath;
+using namespace jsoncons;
+using namespace jsoncons::jsonpath;
 
+int main()
+{
     json root = json::parse_file("store.json");
 
     json result = json_query(root,"$.store.book[?(@.price < 10)].author");
 
     std::cout << pretty_print(result) << std::endl;
-
-The result is
-
-    ["Nigel Rees","Herman Melville"]
+}
+```
+Output:
+```json
+["Nigel Rees","Herman Melville"]
+```
 
 A list of sample JSON paths and results follows.
 
@@ -172,4 +203,26 @@ JSONPath |Result|Notes
 `$.store.book[?((@.author =~ /evelyn.*?/i))]`|All books whose author's name starts with Evelyn, evelyn etc.|`i` indicates case insensitive
 `$.store.book[?(!(@.author =~ /Evelyn.*?/))]`|All books whose author's name does not start with Evelyn
 `$['store']['book']..['author','title']`|All authors and titles of books in the store
+
+### Return normalized path expressions
+
+```c++
+using namespace jsoncons;
+using namespace jsoncons::jsonpath;
+
+int main()
+{
+    std::string path = "$.store.book[?(@.price < 10)].title";
+    json result = json_query(store,path,result_type::path);
+
+    std::cout << pretty_print(result) << std::endl;
+}
+```
+Output:
+```json
+[
+    "$['store']['book'][0]['title']",
+    "$['store']['book'][2]['title']"
+]
+```
 

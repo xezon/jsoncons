@@ -102,10 +102,11 @@ public:
     using string_storage_type = typename json_traits_type::template string_storage<char_allocator_type>;
 
     typedef basic_json<CharT,JsonTraits,Allocator> json_type;
-    typedef key_value_pair<key_storage_type,json_type> kvp_type;
+    typedef key_value_pair<key_storage_type,json_type> key_value_pair_type;
 
 #if !defined(JSONCONS_NO_DEPRECATED)
-    typedef kvp_type member_type;
+    typedef key_value_pair_type kvp_type;
+    typedef key_value_pair_type member_type;
 #endif
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<json_type> val_allocator_type;
@@ -113,9 +114,9 @@ public:
 
     typedef json_array<json_type> array;
 
-    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<kvp_type > kvp_allocator_type;
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<key_value_pair_type> kvp_allocator_type;
 
-    using object_storage_type = typename json_traits_type::template object_storage<kvp_type , kvp_allocator_type>;
+    using object_storage_type = typename json_traits_type::template object_storage<key_value_pair_type , kvp_allocator_type>;
     typedef json_object<key_storage_type,json_type,json_traits_type::preserve_order> object;
 
 
@@ -570,12 +571,12 @@ public:
 
         variant(variant&& val) JSONCONS_NOEXCEPT
         {
-            Init_rv_(std::forward<variant&&>(val));
+            Init_rv_(std::forward<variant>(val));
         }
 
         variant(variant&& val, const Allocator& allocator) JSONCONS_NOEXCEPT
         {
-            Init_rv_(std::forward<variant&&>(val), allocator,
+            Init_rv_(std::forward<variant>(val), allocator,
                      typename std::allocator_traits<Allocator>::propagate_on_container_move_assignment());
         }
 
@@ -590,6 +591,10 @@ public:
         explicit variant(int64_t val)
         {
             new(reinterpret_cast<void*>(&data_))integer_data(val);
+        }
+        explicit variant(uint64_t val, const Allocator&)
+        {
+            new(reinterpret_cast<void*>(&data_))uinteger_data(val);
         }
         explicit variant(uint64_t val)
         {
@@ -918,7 +923,10 @@ public:
                 break;
             case value_type::small_string_t:
             case value_type::string_t:
-                return as_string_view() == rhs.as_string_view();
+                if (rhs_id == value_type::small_string_t || rhs_id == value_type::string_t)
+                {
+                    return as_string_view() == rhs.as_string_view();
+                }
                 break;
             default:
                 break;
@@ -1275,7 +1283,7 @@ public:
 
         void Init_rv_(variant&& val, const Allocator& a, std::true_type) JSONCONS_NOEXCEPT
         {
-            Init_rv_(std::forward<variant&&>(val));
+            Init_rv_(std::forward<variant>(val));
         }
 
         void Init_rv_(variant&& val, const Allocator& a, std::false_type) JSONCONS_NOEXCEPT
@@ -1289,13 +1297,13 @@ public:
             case value_type::uinteger_t:
             case value_type::bool_t:
             case value_type::small_string_t:
-                Init_(std::forward<variant&&>(val));
+                Init_(std::forward<variant>(val));
                 break;
             case value_type::string_t:
                 {
                     if (a == val.string_data_cast()->get_allocator())
                     {
-                        Init_rv_(std::forward<variant&&>(val), a, std::true_type());
+                        Init_rv_(std::forward<variant>(val), a, std::true_type());
                     }
                     else
                     {
@@ -1307,7 +1315,7 @@ public:
                 {
                     if (a == val.object_data_cast()->get_allocator())
                     {
-                        Init_rv_(std::forward<variant&&>(val), a, std::true_type());
+                        Init_rv_(std::forward<variant>(val), a, std::true_type());
                     }
                     else
                     {
@@ -1319,7 +1327,7 @@ public:
                 {
                     if (a == val.array_data_cast()->get_allocator())
                     {
-                        Init_rv_(std::forward<variant&&>(val), a, std::true_type());
+                        Init_rv_(std::forward<variant>(val), a, std::true_type());
                     }
                     else
                     {
@@ -1346,7 +1354,7 @@ public:
         json_proxy& operator = (const json_proxy& other) = delete; 
 
         json_proxy(ParentT& parent, key_storage_type&& name)
-            : parent_(parent), key_(std::forward<key_storage_type&&>(name))
+            : parent_(parent), key_(std::forward<key_storage_type>(name))
         {
         }
 
@@ -1577,7 +1585,7 @@ public:
         template <class T>
         json_proxy& operator=(T&& val) 
         {
-            parent_.evaluate_with_default().set_(std::move(key_), std::forward<T&&>(val));
+            parent_.evaluate_with_default().set_(std::move(key_), std::forward<T>(val));
             return *this;
         }
 
@@ -1685,42 +1693,80 @@ public:
             evaluate().erase(name);
         }
 
-       // Remove a member from an object 
+       // set
 
         template <class T>
-        void set(string_view_type name, T&& value)
+        std::pair<object_iterator,bool> set(string_view_type name, T&& value)
         {
-            evaluate().set(name,std::forward<T&&>(value));
+            return evaluate().set(name,std::forward<T>(value));
+        }
+
+        template <class T>
+        std::pair<object_iterator,bool> insert_or_assign(string_view_type name, T&& value)
+        {
+            return evaluate().insert_or_assign(name,std::forward<T>(value));
         }
 
         template <class T>
         void set_(key_storage_type&& name, T&& value)
         {
-            evaluate().set_(std::forward<key_storage_type&&>(name),std::forward<T&&>(value));
+            evaluate().set_(std::forward<key_storage_type>(name),std::forward<T>(value));
+        }
+
+       // emplace
+
+        template <class ... Args>
+        std::pair<object_iterator,bool> try_emplace(string_view_type name, Args&&... args)
+        {
+            return evaluate().try_emplace(name,std::forward<Args>(args)...);
         }
 
         template <class T>
         object_iterator set(object_iterator hint, string_view_type name, T&& value)
         {
-            return evaluate().set(hint, name, std::forward<T&&>(value));
+            return evaluate().set(hint, name, std::forward<T>(value));
+        }
+
+        template <class T>
+        object_iterator insert_or_assign(object_iterator hint, string_view_type name, T&& value)
+        {
+            return evaluate().insert_or_assign(hint, name, std::forward<T>(value));
+        }
+
+        template <class ... Args>
+        object_iterator try_emplace(object_iterator hint, string_view_type name, Args&&... args)
+        {
+            return evaluate().try_emplace(hint, name, std::forward<Args>(args)...);
         }
 
         template <class T>
         object_iterator set_(object_iterator hint, key_storage_type&& name, T&& value)
         {
-            return evaluate().set_(hint, std::forward<key_storage_type&&>(name), std::forward<T&&>(value));
+            return evaluate().set_(hint, std::forward<key_storage_type>(name), std::forward<T>(value));
+        }
+
+        template <class... Args> 
+        array_iterator emplace(const_array_iterator pos, Args&&... args)
+        {
+            evaluate_with_default().emplace(pos, std::forward<Args>(args)...);
+        }
+
+        template <class... Args> 
+        json_type& emplace_back(Args&&... args)
+        {
+            return evaluate_with_default().emplace_back(std::forward<Args>(args)...);
         }
 
         template <class T>
         void add(T&& value)
         {
-            evaluate_with_default().add(std::forward<T&&>(value));
+            evaluate_with_default().add(std::forward<T>(value));
         }
 
         template <class T>
         array_iterator add(const_array_iterator pos, T&& value)
         {
-            return evaluate_with_default().add(pos, std::forward<T&&>(value));
+            return evaluate_with_default().add(pos, std::forward<T>(value));
         }
 
         template <class SAllocator>
@@ -1935,7 +1981,7 @@ public:
 
         void add(size_t index, json_type&& value)
         {
-            evaluate_with_default().add(index, std::forward<json_type&&>(value));
+            evaluate_with_default().add(index, std::forward<json_type>(value));
         }
 
         bool has_member(const key_storage_type& name) const
@@ -1968,8 +2014,8 @@ public:
 #endif
     };
 
-    static basic_json parse_stream(std::basic_istream<char_type>& is);
-    static basic_json parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);
+    static basic_json parse(std::basic_istream<char_type>& is);
+    static basic_json parse(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler);
 
     static basic_json parse(string_view_type s)
     {
@@ -2181,7 +2227,7 @@ public:
     }
 
     basic_json(array&& other)
-        : var_(std::forward<array&&>(other))
+        : var_(std::forward<array>(other))
     {
     }
 
@@ -2191,7 +2237,7 @@ public:
     }
 
     basic_json(object&& other)
-        : var_(std::forward<object&&>(other))
+        : var_(std::forward<object>(other))
     {
     }
 
@@ -3048,7 +3094,7 @@ public:
         {
         case value_type::empty_object_t:
             {
-                return json_type(std::forward<T&&>(default_val));
+                return json_type(std::forward<T>(default_val));
             }
         case value_type::object_t:
             {
@@ -3059,7 +3105,7 @@ public:
                 }
                 else
                 {
-                    return json_type(std::forward<T&&>(default_val));
+                    return json_type(std::forward<T>(default_val));
                 }
             }
         default:
@@ -3202,7 +3248,7 @@ public:
     }
 
     template <class T>
-    void set(string_view_type name, T&& value)
+    std::pair<object_iterator,bool> set(string_view_type name, T&& value)
     {
         switch (var_.type_id())
         {
@@ -3210,8 +3256,41 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            object_value().set(name, std::forward<T&&>(value));
-            break;
+            return object_value().insert_or_assign(name, std::forward<T>(value));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
+            }
+        }
+    }
+
+    template <class T>
+    std::pair<object_iterator,bool> insert_or_assign(string_view_type name, T&& value)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().insert_or_assign(name, std::forward<T>(value));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
+            }
+        }
+    }
+
+    template <class ... Args>
+    std::pair<object_iterator,bool> try_emplace(string_view_type name, Args&&... args)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().try_emplace(name, std::forward<Args>(args)...);
         default:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
@@ -3228,7 +3307,7 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            object_value().set_(std::forward<key_storage_type&&>(name), std::forward<T&&>(value));
+            object_value().set_(std::forward<key_storage_type>(name), std::forward<T>(value));
             break;
         default:
             {
@@ -3244,9 +3323,43 @@ public:
         {
         case value_type::empty_object_t:
             create_object_implicitly();
+            // FALLTHRU
         case value_type::object_t:
-            return object_value().set(hint, name, std::forward<T&&>(value));
-            break;
+            return object_value().insert_or_assign(hint, name, std::forward<T>(value));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
+            }
+        }
+    }
+
+    template <class T>
+    object_iterator insert_or_assign(object_iterator hint, string_view_type name, T&& value)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().insert_or_assign(hint, name, std::forward<T>(value));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
+            }
+        }
+    }
+
+    template <class ... Args>
+    object_iterator try_emplace(object_iterator hint, string_view_type name, Args&&... args)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().try_emplace(hint, name, std::forward<Args>(args)...);
         default:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
@@ -3261,8 +3374,9 @@ public:
         {
         case value_type::empty_object_t:
             create_object_implicitly();
+            // FALLTHRU
         case value_type::object_t:
-            return object_value().set_(hint, std::forward<key_storage_type&&>(name), std::forward<T&&>(value));
+            return object_value().set_(hint, std::forward<key_storage_type>(name), std::forward<T>(value));
             break;
         default:
             {
@@ -3277,7 +3391,7 @@ public:
         switch (var_.type_id())
         {
         case value_type::array_t:
-            array_value().add(std::forward<T&&>(value));
+            array_value().add(std::forward<T>(value));
             break;
         default:
             {
@@ -3292,8 +3406,37 @@ public:
         switch (var_.type_id())
         {
         case value_type::array_t:
-            return array_value().add(pos, std::forward<T&&>(value));
+            return array_value().add(pos, std::forward<T>(value));
             break;
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
+            }
+        }
+    }
+
+    template <class... Args> 
+    array_iterator emplace(const_array_iterator pos, Args&&... args)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::array_t:
+            return array_value().emplace(pos, std::forward<Args>(args)...);
+            break;
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
+            }
+        }
+    }
+
+    template <class... Args> 
+    json_type& emplace_back(Args&&... args)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::array_t:
+            return array_value().emplace_back(std::forward<Args>(args)...);
         default:
             {
                 JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
@@ -3331,22 +3474,37 @@ public:
         return json_type(variant(s.data(),s.length(),allocator));
     }
 
-    static json_type make_integer(int64_t val)
+    static json_type from_integer(int64_t val)
     {
         return json_type(variant(val));
     }
 
-    static json_type make_uinteger(uint64_t val)
+    static json_type from_integer(int64_t val, allocator_type)
     {
         return json_type(variant(val));
     }
 
-    static json_type make_double(double val)
+    static json_type from_uinteger(uint64_t val)
     {
         return json_type(variant(val));
     }
 
-    static json_type make_bool(bool val)
+    static json_type from_uinteger(uint64_t val, allocator_type)
+    {
+        return json_type(variant(val));
+    }
+
+    static json_type from_floating_point(double val)
+    {
+        return json_type(variant(val));
+    }
+
+    static json_type from_floating_point(double val, allocator_type)
+    {
+        return json_type(variant(val));
+    }
+
+    static json_type from_bool(bool val)
     {
         return json_type(variant(val));
     }
@@ -3361,25 +3519,15 @@ public:
         return json_type(variant(o,allocator));
     }
 
-    static basic_json make_2d_array(size_t m, size_t n);
-
-    template <class T>
-    static basic_json make_2d_array(size_t m, size_t n, T val);
-
-    static basic_json make_3d_array(size_t m, size_t n, size_t k);
-
-    template <class T>
-    static basic_json make_3d_array(size_t m, size_t n, size_t k, T val);
-
 #if !defined(JSONCONS_NO_DEPRECATED)
 
-    static basic_json parse(std::basic_istream<char_type>& is)
+    static basic_json parse_stream(std::basic_istream<char_type>& is)
     {
-        return parse_stream(is);
+        return parse(is);
     }
-    static basic_json parse(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler)
+    static basic_json parse_stream(std::basic_istream<char_type>& is, basic_parse_error_handler<char_type>& err_handler)
     {
-        return parse_stream(is,err_handler);
+        return parse(is,err_handler);
     }
 
     static basic_json parse_string(const string_type& s)
@@ -3568,7 +3716,7 @@ public:
     void add(size_t index, json_type&& value){
         switch (var_.type_id()){
         case value_type::array_t:
-            array_value().add(index, std::forward<json_type&&>(value));
+            array_value().add(index, std::forward<json_type>(value));
             break;
         default:
             {
@@ -3808,72 +3956,20 @@ private:
 };
 
 template <class Json>
-void swap(typename Json::kvp_type & a, typename Json::kvp_type & b)
+void swap(typename Json::key_value_pair_type & a, typename Json::key_value_pair_type & b)
 {
     a.swap(b);
 }
 
 template<class CharT,class JsonTraits,class Allocator>
-basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::make_2d_array(size_t m, size_t n)
-{
-    basic_json<CharT,JsonTraits,Allocator> a = basic_json<CharT,JsonTraits,Allocator>::array();
-    a.resize(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<CharT,JsonTraits,Allocator>::make_array(n);
-    }
-    return a;
-}
-
-template<class CharT,class JsonTraits,class Allocator>
-template<class T>
-basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::make_2d_array(size_t m, size_t n, T val)
-{
-    basic_json<CharT,JsonTraits,Allocator> v;
-    v = val;
-    basic_json<CharT,JsonTraits,Allocator> a = make_array(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<CharT,JsonTraits,Allocator>::make_array(n, v);
-    }
-    return a;
-}
-
-template<class CharT,class JsonTraits,class Allocator>
-basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::make_3d_array(size_t m, size_t n, size_t k)
-{
-    basic_json<CharT,JsonTraits,Allocator> a = basic_json<CharT,JsonTraits,Allocator>::array();
-    a.resize(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<CharT,JsonTraits,Allocator>::make_2d_array(n, k);
-    }
-    return a;
-}
-
-template<class CharT,class JsonTraits,class Allocator>
-template<class T>
-basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::make_3d_array(size_t m, size_t n, size_t k, T val)
-{
-    basic_json<CharT,JsonTraits,Allocator> v;
-    v = val;
-    basic_json<CharT,JsonTraits,Allocator> a = make_array(m);
-    for (size_t i = 0; i < a.size(); ++i)
-    {
-        a[i] = basic_json<CharT,JsonTraits,Allocator>::make_2d_array(n, k, v);
-    }
-    return a;
-}
-
-template<class CharT,class JsonTraits,class Allocator>
-basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::parse_stream(std::basic_istream<char_type>& is)
+basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::parse(std::basic_istream<char_type>& is)
 {
     parse_error_handler_type err_handler;
-    return parse_stream(is,err_handler);
+    return parse(is,err_handler);
 }
 
 template<class CharT,class JsonTraits,class Allocator>
-basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::parse_stream(std::basic_istream<char_type>& is, 
+basic_json<CharT,JsonTraits,Allocator> basic_json<CharT,JsonTraits,Allocator>::parse(std::basic_istream<char_type>& is, 
                                                                                             basic_parse_error_handler<char_type>& err_handler)
 {
     json_decoder<basic_json<CharT,JsonTraits,Allocator>> handler;
