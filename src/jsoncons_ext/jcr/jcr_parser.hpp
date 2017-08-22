@@ -161,14 +161,16 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
     string_type rule_name_;
 
     std::shared_ptr<rule<JsonT>> from_rule_;
-    size_t min_repetitions_;
-    size_t max_repetitions_;
+    uint64_t min_repetitions_;
+    uint64_t max_repetitions_;
 
     std::vector<std::shared_ptr<member_rule<JsonT>>> member_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<group_rule<JsonT>>>> group_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<object_rule<JsonT>>>> object_rule_stack_;
     std::vector<std::pair<bool,std::shared_ptr<array_rule<JsonT>>>> array_rule_stack_;
     bool sequence_;
+
+    basic_default_parse_error_handler<char_type> default_parse_error_handler_;
 
     void do_space()
     {
@@ -277,7 +279,7 @@ class basic_jcr_parser : private basic_parsing_context<typename JsonT::char_type
 public:
     basic_jcr_parser(basic_jcr_input_handler<rule_type>& handler)
        : handler_(std::addressof(handler)),
-         err_handler_(std::addressof(basic_default_parse_error_handler<char_type>::instance())),
+         err_handler_(&default_parse_error_handler_),
          column_(0),
          line_(0),
          cp_(0),
@@ -316,7 +318,7 @@ public:
 
     void init()
     {
-        max_depth_ = std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP();
+        max_depth_ = (std::numeric_limits<int>::max)();
         rule_map_["boolean"] = std::make_shared<any_boolean_rule<JsonT>>(); 
         rule_map_["float"] = std::make_shared<any_float_rule<JsonT>>(); 
         rule_map_["integer"] = std::make_shared<any_integer_rule<JsonT>>(); 
@@ -343,7 +345,7 @@ public:
 
     void max_nesting_depth(size_t max_nesting_depth)
     {
-        max_depth_ = static_cast<int>(std::min(max_nesting_depth,static_cast<size_t>(std::numeric_limits<int>::max JSONCONS_NO_MACRO_EXP())));
+        max_depth_ = static_cast<int>(std::min(max_nesting_depth,static_cast<size_t>((std::numeric_limits<int>::max)())));
     }
 
     bool done() const
@@ -876,7 +878,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
-                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                        max_repetitions_ = (std::numeric_limits<size_t>::max)();
                         stack_.back() = states::expect_max_repetitions;                       
                         ++p_;
                         ++column_;
@@ -903,8 +905,8 @@ public:
                     {
                     case '*':
                         {
-                            min_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
-                            max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                            bool success = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), min_repetitions_);
+                            max_repetitions_ = (std::numeric_limits<size_t>::max)();
                             string_buffer_.clear();
                             stack_.back() = states::expect_max_repetitions;
                             ++p_;
@@ -934,7 +936,7 @@ public:
                         ++column_;
                         break;
                     default:
-                        max_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
+                        bool success = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), max_repetitions_);
                         string_buffer_.clear();
                         stack_.back() = states::expect_member_rule_or_name;
                         break;
@@ -1005,7 +1007,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
-                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                        max_repetitions_ = (std::numeric_limits<size_t>::max)();
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1051,7 +1053,7 @@ public:
                         ++column_;
                         break;
                     case '*':
-                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                        max_repetitions_ = (std::numeric_limits<size_t>::max)();
                         stack_.back() = states::expect_max_repetitions;                       
                         ++p_;
                         ++column_;
@@ -1132,7 +1134,7 @@ public:
                         break;
                     case '*':
                         min_repetitions_ = 1;
-                        max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                        max_repetitions_ = (std::numeric_limits<size_t>::max)();
                         stack_.back() = states::expect_max_or_repeating_rule;                       
                         ++p_;
                         ++column_;
@@ -1434,13 +1436,14 @@ public:
             case states::u4: 
                 {
                     append_codepoint(*p_);
-                    if (cp_ >= min_lead_surrogate && cp_ <= max_lead_surrogate)
+                    if (unicons::is_high_surrogate(cp_))
                     {
                         stack_.back() = states::expect_surrogate_pair1;
                     }
                     else
                     {
-                        json_text_traits<char_type>::append_codepoint_to_string(cp_, string_buffer_);
+                        unicons::convert(&cp_, &cp_ + 1, std::back_inserter(string_buffer_));
+                        //json_text_traits<char_type>::append_codepoint_to_string(cp_, string_buffer_);
                         stack_.back() = states::string;
                     }
                 }
@@ -1506,7 +1509,8 @@ public:
                 {
                     append_second_codepoint(*p_);
                     uint32_t cp = 0x10000 + ((cp_ & 0x3FF) << 10) + (cp2_ & 0x3FF);
-                    json_text_traits<char_type>::append_codepoint_to_string(cp, string_buffer_);
+                    unicons::convert(&cp_, &cp_ + 1, std::back_inserter(string_buffer_));
+                    //json_text_traits<char_type>::append_codepoint_to_string(cp, string_buffer_);
                     stack_.back() = states::string;
                 }
                 ++p_;
@@ -1587,8 +1591,8 @@ public:
                         break;
                     case '*':
                         {
-                            min_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
-                            max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                            bool success = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), min_repetitions_);
+                            max_repetitions_ = (std::numeric_limits<size_t>::max)();
                             string_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;                        
                         }
@@ -1638,7 +1642,8 @@ public:
                     {
                         try
                         {
-                            auto val = string_to_integer(is_negative_, string_buffer_.data(), string_buffer_.length());
+                            int64_t val;
+                            bool success = try_string_to_integer(is_negative_, string_buffer_.data(), string_buffer_.length(), val);
                             from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
                         }
                         catch (const std::exception&)
@@ -1650,7 +1655,8 @@ public:
                     {
                         try
                         {
-                            auto val = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
+                            uint64_t val;
+                            bool success = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), val);
                             from_rule_ = std::make_shared<from_rule<JsonT,int64_t>>(val);
                         }
                         catch (const std::exception&)
@@ -1704,8 +1710,8 @@ public:
                         break;
                     case '*':
                         {
-                            min_repetitions_ = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
-                            max_repetitions_ = std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP();
+                            bool success = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), min_repetitions_);
+                            max_repetitions_ = (std::numeric_limits<size_t>::max)();
                             string_buffer_.clear();
                             stack_.back() = states::expect_max_or_repeating_rule;
                         }
@@ -1750,7 +1756,8 @@ public:
                         ++column_;
                         break;
                     default:
-                        size_t max_repeat = string_to_uinteger(string_buffer_.data(), string_buffer_.length());
+                        size_t max_repeat;
+                        bool success  = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), max_repeat);
                         switch (parent())
                         {
                         case states::array:
@@ -2004,7 +2011,8 @@ private:
         {
             try
             {
-                int64_t val = string_to_integer(is_negative_, string_buffer_.data(), string_buffer_.length());
+                int64_t val;
+                bool success = try_string_to_integer(is_negative_, string_buffer_.data(), string_buffer_.length(), val);
 
                 if (parent() == states::range_value)
                 {
@@ -2027,7 +2035,8 @@ private:
         {
             try
             {
-                uint64_t val= string_to_uinteger(string_buffer_.data(), string_buffer_.length());
+                uint64_t val;
+                bool success = try_string_to_uinteger(string_buffer_.data(), string_buffer_.length(), val);
 
                 if (parent() == states::range_value)
                 {

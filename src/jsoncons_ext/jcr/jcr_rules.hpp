@@ -529,12 +529,12 @@ class repeat_array_item_rule : public rule<JsonT>
 public:
     repeat_array_item_rule()
         : min_(0), 
-          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
+          max_((std::numeric_limits<size_t>::max)())
     {
     }
     repeat_array_item_rule(size_t min_repitition)
         : min_(min_repitition), 
-          max_(std::numeric_limits<size_t>::max JSONCONS_NO_MACRO_EXP())
+          max_((std::numeric_limits<size_t>::max)())
     {
     }
     repeat_array_item_rule(size_t min_repitition, size_t max_repitition)

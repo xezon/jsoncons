@@ -51,12 +51,12 @@ public:
 
 private:
 
-    void do_rule_definition(value_type rule, const basic_parsing_context<char_type>& context) override
+    void do_rule_definition(value_type rule, const basic_parsing_context<char_type>&) override
     {
         result_.set_root(rule);
     }
 
-    void do_named_rule(const string_type& name, value_type rule, const basic_parsing_context<char_type>& context) override
+    void do_named_rule(const string_type& name, value_type rule, const basic_parsing_context<char_type>&) override
     {
         result_.add_named_rule(name,rule);
     }

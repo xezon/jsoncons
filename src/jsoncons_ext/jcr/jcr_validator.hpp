@@ -41,7 +41,7 @@ public:
     typedef typename JsonT::char_type char_type;
     typedef typename JsonT::char_traits_type char_traits_type;
 
-    typedef typename JsonT::string_allocator string_allocator;
+    //typedef typename JsonT::string_allocator string_allocator;
     typedef typename JsonT::string_type string_type;
     typedef basic_jcr_validator<JsonT> value_type;
 
