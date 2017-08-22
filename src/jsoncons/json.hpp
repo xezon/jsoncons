@@ -19,7 +19,7 @@
 #include <cstring>
 #include <jsoncons/jsoncons.hpp>
 #include <jsoncons/json_traits.hpp>
-#include <jsoncons/json_container.hpp>
+#include <jsoncons/json_structures.hpp>
 #include <jsoncons/json_output_handler.hpp>
 #include <jsoncons/serialization_options.hpp>
 #include <jsoncons/json_serializer.hpp>
@@ -1473,10 +1473,10 @@ public:
             evaluate().resize(n,val);
         }
 
-        template<class T>
-        bool is() const
+        template<class T, class... Args>
+        bool is(Args&&... args) const
         {
-            return evaluate().template is<T>();
+            return evaluate().template is<T>(std::forward<Args>(args)...);
         }
 
         bool is_string() const JSONCONS_NOEXCEPT
@@ -1545,10 +1545,10 @@ public:
             return evaluate().as_string(options,allocator);
         }
 
-        template<class T>
-        T as() const
+        template<class T, class... Args>
+        T as(Args&&... args) const
         {
-            return evaluate().template as<T>();
+            return evaluate().template as<T>(std::forward<Args>(args)...);
         }
 
         template<class T>
@@ -1693,24 +1693,68 @@ public:
             evaluate().erase(name);
         }
 
+        // merge
+
+        void merge(const json_type& source)
+        {
+            return evaluate().merge(source);
+        }
+
+        void merge(json_type&& source)
+        {
+            return evaluate().merge(std::forward<json_type>(source));
+        }
+
+        void merge(object_iterator hint, const json_type& source)
+        {
+            return evaluate().merge(hint, source);
+        }
+
+        void merge(object_iterator hint, json_type&& source)
+        {
+            return evaluate().merge(hint, std::forward<json_type>(source));
+        }
+
+        // merge_or_update
+
+        void merge_or_update(const json_type& source)
+        {
+            return evaluate().merge_or_update(source);
+        }
+
+        void merge_or_update(json_type&& source)
+        {
+            return evaluate().merge_or_update(std::forward<json_type>(source));
+        }
+
+        void merge_or_update(object_iterator hint, const json_type& source)
+        {
+            return evaluate().merge_or_update(hint, source);
+        }
+
+        void merge_or_update(object_iterator hint, json_type&& source)
+        {
+            return evaluate().merge_or_update(hint, std::forward<json_type>(source));
+        }
+
        // set
 
         template <class T>
-        std::pair<object_iterator,bool> set(string_view_type name, T&& value)
+        std::pair<object_iterator,bool> set(string_view_type name, T&& val)
         {
-            return evaluate().set(name,std::forward<T>(value));
+            return evaluate().set(name,std::forward<T>(val));
         }
 
         template <class T>
-        std::pair<object_iterator,bool> insert_or_assign(string_view_type name, T&& value)
+        std::pair<object_iterator,bool> insert_or_assign(string_view_type name, T&& val)
         {
-            return evaluate().insert_or_assign(name,std::forward<T>(value));
+            return evaluate().insert_or_assign(name,std::forward<T>(val));
         }
 
         template <class T>
-        void set_(key_storage_type&& name, T&& value)
+        void set_(key_storage_type&& name, T&& val)
         {
-            evaluate().set_(std::forward<key_storage_type>(name),std::forward<T>(value));
+            evaluate().set_(std::forward<key_storage_type>(name),std::forward<T>(val));
         }
 
        // emplace
@@ -1722,15 +1766,15 @@ public:
         }
 
         template <class T>
-        object_iterator set(object_iterator hint, string_view_type name, T&& value)
+        object_iterator set(object_iterator hint, string_view_type name, T&& val)
         {
-            return evaluate().set(hint, name, std::forward<T>(value));
+            return evaluate().set(hint, name, std::forward<T>(val));
         }
 
         template <class T>
-        object_iterator insert_or_assign(object_iterator hint, string_view_type name, T&& value)
+        object_iterator insert_or_assign(object_iterator hint, string_view_type name, T&& val)
         {
-            return evaluate().insert_or_assign(hint, name, std::forward<T>(value));
+            return evaluate().insert_or_assign(hint, name, std::forward<T>(val));
         }
 
         template <class ... Args>
@@ -1740,9 +1784,9 @@ public:
         }
 
         template <class T>
-        object_iterator set_(object_iterator hint, key_storage_type&& name, T&& value)
+        object_iterator set_(object_iterator hint, key_storage_type&& name, T&& val)
         {
-            return evaluate().set_(hint, std::forward<key_storage_type>(name), std::forward<T>(value));
+            return evaluate().set_(hint, std::forward<key_storage_type>(name), std::forward<T>(val));
         }
 
         template <class... Args> 
@@ -1758,15 +1802,15 @@ public:
         }
 
         template <class T>
-        void add(T&& value)
+        void add(T&& val)
         {
-            evaluate_with_default().add(std::forward<T>(value));
+            evaluate_with_default().add(std::forward<T>(val));
         }
 
         template <class T>
-        array_iterator add(const_array_iterator pos, T&& value)
+        array_iterator add(const_array_iterator pos, T&& val)
         {
-            return evaluate_with_default().add(pos, std::forward<T>(value));
+            return evaluate_with_default().add(pos, std::forward<T>(val));
         }
 
         template <class SAllocator>
@@ -1796,9 +1840,9 @@ public:
             evaluate().dump(os,options);
         }
 
-        void dump(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool indenting) const
+        void dump(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool pprint) const
         {
-            evaluate().dump(os,options,indenting);
+            evaluate().dump(os,options,pprint);
         }
 #if !defined(JSONCONS_NO_DEPRECATED)
 
@@ -1821,9 +1865,9 @@ public:
             evaluate().write(os,options);
         }
 
-        void write(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool indenting) const
+        void write(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool pprint) const
         {
-            evaluate().write(os,options,indenting);
+            evaluate().write(os,options,pprint);
         }
 
         string_type to_string(const basic_serialization_options<char_type>& options, char_allocator_type& allocator = char_allocator_type()) const
@@ -1865,9 +1909,9 @@ public:
             evaluate().to_stream(os,options);
         }
 
-        void to_stream(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool indenting) const
+        void to_stream(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool pprint) const
         {
-            evaluate().to_stream(os,options,indenting);
+            evaluate().to_stream(os,options,pprint);
         }
 #endif
         void swap(json_type& val)
@@ -2409,22 +2453,22 @@ public:
         {
         case value_type::small_string_t:
         case value_type::string_t:
-            handler.value(as_string_view());
+            handler.string_value(as_string_view());
             break;
         case value_type::double_t:
-            handler.value(var_.double_data_cast()->value(), var_.double_data_cast()->precision());
+            handler.double_value(var_.double_data_cast()->value(), var_.double_data_cast()->precision());
             break;
         case value_type::integer_t:
-            handler.value(var_.integer_data_cast()->value());
+            handler.integer_value(var_.integer_data_cast()->value());
             break;
         case value_type::uinteger_t:
-            handler.value(var_.uinteger_data_cast()->value());
+            handler.uinteger_value(var_.uinteger_data_cast()->value());
             break;
         case value_type::bool_t:
-            handler.value(var_.bool_data_cast()->value());
+            handler.bool_value(var_.bool_data_cast()->value());
             break;
         case value_type::null_t:
-            handler.value(null_type());
+            handler.null_value();
             break;
         case value_type::empty_object_t:
             handler.begin_object();
@@ -2436,7 +2480,7 @@ public:
                 const object& o = object_value();
                 for (const_object_iterator it = o.begin(); it != o.end(); ++it)
                 {
-                    handler.name((it->key()).data(),it->key().length());
+                    handler.name(string_view_type((it->key()).data(),it->key().length()));
                     it->value().dump_body(handler);
                 }
                 handler.end_object();
@@ -2476,9 +2520,9 @@ public:
         dump(serializer);
     }
 
-    void dump(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool indenting) const
+    void dump(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool pprint) const
     {
-        basic_json_serializer<char_type> serializer(os, options, indenting);
+        basic_json_serializer<char_type> serializer(os, options, pprint);
         dump(serializer);
     }
 
@@ -2528,9 +2572,9 @@ public:
         dump(os,options);
     }
 
-    void write(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool indenting) const
+    void write(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool pprint) const
     {
-        dump(os,options,indenting);
+        dump(os,options,pprint);
     }
 
     void to_stream(basic_json_output_handler<char_type>& handler) const
@@ -2552,9 +2596,9 @@ public:
         to_stream(serializer);
     }
 
-    void to_stream(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool indenting) const
+    void to_stream(std::basic_ostream<char_type>& os, const basic_serialization_options<char_type>& options, bool pprint) const
     {
-        basic_json_serializer<char_type> serializer(os, options, indenting);
+        basic_json_serializer<char_type> serializer(os, options, pprint);
         to_stream(serializer);
     }
 #endif
@@ -2603,10 +2647,10 @@ public:
         }
     }
 
-    template<class T>
-    bool is() const
+    template<class T, class... Args>
+    bool is(Args&&... args) const
     {
-        return json_type_traits<json_type,T>::is(*this);
+        return json_type_traits<json_type,T>::is(*this,std::forward<Args>(args)...);
     }
 
     bool is_string() const JSONCONS_NOEXCEPT
@@ -2746,10 +2790,10 @@ public:
         }
     }
 
-    template<class T>
-    T as() const
+    template<class T, class... Args>
+    T as(Args&&... args) const
     {
-        return json_type_traits<json_type,T>::as(*this);
+        return json_type_traits<json_type,T>::as(*this,std::forward<Args>(args)...);
     }
 
     template<class T>
@@ -3248,7 +3292,7 @@ public:
     }
 
     template <class T>
-    std::pair<object_iterator,bool> set(string_view_type name, T&& value)
+    std::pair<object_iterator,bool> set(string_view_type name, T&& val)
     {
         switch (var_.type_id())
         {
@@ -3256,7 +3300,7 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            return object_value().insert_or_assign(name, std::forward<T>(value));
+            return object_value().insert_or_assign(name, std::forward<T>(val));
         default:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
@@ -3265,7 +3309,7 @@ public:
     }
 
     template <class T>
-    std::pair<object_iterator,bool> insert_or_assign(string_view_type name, T&& value)
+    std::pair<object_iterator,bool> insert_or_assign(string_view_type name, T&& val)
     {
         switch (var_.type_id())
         {
@@ -3273,7 +3317,7 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            return object_value().insert_or_assign(name, std::forward<T>(value));
+            return object_value().insert_or_assign(name, std::forward<T>(val));
         default:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
@@ -3299,7 +3343,7 @@ public:
     }
 
     template <class T>
-    void set_(key_storage_type&& name, T&& value)
+    void set_(key_storage_type&& name, T&& val)
     {
         switch (var_.type_id())
         {
@@ -3307,7 +3351,7 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            object_value().set_(std::forward<key_storage_type>(name), std::forward<T>(value));
+            object_value().set_(std::forward<key_storage_type>(name), std::forward<T>(val));
             break;
         default:
             {
@@ -3316,8 +3360,9 @@ public:
         }
     }
 
-    template <class T>
-    object_iterator set(object_iterator hint, string_view_type name, T&& value)
+    // merge
+
+    void merge(const json_type& source)
     {
         switch (var_.type_id())
         {
@@ -3325,7 +3370,140 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            return object_value().insert_or_assign(hint, name, std::forward<T>(value));
+            return object_value().merge(source.object_value());
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge a value that is not an object");
+            }
+        }
+    }
+
+    void merge(json_type&& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge(std::move(source.object_value()));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge a value that is not an object");
+            }
+        }
+    }
+
+    void merge(object_iterator hint, const json_type& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge(hint, source.object_value());
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge a value that is not an object");
+            }
+        }
+    }
+
+    void merge(object_iterator hint, json_type&& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge(hint, std::move(source.object_value()));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge a value that is not an object");
+            }
+        }
+    }
+
+    // merge_or_update
+
+    void merge_or_update(const json_type& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge_or_update(source.object_value());
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge_or_update a value that is not an object");
+            }
+        }
+    }
+
+    void merge_or_update(json_type&& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge_or_update(std::move(source.object_value()));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge_or_update a value that is not an object");
+            }
+        }
+    }
+
+    void merge_or_update(object_iterator hint, const json_type& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge_or_update(hint, source.object_value());
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge_or_update a value that is not an object");
+            }
+        }
+    }
+
+    void merge_or_update(object_iterator hint, json_type&& source)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().merge_or_update(hint, std::move(source.object_value()));
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to merge_or_update a value that is not an object");
+            }
+        }
+    }
+
+    // set
+
+    template <class T>
+    object_iterator set(object_iterator hint, string_view_type name, T&& val)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            create_object_implicitly();
+            // FALLTHRU
+        case value_type::object_t:
+            return object_value().insert_or_assign(hint, name, std::forward<T>(val));
         default:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
@@ -3334,7 +3512,7 @@ public:
     }
 
     template <class T>
-    object_iterator insert_or_assign(object_iterator hint, string_view_type name, T&& value)
+    object_iterator insert_or_assign(object_iterator hint, string_view_type name, T&& val)
     {
         switch (var_.type_id())
         {
@@ -3342,7 +3520,7 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            return object_value().insert_or_assign(hint, name, std::forward<T>(value));
+            return object_value().insert_or_assign(hint, name, std::forward<T>(val));
         default:
             {
                 JSONCONS_THROW_EXCEPTION_1(std::runtime_error,"Attempting to set %s on a value that is not an object", name);
@@ -3368,7 +3546,7 @@ public:
     }
 
     template <class T>
-    object_iterator set_(object_iterator hint, key_storage_type&& name, T&& value)
+    object_iterator set_(object_iterator hint, key_storage_type&& name, T&& val)
     {
         switch (var_.type_id())
         {
@@ -3376,7 +3554,7 @@ public:
             create_object_implicitly();
             // FALLTHRU
         case value_type::object_t:
-            return object_value().set_(hint, std::forward<key_storage_type>(name), std::forward<T>(value));
+            return object_value().set_(hint, std::forward<key_storage_type>(name), std::forward<T>(val));
             break;
         default:
             {
@@ -3386,12 +3564,12 @@ public:
     }
 
     template <class T>
-    void add(T&& value)
+    void add(T&& val)
     {
         switch (var_.type_id())
         {
         case value_type::array_t:
-            array_value().add(std::forward<T>(value));
+            array_value().add(std::forward<T>(val));
             break;
         default:
             {
@@ -3401,12 +3579,12 @@ public:
     }
 
     template <class T>
-    array_iterator add(const_array_iterator pos, T&& value)
+    array_iterator add(const_array_iterator pos, T&& val)
     {
         switch (var_.type_id())
         {
         case value_type::array_t:
-            return array_value().add(pos, std::forward<T>(value));
+            return array_value().add(pos, std::forward<T>(val));
             break;
         default:
             {

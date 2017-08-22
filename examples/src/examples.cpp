@@ -15,12 +15,14 @@ void container_examples();
 void wjson_examples();
 void serialization_examples();
 void type_extensibility_examples();
+void type_extensibility_examples2();
 void ojson_examples();
 void unicode_examples();
 void csv_examples();
 void jsonpath_examples();
 void json_is_as_examples();
 void msgpack_examples();
+void streaming_examples();
 
 void first_example_a()
 {
@@ -301,6 +303,29 @@ void parse_exception_example()
     }
 }
 
+void validation_example()
+{
+    std::string s = R"(
+{
+    "StartDate" : "2017-03-01",
+    "MaturityDate" "2020-12-30"          
+}
+    )";
+    std::stringstream is(s);
+
+    json_reader reader(is);
+
+    std::error_code ec;
+    reader.read(ec);
+    if (ec)
+    {
+        std::cout << ec.message() 
+                  << " on line " << reader.line_number()
+                  << " and column " << reader.column_number()
+                  << std::endl;
+    }
+}
+
 int main()
 {
     try
@@ -339,12 +364,17 @@ int main()
 
         type_extensibility_examples();
 
+        type_extensibility_examples2();
+
         json_filter_examples();
 
         jsonpath_examples();
 
         msgpack_examples();
 
+        streaming_examples();
+
+        validation_example();
     }
     catch (const std::exception& e)
     {

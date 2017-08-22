@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>decode_message_pack</title>
+<title>decode_msgpack</title>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <style type="text/css">
 /* GitHub stylesheet for MarkdownPad (http://markdownpad.com) */
@@ -468,16 +468,16 @@ vertical-align:1px;
 </style>
 </head>
 <body>
-<div class="highlight highlight-source-c++"><pre>jsoncons::msgpack::decode_message_pack</pre></div>
+<div class="highlight highlight-source-c++"><pre>jsoncons::msgpack::decode_msgpack</pre></div>
 <p>Decodes a <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format to a json value.</p>
 <h3>Header</h3>
-<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons/msgpack/message_pack.hpp<span class="pl-pds">&gt;</span></span>
+<div class="highlight highlight-source-c++"><pre>#<span class="pl-k">include</span> <span class="pl-s"><span class="pl-pds">&lt;</span>jsoncons_ext/msgpack/msgpack.hpp<span class="pl-pds">&gt;</span></span>
 
 <span class="pl-k">template</span>&lt;<span class="pl-k">class</span> <span class="pl-en">Json</span>&gt;
-Json <span class="pl-en">decode_message_pack</span>(<span class="pl-k">const</span> std::vector&lt;<span class="pl-c1">uint8_t</span>&gt;&amp; v)</pre></div>
+Json <span class="pl-en">decode_msgpack</span>(<span class="pl-k">const</span> std::vector&lt;<span class="pl-c1">uint8_t</span>&gt;&amp; v)</pre></div>
 <h3>See also</h3>
 <ul>
-<li><a href="encode_message_pack">encode_message_pack</a> encodes a json value to the <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format.</li>
+<li><a href="encode_msgpack">encode_msgpack</a> encodes a json value to the <a href="http://msgpack.org/index.html">MessagePack</a> binary serialization format.</li>
 </ul>
 </body>
 </html>

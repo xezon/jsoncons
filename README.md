@@ -1,6 +1,6 @@
 jsoncons is a modern C++, header-only library for constructing [JSON](http://www.json.org). It supports parsing a JSON file or string into a `json` value, building a `json` value in C++ code, and serializing a `json` value to a file or string. It also provides an API for generating json read and write events in code, somewhat analogously to SAX processing in the XML world. It is distributed under the [Boost Software License](http://www.boost.org/users/license.html).
 
-jsoncons uses some features that are new to C++ 11, including [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2013, MS VC++ 2015, GCC 4.8, GCC 4.9, GCC 6.2.0 and recent versions of clang. Note that `std::regex` isn't fully implemented in GCC 4.8., so `jsoncons_ext/jsonpath` regular expression filters aren't supported for that compiler. 
+jsoncons uses some features that are new to C++ 11, including [move semantics](http://thbecker.net/articles/rvalue_references/section_02.html) and the [AllocatorAwareContainer](http://en.cppreference.com/w/cpp/concept/AllocatorAwareContainer) concept. It has been tested with MS VC++ 2015, GCC 4.8, GCC 4.9, GCC 6.2.0 and recent versions of clang. Note that `std::regex` isn't fully implemented in GCC 4.8., so `jsoncons_ext/jsonpath` regular expression filters aren't supported for that compiler. 
 
 Features:
 
@@ -22,6 +22,7 @@ Extensions:
 - The [jsonpath](#user-content-ext_jsonpath) extension supports search using [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/).  It also supports search and replace using JsonPath expressions.
 - The [csv](#user-content-ext_csv) extension supports reading (writing) JSON values from (to) CSV files
 - The [msgpack](#user-content-ext_msgpack) extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+- The [cbor](#user-content-ext_cbor) extension supports encoding to and decoding from the [cbor](http://cbor.io/) binary serialization format.
 
 Planned new features are listed on the [roadmap](https://github.com/danielaparker/jsoncons/wiki/Roadmap)
 
@@ -114,21 +115,6 @@ Output:
 (3) Dimension 2 = 0.0
 ```
 
-## Building the test suite and examples with CMake
-
-[CMake](https://cmake.org/) is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a [Windows Installer package](https://cmake.org/download/). On Linux it is usually available as a package, e.g., on Ubuntu,
-```
-sudo apt-get install cmake
-```
-
-Instructions for building the test suite with CMake may be found in
-
-    jsoncons/test_suite/build/cmake/README.txt
-
-Instructions for building the examples with CMake may be found in
-
-    jsoncons/examples/build/cmake/README.txt
-
 ## About jsoncons::basic_json
 
 The jsoncons library provides a `basic_json` class template, which is the generalization of a `json` value for different character types, different policies for ordering name-value pairs, etc.
@@ -139,9 +125,9 @@ typedef basic_json<char,
 ```
 The library includes four instantiations of `basic_json`:
 
-- [json](https://github.com/danielaparker/jsoncons/wiki/json) constructs a narrow character json value that sorts name-value members alphabetically
+- [json](https://github.com/danielaparker/jsoncons/wiki/json) constructs a utf8 character json value that sorts name-value members alphabetically
 
-- [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) constructs a narrow character json value that preserves the original name-value insertion order
+- [ojson](https://github.com/danielaparker/jsoncons/wiki/ojson) constructs a utf8 character json value that preserves the original name-value insertion order
 
 - [wjson](https://github.com/danielaparker/jsoncons/wiki/wjson) constructs a wide character json value that sorts name-value members alphabetically
 
@@ -156,7 +142,7 @@ try
 {
     json val = json::parse("[1,2,3,4,]");
 } 
-catch(const std::exception& e) 
+catch(const parse_error& e) 
 {
     std::cout << e.what() << std::endl;
 }
@@ -164,6 +150,34 @@ catch(const std::exception& e)
 Output:
 ```
 Extra comma at line 1 and column 10
+```
+
+### Validation without parse exceptions
+
+```c++
+std::string s = R"(
+{
+    "StartDate" : "2017-03-01",
+    "MaturityDate" "2020-12-30"          
+}
+)";
+std::stringstream is(s);
+
+json_reader reader(is);
+
+std::error_code ec;
+reader.read(ec);
+if (ec)
+{
+    std::cout << ec.message() 
+              << " on line " << reader.line_number()
+              << " and column " << reader.column_number()
+              << std::endl;
+}
+```
+Output:
+```
+Expected name separator ':' on line 4 and column 20
 ```
 ### Range-based for loops with arrays
 
@@ -196,12 +210,6 @@ for (const auto& kv : book.object_range())
 ```c++
 using namespace jsoncons::literals;
 
-json j1 = R"(
-{
-    "StartDate" : "2017-03-01",
-    "MaturityDate" : "2020-12-30"          
-}
-)"_json;
 
 ojson j2 = R"(
 {
@@ -253,7 +261,37 @@ Output:
     ]
 ]
 ```
-See [Arrays](https://github.com/danielaparker/jsoncons/wiki/Arrays) for details
+See [json::make_array](https://github.com/danielaparker/jsoncons/wiki/json-make_array) for details
+
+### Merge key-value pairs from another json object
+```c++
+json j = json::parse(R"(
+{
+    "a" : "1",
+    "b" : [1,2,3]
+}
+)");
+
+json source = json::parse(R"(
+{
+    "a" : "2",
+    "c" : [4,5,6]
+}
+)");
+
+j.merge(std::move(source));
+std::cout << pretty_print(j) << std::endl;
+```
+Output:
+```json
+{
+    "a": "1",
+    "b": [1,2,3],
+    "c": [4,5,6]
+}
+```
+See [json::merge](https://github.com/danielaparker/jsoncons/wiki/json%20merge) 
+and [json::merge_or_update](https://github.com/danielaparker/jsoncons/wiki/json%20merge_or_update) for details.
 
 ### Convert from and to standard library sequence containers
 
@@ -324,6 +362,44 @@ std::list<book> l = j.as<std::list<book>>();
 ```
 
 See [Type Extensibility](https://github.com/danielaparker/jsoncons/wiki/Type%20Extensibility) for details.
+
+### Serialize C++ objects directly to JSON formatted streams, governed by `json_stream_traits` 
+
+```c++
+#include <iostream>
+#include <map>
+#include <tuple>
+#include <jsoncons/json_stream_traits.hpp>
+
+using namespace jsoncons;
+
+int main()
+{
+    std::map<std::string,std::tuple<std::string,std::string,double>> employees = 
+    { 
+        {"John Smith",{"Hourly","Software Engineer",10000}},
+        {"Jane Doe",{"Commission","Sales",20000}}
+    };
+
+    std::cout << "(1)\n" << std::endl; 
+    dump(employees,std::cout);
+    std::cout << "\n\n";
+
+    std::cout << "(2) Again, with pretty print\n" << std::endl; 
+    dump(employees,std::cout,true);
+}
+```
+```
+Output:
+(1)
+{"Jane Doe":["Commission","Sales",20000.0],"John Smith":["Hourly","Software Engineer",10000.0]}
+
+(2) Again, with pretty print
+{
+    "Jane Doe": ["Commission","Sales",20000.0],
+    "John Smith": ["Hourly","Software Engineer",10000.0]
+}
+```
 
 ### Filter json names and values
 
@@ -564,7 +640,7 @@ See [csv_reader](https://github.com/danielaparker/jsoncons/wiki/csv_reader) and 
 
 ### msgpack
 
-The `msgpack` extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+The `msgpack` extension supports encoding json to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
 
 #### MessagePack example
 
@@ -587,7 +663,7 @@ Example file (book.json):
 ```
 ```c++
 #include <jsoncons/json.hpp>
-#include <jsoncons_ext/msgpack/message_pack.hpp>
+#include <jsoncons_ext/msgpack/msgpack.hpp>
 
 using namespace jsoncons;
 using namespace jsoncons::msgpack;
@@ -599,18 +675,18 @@ int main()
     is >> j1;
 
     // Encode ojson to MessagePack
-    std::vector<uint8_t> v = encode_message_pack(j1);
+    std::vector<uint8_t> v = encode_msgpack(j1);
 
     // Decode MessagePack to ojson 
-    ojson j2 = decode_message_pack<ojson>(v);
+    ojson j2 = decode_msgpack<ojson>(v);
 
     std::cout << pretty_print(j2) << std::endl;
 
     // or to json (now alphabetically sorted)
-    json j3 = decode_message_pack<json>(v);
+    json j3 = decode_msgpack<json>(v);
 
     // or to wjson (converts from utf8 to wide characters)
-    wjson j4 = decode_message_pack<wjson>(v);
+    wjson j4 = decode_msgpack<wjson>(v);
 }
 ```
 Output:
@@ -631,7 +707,78 @@ Output:
 ]
 ```
 
-See [encode_message_pack](https://github.com/danielaparker/jsoncons/wiki/encode_message_pack) and [decode_message_pack](https://github.com/danielaparker/jsoncons/wiki/decode_message_pack) for details.
+See [encode_msgpack](https://github.com/danielaparker/jsoncons/wiki/encode_msgpack) and [decode_msgpack](https://github.com/danielaparker/jsoncons/wiki/decode_msgpack) for details.
+
+<div id="ext_cbor"/>
+
+### cbor
+
+The `cbor` extension supports encoding json to and decoding from the [cbor](http://cbor.io/) binary serialization format.
+
+#### cbor reputon example
+
+This example illustrates encoding a [Reputation Interchange](https://tools.ietf.org/rfc/rfc7071.txt) data object to and from cbor.
+
+```c++
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/cbor/cbor.hpp>
+
+using namespace jsoncons;
+using namespace jsoncons::cbor;
+
+int main()
+{
+    ojson j1 = ojson::parse(R"(
+    {
+       "application": "hiking",
+       "reputons": [
+       {
+           "rater": "HikingAsylum.example.com",
+           "assertion": "is-good",
+           "rated": "sk",
+           "rating": 0.90
+         }
+       ]
+    }
+    )");
+
+    std::vector<uint8_t> v = encode_cbor(j1);
+
+    ojson j2 = decode_cbor<ojson>(v);
+    std::cout << pretty_print(j2) << std::endl;
+}
+```
+Output:
+```json
+{
+    "application": "hiking",
+    "reputons": [
+        {
+            "rater": "HikingAsylum.example.com",
+            "assertion": "is-good",
+            "rated": "sk",
+            "rating": 0.9
+        }
+    ]
+}
+```
+
+See [encode_cbor](https://github.com/danielaparker/jsoncons/wiki/encode_cbor) and [decode_cbor](https://github.com/danielaparker/jsoncons/wiki/decode_cbor) for details.
+
+## Building the test suite and examples with CMake
+
+[CMake](https://cmake.org/) is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a [Windows Installer package](https://cmake.org/download/). On Linux it is usually available as a package, e.g., on Ubuntu,
+```
+sudo apt-get install cmake
+```
+
+Instructions for building the test suite with CMake may be found in
+
+    jsoncons/test_suite/build/cmake/README.txt
+
+Instructions for building the examples with CMake may be found in
+
+    jsoncons/examples/build/cmake/README.txt
 
 ## Acknowledgements
 
