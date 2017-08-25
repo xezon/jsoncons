@@ -17,7 +17,7 @@
 #include <memory>
 #include <typeinfo>
 #include <cstring>
-#include <jsoncons/jsoncons.hpp>
+#include <jsoncons/json.hpp>
 #include <jsoncons/json_traits.hpp>
 #include <jsoncons/json_structures.hpp>
 #include <jsoncons_ext/jcr/jcr_decoder.hpp>
@@ -46,20 +46,18 @@ enum class value_type : uint8_t
     array_t
 };
 
-template <class CharT, 
-          class JsonTraits = json_traits<CharT>, 
-          class Allocator = std::allocator<CharT>>
+template <class Json>
 class basic_json_content_rules
 {
 public:
 
-    typedef Allocator allocator_type;
+    typedef typename Json::allocator_type allocator_type;
 
-    typedef JsonTraits json_traits_type;
+    typedef typename Json::json_traits_type json_traits_type;
 
-    typedef typename JsonTraits::parse_error_handler_type parse_error_handler_type;
+    typedef typename Json::parse_error_handler_type parse_error_handler_type;
 
-    typedef CharT char_type;
+    typedef typename Json::char_type char_type;
     typedef typename json_traits_type::char_traits_type char_traits_type;
 
 #if !defined(JSONCONS_HAS_STRING_VIEW)
@@ -68,7 +66,7 @@ public:
     typedef std::basic_string_view<char_type,char_traits_type> string_view_type;
 #endif
     // string_type is for interface only, not storage 
-    typedef std::basic_string<CharT,char_traits_type> string_type;
+    typedef std::basic_string<char_type,char_traits_type> string_type;
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<char_type> char_allocator_type;
 
@@ -76,13 +74,8 @@ public:
 
     using string_storage_type = typename json_traits_type::template string_storage<char_allocator_type>;
 
-    typedef basic_json_content_rules<CharT,JsonTraits,Allocator> json_type;
+    typedef basic_json_content_rules<Json> json_type;
     typedef key_value_pair<key_storage_type,json_type> key_value_pair_type;
-
-#if !defined(JSONCONS_NO_DEPRECATED)
-    typedef key_value_pair_type kvp_type;
-    typedef key_value_pair_type member_type;
-#endif
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<json_type> val_allocator_type;
     using array_storage_type = typename json_traits_type::template array_storage<json_type, val_allocator_type>;
@@ -95,8 +88,8 @@ public:
     typedef json_object<key_storage_type,json_type,json_traits_type::preserve_order> object;
 
 
-    typedef typename std::allocator_traits<Allocator>:: template rebind_alloc<array> array_allocator;
-    typedef typename std::allocator_traits<Allocator>:: template rebind_alloc<object> object_allocator;
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<array> array_allocator;
+    typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<object> object_allocator;
 
     typedef jsoncons::null_type null_type;
 
@@ -263,7 +256,7 @@ public:
         };
         struct string_data : public base_data
         {
-            typedef typename std::allocator_traits<Allocator>:: template rebind_alloc<Json_string_<json_type>> string_holder_allocator_type;
+            typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<Json_string_<json_type>> string_holder_allocator_type;
             typedef typename std::allocator_traits<string_holder_allocator_type>::pointer pointer;
 
             pointer ptr_;
@@ -271,7 +264,7 @@ public:
             template <typename... Args>
             void create(string_holder_allocator_type allocator, Args&& ... args)
             {
-                typename std::allocator_traits<Allocator>:: template rebind_alloc<Json_string_<json_type>> alloc(allocator);
+                typename std::allocator_traits<allocator_type>:: template rebind_alloc<Json_string_<json_type>> alloc(allocator);
                 ptr_ = alloc.allocate(1);
                 try
                 {
@@ -296,7 +289,7 @@ public:
                 ptr_ = ptr;
             }
 
-            string_data(const Json_string_<json_type>& val, const Allocator& a)
+            string_data(const Json_string_<json_type>& val, const allocator_type& a)
                 : base_data(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), val, a);
@@ -308,20 +301,20 @@ public:
                 create(val.ptr_->get_allocator(), *(val.ptr_));
             }
 
-            string_data(const string_data & val, const Allocator& a)
+            string_data(const string_data & val, const allocator_type& a)
                 : base_data(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), *(val.ptr_), a);
             }
 
             template<class InputIterator>
-            string_data(InputIterator first, InputIterator last, const Allocator& a)
+            string_data(InputIterator first, InputIterator last, const allocator_type& a)
                 : base_data(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), first, last, a);
             }
 
-            string_data(const char_type* data, size_t length, const Allocator& a)
+            string_data(const char_type* data, size_t length, const allocator_type& a)
                 : base_data(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), data, length, a);
@@ -361,7 +354,7 @@ public:
             pointer ptr_;
 
             template <typename... Args>
-            void create(Allocator allocator, Args&& ... args)
+            void create(allocator_type allocator, Args&& ... args)
             {
                 typename std::allocator_traits<object_allocator>:: template rebind_alloc<object> alloc(allocator);
                 ptr_ = alloc.allocate(1);
@@ -376,7 +369,7 @@ public:
                 }
             }
 
-            explicit object_data(const Allocator& a)
+            explicit object_data(const allocator_type& a)
                 : base_data(value_type::object_t)
             {
                 create(a,a);
@@ -394,7 +387,7 @@ public:
                 create(val.get_allocator(), val);
             }
 
-            explicit object_data(const object & val, const Allocator& a)
+            explicit object_data(const object & val, const allocator_type& a)
                 : base_data(value_type::object_t)
             {
                 create(object_allocator(a), val, a);
@@ -406,7 +399,7 @@ public:
                 create(val.ptr_->get_allocator(), *(val.ptr_));
             }
 
-            explicit object_data(const object_data & val, const Allocator& a)
+            explicit object_data(const object_data & val, const allocator_type& a)
                 : base_data(value_type::object_t)
             {
                 create(object_allocator(a), *(val.ptr_), a);
@@ -414,8 +407,8 @@ public:
 
             ~object_data()
             {
-                typename std::allocator_traits<Allocator>:: template rebind_alloc<object> alloc(ptr_->get_allocator());
-                std::allocator_traits<Allocator>:: template rebind_traits<object>::destroy(alloc, to_plain_pointer(ptr_));
+                typename std::allocator_traits<allocator_type>:: template rebind_alloc<object> alloc(ptr_->get_allocator());
+                std::allocator_traits<allocator_type>:: template rebind_traits<object>::destroy(alloc, to_plain_pointer(ptr_));
                 alloc.deallocate(ptr_,1);
             }
 
@@ -443,7 +436,7 @@ public:
             template <typename... Args>
             void create(array_allocator allocator, Args&& ... args)
             {
-                typename std::allocator_traits<Allocator>:: template rebind_alloc<array> alloc(allocator);
+                typename std::allocator_traits<allocator_type>:: template rebind_alloc<array> alloc(allocator);
                 ptr_ = alloc.allocate(1);
                 try
                 {
@@ -473,7 +466,7 @@ public:
                 ptr_ = ptr;
             }
 
-            array_data(const array& val, const Allocator& a)
+            array_data(const array& val, const allocator_type& a)
                 : base_data(value_type::array_t)
             {
                 create(array_allocator(a), val, a);
@@ -485,14 +478,14 @@ public:
                 create(val.ptr_->get_allocator(), *(val.ptr_));
             }
 
-            array_data(const array_data & val, const Allocator& a)
+            array_data(const array_data & val, const allocator_type& a)
                 : base_data(value_type::array_t)
             {
                 create(array_allocator(a), *(val.ptr_), a);
             }
 
             template<class InputIterator>
-            array_data(InputIterator first, InputIterator last, const Allocator& a)
+            array_data(InputIterator first, InputIterator last, const allocator_type& a)
                 : base_data(value_type::array_t)
             {
                 create(array_allocator(a), first, last, a);
@@ -529,7 +522,7 @@ public:
             new(reinterpret_cast<void*>(&data_))empty_object_data();
         }
 
-        variant(const Allocator& a)
+        variant(const allocator_type& a)
         {
             new(reinterpret_cast<void*>(&data_))object_data(a);
         }
@@ -539,7 +532,7 @@ public:
             Init_(val);
         }
 
-        variant(const variant& val, const Allocator& allocator)
+        variant(const variant& val, const allocator_type& allocator)
         {
             Init_(val,allocator);
         }
@@ -549,10 +542,10 @@ public:
             Init_rv_(std::forward<variant>(val));
         }
 
-        variant(variant&& val, const Allocator& allocator) JSONCONS_NOEXCEPT
+        variant(variant&& val, const allocator_type& allocator) JSONCONS_NOEXCEPT
         {
             Init_rv_(std::forward<variant>(val), allocator,
-                     typename std::allocator_traits<Allocator>::propagate_on_container_move_assignment());
+                     typename std::allocator_traits<allocator_type>::propagate_on_container_move_assignment());
         }
 
         explicit variant(null_type)
@@ -567,7 +560,7 @@ public:
         {
             new(reinterpret_cast<void*>(&data_))integer_data(val);
         }
-        explicit variant(uint64_t val, const Allocator&)
+        explicit variant(uint64_t val, const allocator_type&)
         {
             new(reinterpret_cast<void*>(&data_))uinteger_data(val);
         }
@@ -607,7 +600,7 @@ public:
             }
         }
 
-        variant(const char_type* s, const Allocator& alloc)
+        variant(const char_type* s, const allocator_type& alloc)
         {
             size_t length = char_traits_type::length(s);
             if (length <= small_string_data::max_length)
@@ -620,7 +613,7 @@ public:
             }
         }
 
-        variant(const char_type* s, size_t length, const Allocator& alloc)
+        variant(const char_type* s, size_t length, const allocator_type& alloc)
         {
             if (length <= small_string_data::max_length)
             {
@@ -635,7 +628,7 @@ public:
         {
             new(reinterpret_cast<void*>(&data_))object_data(val);
         }
-        variant(const object& val, const Allocator& alloc)
+        variant(const object& val, const allocator_type& alloc)
         {
             new(reinterpret_cast<void*>(&data_))object_data(val, alloc);
         }
@@ -643,12 +636,12 @@ public:
         {
             new(reinterpret_cast<void*>(&data_))array_data(val);
         }
-        variant(const array& val, const Allocator& alloc)
+        variant(const array& val, const allocator_type& alloc)
         {
             new(reinterpret_cast<void*>(&data_))array_data(val,alloc);
         }
         template<class InputIterator>
-        variant(InputIterator first, InputIterator last, const Allocator& a)
+        variant(InputIterator first, InputIterator last, const allocator_type& a)
         {
             new(reinterpret_cast<void*>(&data_))array_data(first, last, a);
         }
@@ -1079,7 +1072,7 @@ public:
             }
         }
 
-        void Init_(const variant& val, const Allocator& a)
+        void Init_(const variant& val, const allocator_type& a)
         {
             switch (val.type_id())
             {
@@ -1142,12 +1135,12 @@ public:
             }
         }
 
-        void Init_rv_(variant&& val, const Allocator& a, std::true_type) JSONCONS_NOEXCEPT
+        void Init_rv_(variant&& val, const allocator_type& a, std::true_type) JSONCONS_NOEXCEPT
         {
             Init_rv_(std::forward<variant>(val));
         }
 
-        void Init_rv_(variant&& val, const Allocator& a, std::false_type) JSONCONS_NOEXCEPT
+        void Init_rv_(variant&& val, const allocator_type& a, std::false_type) JSONCONS_NOEXCEPT
         {
             switch (val.type_id())
             {
@@ -1260,18 +1253,18 @@ public:
         return json_type(variant(a,allocator));
     }
 
-    static basic_json_content_rules make_array(std::initializer_list<json_type> init, const Allocator& allocator = Allocator())
+    static basic_json_content_rules make_array(std::initializer_list<json_type> init, const allocator_type& allocator = allocator_type())
     {
         return array(std::move(init),allocator);
     }
 
-    static basic_json_content_rules make_array(size_t n, const Allocator& allocator = Allocator())
+    static basic_json_content_rules make_array(size_t n, const allocator_type& allocator = allocator_type())
     {
         return array(n,allocator);
     }
 
     template <class T>
-    static basic_json_content_rules make_array(size_t n, const T& val, const Allocator& allocator = Allocator())
+    static basic_json_content_rules make_array(size_t n, const T& val, const allocator_type& allocator = allocator_type())
     {
         return basic_json_content_rules::array(n, val,allocator);
     }
@@ -1283,7 +1276,7 @@ public:
     }
 
     template <size_t dim, class T>
-    static typename std::enable_if<dim==1,basic_json_content_rules>::type make_array(size_t n, const T& val, const Allocator& allocator = Allocator())
+    static typename std::enable_if<dim==1,basic_json_content_rules>::type make_array(size_t n, const T& val, const allocator_type& allocator = allocator_type())
     {
         return array(n,val,allocator);
     }
@@ -1315,7 +1308,7 @@ public:
     {
     }
 
-    explicit basic_json_content_rules(const Allocator& allocator) 
+    explicit basic_json_content_rules(const allocator_type& allocator) 
         : var_(allocator)
     {
     }
@@ -1325,7 +1318,7 @@ public:
     {
     }
 
-    basic_json_content_rules(const json_type& val, const Allocator& allocator)
+    basic_json_content_rules(const json_type& val, const allocator_type& allocator)
         : var_(val.var_,allocator)
     {
     }
@@ -1335,7 +1328,7 @@ public:
     {
     }
 
-    basic_json_content_rules(json_type&& other, const Allocator& allocator) JSONCONS_NOEXCEPT
+    basic_json_content_rules(json_type&& other, const allocator_type& allocator) JSONCONS_NOEXCEPT
         : var_(std::move(other.var_) /*,allocator*/ )
     {
     }
@@ -1377,7 +1370,7 @@ public:
     }
 
     template <class T>
-    basic_json_content_rules(const T& val, const Allocator& allocator)
+    basic_json_content_rules(const T& val, const allocator_type& allocator)
         : var_(json_type_traits<json_type,T>::to_json(val,allocator).var_)
     {
     }
@@ -1387,7 +1380,7 @@ public:
     {
     }
 
-    basic_json_content_rules(const char_type* s, const Allocator& allocator)
+    basic_json_content_rules(const char_type* s, const allocator_type& allocator)
         : var_(s,allocator)
     {
     }
@@ -1397,12 +1390,12 @@ public:
     {
     }
 
-    basic_json_content_rules(const char_type *s, size_t length, const Allocator& allocator = Allocator())
+    basic_json_content_rules(const char_type *s, size_t length, const allocator_type& allocator = allocator_type())
         : var_(s, length, allocator)
     {
     }
     template<class InputIterator>
-    basic_json_content_rules(InputIterator first, InputIterator last, const Allocator& allocator = Allocator())
+    basic_json_content_rules(InputIterator first, InputIterator last, const allocator_type& allocator = allocator_type())
         : var_(first,last,allocator)
     {
     }
@@ -1477,15 +1470,15 @@ public:
         }
     }
 
-    template<class U=Allocator,
+    template<class U=allocator_type,
          typename std::enable_if<is_stateless<U>::value
             >::type* = nullptr>
     void create_object_implicitly()
     {
-        var_ = variant(Allocator());
+        var_ = variant(allocator_type());
     }
 
-    template<class U=Allocator,
+    template<class U=allocator_type,
          typename std::enable_if<!is_stateless<U>::value
             >::type* = nullptr>
     void create_object_implicitly() const
@@ -1701,7 +1694,7 @@ void swap(typename Json::key_value_pair_type & a, typename Json::key_value_pair_
     a.swap(b);
 }
 
-typedef basic_json_content_rules<char,json_traits<char>,std::allocator<char>> json_content_rules;
+typedef basic_json_content_rules<json> json_content_rules;
 
 }}
 
