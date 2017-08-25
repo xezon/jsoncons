@@ -1238,63 +1238,6 @@ public:
         return handler.get_result();
     }
 
-    static basic_json_content_rules make_array()
-    {
-        return json_type(variant(array()));
-    }
-
-    static basic_json_content_rules make_array(const array& a)
-    {
-        return json_type(variant(a));
-    }
-
-    static basic_json_content_rules make_array(const array& a, allocator_type allocator)
-    {
-        return json_type(variant(a,allocator));
-    }
-
-    static basic_json_content_rules make_array(std::initializer_list<json_type> init, const allocator_type& allocator = allocator_type())
-    {
-        return array(std::move(init),allocator);
-    }
-
-    static basic_json_content_rules make_array(size_t n, const allocator_type& allocator = allocator_type())
-    {
-        return array(n,allocator);
-    }
-
-    template <class T>
-    static basic_json_content_rules make_array(size_t n, const T& val, const allocator_type& allocator = allocator_type())
-    {
-        return basic_json_content_rules::array(n, val,allocator);
-    }
-
-    template <size_t dim>
-    static typename std::enable_if<dim==1,basic_json_content_rules>::type make_array(size_t n)
-    {
-        return array(n);
-    }
-
-    template <size_t dim, class T>
-    static typename std::enable_if<dim==1,basic_json_content_rules>::type make_array(size_t n, const T& val, const allocator_type& allocator = allocator_type())
-    {
-        return array(n,val,allocator);
-    }
-
-    template <size_t dim, typename... Args>
-    static typename std::enable_if<(dim>1),basic_json_content_rules>::type make_array(size_t n, Args... args)
-    {
-        const size_t dim1 = dim - 1;
-
-        basic_json_content_rules val = make_array<dim1>(args...);
-        val.resize(n);
-        for (size_t i = 0; i < n; ++i)
-        {
-            val[i] = make_array<dim1>(args...);
-        }
-        return val;
-    }
-
     static const json_type& null()
     {
         static json_type a_null = json_type(variant(null_type()));
@@ -1534,7 +1477,7 @@ public:
         }
     }
 
-    bool validate() const
+    bool validate(const Json& j) const
     {
         return true;
     }
