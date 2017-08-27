@@ -34,7 +34,7 @@ namespace jsoncons { namespace jcr {
 
 class rule
 {
-    virtual ~rules() = default;
+    virtual ~rule() = default;
 };
 
 enum class value_type : uint8_t 
