@@ -32,12 +32,7 @@
 
 namespace jsoncons { namespace jcr {
 
-class rule
-{
-    virtual ~rule() = default;
-};
-
-enum class value_type : uint8_t 
+enum class value_type : uint8_t
 {
     empty_object_t,
     small_string_t,
@@ -49,6 +44,15 @@ enum class value_type : uint8_t
     string_t,
     object_t,
     array_t
+};
+
+struct rule
+{
+    value_type type_id_;
+
+    rule(value_type id)
+        : type_id_(id)
+    {}
 };
 
 template <class Json>
@@ -105,42 +109,34 @@ public:
 
     struct variant
     {
-        struct base_data
-        {
-            value_type type_id_;
 
-            base_data(value_type id)
-                : type_id_(id)
-            {}
-        };
-
-        struct null_data : public base_data
+        struct null_data : public rule
         {
             null_data()
-                : base_data(value_type::null_t)
+                : rule(value_type::null_t)
             {
             }
         };
 
-        struct empty_object_data : public base_data
+        struct empty_object_data : public rule
         {
             empty_object_data()
-                : base_data(value_type::empty_object_t)
+                : rule(value_type::empty_object_t)
             {
             }
         };
 
-        struct bool_data : public base_data
+        struct bool_data : public rule
         {
             bool val_;
 
             bool_data(bool val)
-                : base_data(value_type::bool_t),val_(val)
+                : rule(value_type::bool_t),val_(val)
             {
             }
 
             bool_data(const bool_data& val)
-                : base_data(value_type::bool_t),val_(val.val_)
+                : rule(value_type::bool_t),val_(val.val_)
             {
             }
 
@@ -151,17 +147,17 @@ public:
 
         };
 
-        struct integer_data : public base_data
+        struct integer_data : public rule
         {
             int64_t val_;
 
             integer_data(int64_t val)
-                : base_data(value_type::integer_t),val_(val)
+                : rule(value_type::integer_t),val_(val)
             {
             }
 
             integer_data(const integer_data& val)
-                : base_data(value_type::integer_t),val_(val.val_)
+                : rule(value_type::integer_t),val_(val.val_)
             {
             }
 
@@ -171,17 +167,17 @@ public:
             }
         };
 
-        struct uinteger_data : public base_data
+        struct uinteger_data : public rule
         {
             uint64_t val_;
 
             uinteger_data(uint64_t val)
-                : base_data(value_type::uinteger_t),val_(val)
+                : rule(value_type::uinteger_t),val_(val)
             {
             }
 
             uinteger_data(const uinteger_data& val)
-                : base_data(value_type::uinteger_t),val_(val.val_)
+                : rule(value_type::uinteger_t),val_(val.val_)
             {
             }
 
@@ -191,20 +187,20 @@ public:
             }
         };
 
-        struct double_data : public base_data
+        struct double_data : public rule
         {
             uint8_t precision_;
             double val_;
 
             double_data(double val, uint8_t precision)
-                : base_data(value_type::double_t), 
+                : rule(value_type::double_t), 
                   precision_(precision), 
                   val_(val)
             {
             }
 
             double_data(const double_data& val)
-                : base_data(value_type::double_t),
+                : rule(value_type::double_t),
                   precision_(val.precision_), 
                   val_(val.val_)
             {
@@ -221,7 +217,7 @@ public:
             }
         };
 
-        struct small_string_data : public base_data
+        struct small_string_data : public rule
         {
             static const size_t capacity = 14/sizeof(char_type);
             static const size_t max_length = (14 / sizeof(char_type)) - 1;
@@ -230,7 +226,7 @@ public:
             char_type data_[capacity];
 
             small_string_data(const char_type* p, uint8_t length)
-                : base_data(value_type::small_string_t), length_(length)
+                : rule(value_type::small_string_t), length_(length)
             {
                 JSONCONS_ASSERT(length <= max_length);
                 std::memcpy(data_,p,length*sizeof(char_type));
@@ -238,7 +234,7 @@ public:
             }
 
             small_string_data(const small_string_data& val)
-                : base_data(value_type::small_string_t), length_(val.length_)
+                : rule(value_type::small_string_t), length_(val.length_)
             {
                 std::memcpy(data_,val.data_,val.length_*sizeof(char_type));
                 data_[length_] = 0;
@@ -259,7 +255,7 @@ public:
                 return data_;
             }
         };
-        struct string_data : public base_data
+        struct string_data : public rule
         {
             typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<Json_string_<json_type>> string_holder_allocator_type;
             typedef typename std::allocator_traits<string_holder_allocator_type>::pointer pointer;
@@ -283,44 +279,44 @@ public:
             }
 
             string_data(const Json_string_<json_type>& val)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 create(val.get_allocator(), val);
             }
 
             string_data(pointer ptr)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 ptr_ = ptr;
             }
 
             string_data(const Json_string_<json_type>& val, const allocator_type& a)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), val, a);
             }
 
             string_data(const string_data & val)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 create(val.ptr_->get_allocator(), *(val.ptr_));
             }
 
             string_data(const string_data & val, const allocator_type& a)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), *(val.ptr_), a);
             }
 
             template<class InputIterator>
             string_data(InputIterator first, InputIterator last, const allocator_type& a)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), first, last, a);
             }
 
             string_data(const char_type* data, size_t length, const allocator_type& a)
-                : base_data(value_type::string_t)
+                : rule(value_type::string_t)
             {
                 create(string_holder_allocator_type(a), data, length, a);
             }
@@ -353,7 +349,7 @@ public:
             }
         };
 
-        struct object_data : public base_data
+        struct object_data : public rule
         {
             typedef typename std::allocator_traits<object_allocator>::pointer pointer;
             pointer ptr_;
@@ -375,37 +371,37 @@ public:
             }
 
             explicit object_data(const allocator_type& a)
-                : base_data(value_type::object_t)
+                : rule(value_type::object_t)
             {
                 create(a,a);
             }
 
             explicit object_data(pointer ptr)
-                : base_data(value_type::object_t)
+                : rule(value_type::object_t)
             {
                 ptr_ = ptr;
             }
 
             explicit object_data(const object & val)
-                : base_data(value_type::object_t)
+                : rule(value_type::object_t)
             {
                 create(val.get_allocator(), val);
             }
 
             explicit object_data(const object & val, const allocator_type& a)
-                : base_data(value_type::object_t)
+                : rule(value_type::object_t)
             {
                 create(object_allocator(a), val, a);
             }
 
             explicit object_data(const object_data & val)
-                : base_data(value_type::object_t)
+                : rule(value_type::object_t)
             {
                 create(val.ptr_->get_allocator(), *(val.ptr_));
             }
 
             explicit object_data(const object_data & val, const allocator_type& a)
-                : base_data(value_type::object_t)
+                : rule(value_type::object_t)
             {
                 create(object_allocator(a), *(val.ptr_), a);
             }
@@ -433,7 +429,7 @@ public:
             }
         };
     public:
-        struct array_data : public base_data
+        struct array_data : public rule
         {
             typedef typename std::allocator_traits<array_allocator>::pointer pointer;
             pointer ptr_;
@@ -460,38 +456,38 @@ public:
             }
 
             array_data(const array& val)
-                : base_data(value_type::array_t)
+                : rule(value_type::array_t)
             {
                 create(val.get_allocator(), val);
             }
 
             array_data(pointer ptr)
-                : base_data(value_type::array_t)
+                : rule(value_type::array_t)
             {
                 ptr_ = ptr;
             }
 
             array_data(const array& val, const allocator_type& a)
-                : base_data(value_type::array_t)
+                : rule(value_type::array_t)
             {
                 create(array_allocator(a), val, a);
             }
 
             array_data(const array_data & val)
-                : base_data(value_type::array_t)
+                : rule(value_type::array_t)
             {
                 create(val.ptr_->get_allocator(), *(val.ptr_));
             }
 
             array_data(const array_data & val, const allocator_type& a)
-                : base_data(value_type::array_t)
+                : rule(value_type::array_t)
             {
                 create(array_allocator(a), *(val.ptr_), a);
             }
 
             template<class InputIterator>
             array_data(InputIterator first, InputIterator last, const allocator_type& a)
-                : base_data(value_type::array_t)
+                : rule(value_type::array_t)
             {
                 create(array_allocator(a), first, last, a);
             }
@@ -731,7 +727,7 @@ public:
 
         value_type type_id() const
         {
-            return reinterpret_cast<const base_data*>(&data_)->type_id_;
+            return reinterpret_cast<const rule*>(&data_)->type_id_;
         }
 
         const null_data* null_data_cast() const
@@ -1380,44 +1376,6 @@ public:
         return *this;
     }
 
-    bool operator!=(const json_type& rhs) const
-    {
-        return !(*this == rhs);
-    }
-
-    bool operator==(const json_type& rhs) const
-    {
-        return var_ == rhs.var_;
-    }
-
-    size_t size() const JSONCONS_NOEXCEPT
-    {
-        switch (var_.type_id())
-        {
-        case value_type::empty_object_t:
-            return 0;
-        case value_type::object_t:
-            return object_value().size();
-        case value_type::array_t:
-            return array_value().size();
-        default:
-            return 0;
-        }
-    }
-
-    size_t capacity() const
-    {
-        switch (var_.type_id())
-        {
-        case value_type::array_t:
-            return array_value().capacity();
-        case value_type::object_t:
-            return object_value().capacity();
-        default:
-            return 0;
-        }
-    }
-
     template<class U=allocator_type,
          typename std::enable_if<is_stateless<U>::value
             >::type* = nullptr>
@@ -1451,31 +1409,6 @@ public:
         {
             object_value().reserve(n);
         }
-            break;
-        default:
-            break;
-        }
-    }
-
-    void resize(size_t n)
-    {
-        switch (var_.type_id())
-        {
-        case value_type::array_t:
-            array_value().resize(n);
-            break;
-        default:
-            break;
-        }
-    }
-
-    template <class T>
-    void resize(size_t n, T val)
-    {
-        switch (var_.type_id())
-        {
-        case value_type::array_t:
-            array_value().resize(n, val);
             break;
         default:
             break;
