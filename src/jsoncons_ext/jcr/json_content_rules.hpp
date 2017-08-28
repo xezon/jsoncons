@@ -34,8 +34,6 @@ namespace jsoncons { namespace jcr {
 
 enum class value_type : uint8_t
 {
-    empty_object_t,
-    small_string_t,
     double_t,
     integer_t,
     uinteger_t,
@@ -48,6 +46,8 @@ enum class value_type : uint8_t
 
 struct rule
 {
+    virtual ~rule() = default;
+
     value_type type_id_;
 
     rule(value_type id)
@@ -114,14 +114,6 @@ public:
         {
             null_data()
                 : rule(value_type::null_t)
-            {
-            }
-        };
-
-        struct empty_object_data : public rule
-        {
-            empty_object_data()
-                : rule(value_type::empty_object_t)
             {
             }
         };
@@ -217,44 +209,6 @@ public:
             }
         };
 
-        struct small_string_data : public rule
-        {
-            static const size_t capacity = 14/sizeof(char_type);
-            static const size_t max_length = (14 / sizeof(char_type)) - 1;
-
-            uint8_t length_;
-            char_type data_[capacity];
-
-            small_string_data(const char_type* p, uint8_t length)
-                : rule(value_type::small_string_t), length_(length)
-            {
-                JSONCONS_ASSERT(length <= max_length);
-                std::memcpy(data_,p,length*sizeof(char_type));
-                data_[length] = 0;
-            }
-
-            small_string_data(const small_string_data& val)
-                : rule(value_type::small_string_t), length_(val.length_)
-            {
-                std::memcpy(data_,val.data_,val.length_*sizeof(char_type));
-                data_[length_] = 0;
-            }
-
-            uint8_t length() const
-            {
-                return length_;
-            }
-
-            const char_type* data() const
-            {
-                return data_;
-            }
-
-            const char_type* c_str() const
-            {
-                return data_;
-            }
-        };
         struct string_data : public rule
         {
             typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<Json_string_<json_type>> string_holder_allocator_type;
@@ -368,6 +322,12 @@ public:
                     alloc.deallocate(ptr_,1);
                     throw;
                 }
+            }
+
+            explicit object_data()
+                : rule(value_type::object_t)
+            {
+                create(allocator_type());
             }
 
             explicit object_data(const allocator_type& a)
@@ -511,21 +471,21 @@ public:
         };
 
     private:
-        static const size_t data_size = static_max<sizeof(uinteger_data),sizeof(double_data),sizeof(small_string_data), sizeof(string_data), sizeof(array_data), sizeof(object_data)>::value;
-        static const size_t data_align = static_max<JSONCONS_ALIGNOF(uinteger_data),JSONCONS_ALIGNOF(double_data),JSONCONS_ALIGNOF(small_string_data),JSONCONS_ALIGNOF(string_data),JSONCONS_ALIGNOF(array_data),JSONCONS_ALIGNOF(object_data)>::value;
+        static const size_t data_size = static_max<sizeof(uinteger_data),sizeof(double_data), sizeof(string_data), sizeof(array_data), sizeof(object_data)>::value;
+        static const size_t data_align = static_max<JSONCONS_ALIGNOF(uinteger_data),JSONCONS_ALIGNOF(double_data),JSONCONS_ALIGNOF(string_data),JSONCONS_ALIGNOF(array_data),JSONCONS_ALIGNOF(object_data)>::value;
 
         typedef typename std::aligned_storage<data_size,data_align>::type data_t;
 
-        data_t data_;
+        std::shared_ptr<rule> data_;
     public:
         variant()
         {
-            new(reinterpret_cast<void*>(&data_))empty_object_data();
+            data_ = std::make_shared<object_data>();
         }
 
         variant(const allocator_type& a)
         {
-            new(reinterpret_cast<void*>(&data_))object_data(a);
+            data_ = std::make_shared<object_data>(a);
         }
 
         variant(const variant& val)
@@ -551,161 +511,105 @@ public:
 
         explicit variant(null_type)
         {
-            new(reinterpret_cast<void*>(&data_))null_data();
+            data_ = std::make_shared<null_data>();
         }
         explicit variant(bool val)
         {
-            new(reinterpret_cast<void*>(&data_))bool_data(val);
+            data_ = std::make_shared<bool_data>(val);
         }
         explicit variant(int64_t val)
         {
-            new(reinterpret_cast<void*>(&data_))integer_data(val);
+            data_ = std::make_shared<integer_data>(val);
         }
         explicit variant(uint64_t val, const allocator_type&)
         {
-            new(reinterpret_cast<void*>(&data_))uinteger_data(val);
+            data_ = std::make_shared<uinteger_data>(val);
         }
         explicit variant(uint64_t val)
         {
-            new(reinterpret_cast<void*>(&data_))uinteger_data(val);
+            data_ = std::make_shared<uinteger_data>(val);
         }
         variant(double val)
         {
-            new(reinterpret_cast<void*>(&data_))double_data(val,0);
+            data_ = std::make_shared<double_data>(val,0);
         }
         variant(double val, uint8_t precision)
         {
-            new(reinterpret_cast<void*>(&data_))double_data(val,precision);
+            data_ = std::make_shared<double_data>(val,precision);
         }
         variant(const char_type* s, size_t length)
         {
-            if (length <= small_string_data::max_length)
-            {
-                new(reinterpret_cast<void*>(&data_))small_string_data(s, static_cast<uint8_t>(length));
-            }
-            else
-            {
-                new(reinterpret_cast<void*>(&data_))string_data(s, length, char_allocator_type());
-            }
+            data_ = std::make_shared<string_data>(s, length, char_allocator_type());
         }
         variant(const char_type* s)
         {
-            size_t length = char_traits_type::length(s);
-            if (length <= small_string_data::max_length)
-            {
-                new(reinterpret_cast<void*>(&data_))small_string_data(s, static_cast<uint8_t>(length));
-            }
-            else
-            {
-                new(reinterpret_cast<void*>(&data_))string_data(s, length, char_allocator_type());
-            }
+            data_ = std::make_shared<string_data>(s, length, char_allocator_type());
         }
 
         variant(const char_type* s, const allocator_type& alloc)
         {
-            size_t length = char_traits_type::length(s);
-            if (length <= small_string_data::max_length)
-            {
-                new(reinterpret_cast<void*>(&data_))small_string_data(s, static_cast<uint8_t>(length));
-            }
-            else
-            {
-                new(reinterpret_cast<void*>(&data_))string_data(s, length, alloc);
-            }
+            data_ = std::make_shared<string_data>(s, length, alloc);
         }
 
         variant(const char_type* s, size_t length, const allocator_type& alloc)
         {
-            if (length <= small_string_data::max_length)
-            {
-                new(reinterpret_cast<void*>(&data_))small_string_data(s, static_cast<uint8_t>(length));
-            }
-            else
-            {
-                new(reinterpret_cast<void*>(&data_))string_data(s, length, alloc);
-            }
+            data_ = std::make_shared<string_data>(s, length, alloc);
         }
         variant(const object& val)
         {
-            new(reinterpret_cast<void*>(&data_))object_data(val);
+            data_ = std::make_shared<object_data>(val);
         }
         variant(const object& val, const allocator_type& alloc)
         {
-            new(reinterpret_cast<void*>(&data_))object_data(val, alloc);
+            data_ = std::make_shared<object_data>(val, alloc);
         }
         variant(const array& val)
         {
-            new(reinterpret_cast<void*>(&data_))array_data(val);
+            data_ = std::make_shared<array_data>(val);
         }
         variant(const array& val, const allocator_type& alloc)
         {
-            new(reinterpret_cast<void*>(&data_))array_data(val,alloc);
+            data_ = std::make_shared<array_data>(val,alloc);
         }
         template<class InputIterator>
         variant(InputIterator first, InputIterator last, const allocator_type& a)
         {
-            new(reinterpret_cast<void*>(&data_))array_data(first, last, a);
+            data_ = std::make_shared<array_data>(first, last, a);
         }
 
         ~variant()
         {
-            Destroy_();
-        }
-
-        void Destroy_()
-        {
-            switch (type_id())
-            {
-            case value_type::string_t:
-                reinterpret_cast<string_data*>(&data_)->~string_data();
-                break;
-            case value_type::object_t:
-                reinterpret_cast<object_data*>(&data_)->~object_data();
-                break;
-            case value_type::array_t:
-                reinterpret_cast<array_data*>(&data_)->~array_data();
-                break;
-            default:
-                break;
-            }
         }
 
         variant& operator=(const variant& val)
         {
             if (this != &val)
             {
-                Destroy_();
                 switch (val.type_id())
                 {
                 case value_type::null_t:
-                    new(reinterpret_cast<void*>(&data_))null_data();
-                    break;
-                case value_type::empty_object_t:
-                    new(reinterpret_cast<void*>(&data_))empty_object_data();
+                    data_ = std::make_shared<null_data>();
                     break;
                 case value_type::double_t:
-                    new(reinterpret_cast<void*>(&data_))double_data(*(val.double_data_cast()));
+                    data_ = std::make_shared<double_data>(*(val.double_data_cast()));
                     break;
                 case value_type::integer_t:
-                    new(reinterpret_cast<void*>(&data_))integer_data(*(val.integer_data_cast()));
+                    data_ = std::make_shared<integer_data>(*(val.integer_data_cast()));
                     break;
                 case value_type::uinteger_t:
-                    new(reinterpret_cast<void*>(&data_))uinteger_data(*(val.uinteger_data_cast()));
+                    data_ = std::make_shared<uinteger_data>(*(val.uinteger_data_cast()));
                     break;
                 case value_type::bool_t:
-                    new(reinterpret_cast<void*>(&data_))bool_data(*(val.bool_data_cast()));
-                    break;
-                case value_type::small_string_t:
-                    new(reinterpret_cast<void*>(&data_))small_string_data(*(val.small_string_data_cast()));
+                    data_ = std::make_shared<bool_data>(*(val.bool_data_cast()));
                     break;
                 case value_type::string_t:
-                    new(reinterpret_cast<void*>(&data_))string_data(*(val.string_data_cast()));
+                    data_ = std::make_shared<string_data>(*(val.string_data_cast()));
                     break;
                 case value_type::object_t:
-                    new(reinterpret_cast<void*>(&data_))object_data(*(val.object_data_cast()));
+                    data_ = std::make_shared<object_data>(*(val.object_data_cast()));
                     break;
                 case value_type::array_t:
-                    new(reinterpret_cast<void*>(&data_))array_data(*(val.array_data_cast()));
+                    data_ = std::make_shared<array_data>(*(val.array_data_cast()));
                     break;
                 default:
                     break;
@@ -718,8 +622,7 @@ public:
         {
             if (this != &val)
             {
-                Destroy_();
-                new(reinterpret_cast<void*>(&data_))null_data();
+                data_ = std::make_shared<null_data>();
                 swap(val);
             }
             return *this;
@@ -727,47 +630,37 @@ public:
 
         value_type type_id() const
         {
-            return reinterpret_cast<const rule*>(&data_)->type_id_;
+            return data_->type_id_;
         }
 
         const null_data* null_data_cast() const
         {
-            return reinterpret_cast<const null_data*>(&data_);
-        }
-
-        const empty_object_data* empty_object_data_cast() const
-        {
-            return reinterpret_cast<const empty_object_data*>(&data_);
+            return static_cast<const null_data*>(data_.get());
         }
 
         const bool_data* bool_data_cast() const
         {
-            return reinterpret_cast<const bool_data*>(&data_);
+            return static_cast<const bool_data*>(data_.get());
         }
 
         const integer_data* integer_data_cast() const
         {
-            return reinterpret_cast<const integer_data*>(&data_);
+            return static_cast<const integer_data*>(data_.get());
         }
 
         const uinteger_data* uinteger_data_cast() const
         {
-            return reinterpret_cast<const uinteger_data*>(&data_);
+            return static_cast<const uinteger_data*>(data_.get());
         }
 
         const double_data* double_data_cast() const
         {
-            return reinterpret_cast<const double_data*>(&data_);
-        }
-
-        const small_string_data* small_string_data_cast() const
-        {
-            return reinterpret_cast<const small_string_data*>(&data_);
+            return static_cast<const double_data*>(data_.get());
         }
 
         string_data* string_data_cast()
         {
-            return reinterpret_cast<string_data*>(&data_);
+            return static_cast<string_data*>(data_.get());
         }
 
         const string_data* string_data_cast() const
@@ -777,22 +670,22 @@ public:
 
         object_data* object_data_cast()
         {
-            return reinterpret_cast<object_data*>(&data_);
+            return static_cast<object_data*>(data_.get());
         }
 
         const object_data* object_data_cast() const
         {
-            return reinterpret_cast<const object_data*>(&data_);
+            return static_cast<const object_data*>(data_.get());
         }
 
         array_data* array_data_cast()
         {
-            return reinterpret_cast<array_data*>(&data_);
+            return static_cast<array_data*>(data_.get());
         }
 
         const array_data* array_data_cast() const
         {
-            return reinterpret_cast<const array_data*>(&data_);
+            return static_cast<const array_data*>(data_.get());
         }
 
         void swap(variant& rhs) JSONCONS_NOEXCEPT
@@ -807,34 +700,28 @@ public:
                         switch (rhs.type_id())
                         {
                         case value_type::object_t:
-                            new(reinterpret_cast<void*>(&data_))object_data(rhs.object_data_cast()->ptr_);
+                            data_ = std::make_shared<object_data>(rhs.object_data_cast()->ptr_);
                             break;
                         case value_type::array_t:
-                            new(reinterpret_cast<void*>(&data_))array_data(rhs.array_data_cast()->ptr_);
+                            data_ = std::make_shared<array_data>(rhs.array_data_cast()->ptr_);
                             break;
                         case value_type::string_t:
-                            new(reinterpret_cast<void*>(&data_))string_data(rhs.string_data_cast()->ptr_);
+                            data_ = std::make_shared<string_data>(rhs.string_data_cast()->ptr_);
                             break;
                         case value_type::null_t:
-                            new(reinterpret_cast<void*>(&data_))null_data();
-                            break;
-                        case value_type::empty_object_t:
-                            new(reinterpret_cast<void*>(&data_))empty_object_data();
+                            data_ = std::make_shared<null_data>();
                             break;
                         case value_type::double_t:
-                            new(reinterpret_cast<void*>(&data_))double_data(*(rhs.double_data_cast()));
+                            data_ = std::make_shared<double_data>(*(rhs.double_data_cast()));
                             break;
                         case value_type::integer_t:
-                            new(reinterpret_cast<void*>(&data_))integer_data(*(rhs.integer_data_cast()));
+                            data_ = std::make_shared<integer_data>(*(rhs.integer_data_cast()));
                             break;
                         case value_type::uinteger_t:
-                            new(reinterpret_cast<void*>(&data_))uinteger_data(*(rhs.uinteger_data_cast()));
+                            data_ = std::make_shared<uinteger_data>(*(rhs.uinteger_data_cast()));
                             break;
                         case value_type::bool_t:
-                            new(reinterpret_cast<void*>(&data_))bool_data(*(rhs.bool_data_cast()));
-                            break;
-                        case value_type::small_string_t:
-                            new(reinterpret_cast<void*>(&data_))small_string_data(*(rhs.small_string_data_cast()));
+                            data_ = std::make_shared<bool_data>(*(rhs.bool_data_cast()));
                             break;
                         default:
                             break;
@@ -848,34 +735,28 @@ public:
                         switch (rhs.type_id())
                         {
                         case value_type::object_t:
-                            new(reinterpret_cast<void*>(&data_))object_data(rhs.object_data_cast()->ptr_);
+                            data_ = std::make_shared<object_data>(rhs.object_data_cast()->ptr_);
                             break;
                         case value_type::array_t:
-                            new(reinterpret_cast<void*>(&data_))array_data(rhs.array_data_cast()->ptr_);
+                            data_ = std::make_shared<array_data>(rhs.array_data_cast()->ptr_);
                             break;
                         case value_type::string_t:
-                            new(reinterpret_cast<void*>(&data_))string_data(rhs.string_data_cast()->ptr_);
+                            data_ = std::make_shared<string_data>(rhs.string_data_cast()->ptr_);
                             break;
                         case value_type::null_t:
-                            new(reinterpret_cast<void*>(&data_))null_data();
-                            break;
-                        case value_type::empty_object_t:
-                            new(reinterpret_cast<void*>(&data_))empty_object_data();
+                            data_ = std::make_shared<null_data>();
                             break;
                         case value_type::double_t:
-                            new(reinterpret_cast<void*>(&data_))double_data(*(rhs.double_data_cast()));
+                            data_ = std::make_shared<double_data>(*(rhs.double_data_cast()));
                             break;
                         case value_type::integer_t:
-                            new(reinterpret_cast<void*>(&data_))integer_data(*(rhs.integer_data_cast()));
+                            data_ = std::make_shared<integer_data>(*(rhs.integer_data_cast()));
                             break;
                         case value_type::uinteger_t:
-                            new(reinterpret_cast<void*>(&data_))uinteger_data(*(rhs.uinteger_data_cast()));
+                            data_ = std::make_shared<uinteger_data>(*(rhs.uinteger_data_cast()));
                             break;
                         case value_type::bool_t:
-                            new(reinterpret_cast<void*>(&data_))bool_data(*(rhs.bool_data_cast()));
-                            break;
-                        case value_type::small_string_t:
-                            new(reinterpret_cast<void*>(&data_))small_string_data(*(rhs.small_string_data_cast()));
+                            data_ = std::make_shared<bool_data>(*(rhs.bool_data_cast()));
                             break;
                         default:
                             break;
@@ -889,34 +770,28 @@ public:
                         switch (rhs.type_id())
                         {
                         case value_type::object_t:
-                            new(reinterpret_cast<void*>(&data_))object_data(rhs.object_data_cast()->ptr_);
+                            data_ = std::make_shared<object_data>(rhs.object_data_cast()->ptr_);
                             break;
                         case value_type::array_t:
-                            new(reinterpret_cast<void*>(&data_))array_data(rhs.array_data_cast()->ptr_);
+                            data_ = std::make_shared<array_data>(rhs.array_data_cast()->ptr_);
                             break;
                         case value_type::string_t:
-                            new(reinterpret_cast<void*>(&data_))string_data(rhs.string_data_cast()->ptr_);
+                            data_ = std::make_shared<string_data>(rhs.string_data_cast()->ptr_);
                             break;
                         case value_type::null_t:
-                            new(reinterpret_cast<void*>(&data_))null_data();
-                            break;
-                        case value_type::empty_object_t:
-                            new(reinterpret_cast<void*>(&data_))empty_object_data();
+                            data_ = std::make_shared<null_data>();
                             break;
                         case value_type::double_t:
-                            new(reinterpret_cast<void*>(&data_))double_data(*(rhs.double_data_cast()));
+                            data_ = std::make_shared<double_data>(*(rhs.double_data_cast()));
                             break;
                         case value_type::integer_t:
-                            new(reinterpret_cast<void*>(&data_))integer_data(*(rhs.integer_data_cast()));
+                            data_ = std::make_shared<integer_data>(*(rhs.integer_data_cast()));
                             break;
                         case value_type::uinteger_t:
-                            new(reinterpret_cast<void*>(&data_))uinteger_data(*(rhs.uinteger_data_cast()));
+                            data_ = std::make_shared<uinteger_data>(*(rhs.uinteger_data_cast()));
                             break;
                         case value_type::bool_t:
-                            new(reinterpret_cast<void*>(&data_))bool_data(*(rhs.bool_data_cast()));
-                            break;
-                        case value_type::small_string_t:
-                            new(reinterpret_cast<void*>(&data_))small_string_data(*(rhs.small_string_data_cast()));
+                            data_ = std::make_shared<bool_data>(*(rhs.bool_data_cast()));
                             break;
                         default:
                             break;
@@ -935,9 +810,6 @@ public:
                             case value_type::null_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))null_data();
                                 break;
-                            case value_type::empty_object_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))empty_object_data();
-                                break;
                             case value_type::double_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))double_data(*(double_data_cast()));
                                 break;
@@ -950,13 +822,10 @@ public:
                             case value_type::bool_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))bool_data(*(bool_data_cast()));
                                 break;
-                            case value_type::small_string_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))small_string_data(*(small_string_data_cast()));
-                                break;
                             default:
                                 break;
                             }
-                            new(reinterpret_cast<void*>(&data_))string_data(ptr);
+                            data_ = std::make_shared<string_data>(ptr);
                         }
                         break;
                     case value_type::object_t:
@@ -967,9 +836,6 @@ public:
                             case value_type::null_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))null_data();
                                 break;
-                            case value_type::empty_object_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))empty_object_data();
-                                break;
                             case value_type::double_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))double_data(*(double_data_cast()));
                                 break;
@@ -982,13 +848,10 @@ public:
                             case value_type::bool_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))bool_data(*(bool_data_cast()));
                                 break;
-                            case value_type::small_string_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))small_string_data(*(small_string_data_cast()));
-                                break;
                             default:
                                 break;
                             }
-                            new(reinterpret_cast<void*>(&data_))object_data(ptr);
+                            data_ = std::make_shared<object_data>(ptr);
                         }
                         break;
                     case value_type::array_t:
@@ -999,9 +862,6 @@ public:
                             case value_type::null_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))null_data();
                                 break;
-                            case value_type::empty_object_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))empty_object_data();
-                                break;
                             case value_type::double_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))double_data(*(double_data_cast()));
                                 break;
@@ -1014,13 +874,10 @@ public:
                             case value_type::bool_t:
                                 new(reinterpret_cast<void*>(&rhs.data_))bool_data(*(bool_data_cast()));
                                 break;
-                            case value_type::small_string_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))small_string_data(*(small_string_data_cast()));
-                                break;
                             default:
                                 break;
                             }
-                            new(reinterpret_cast<void*>(&data_))array_data(ptr);
+                            data_ = std::make_shared<array_data>(ptr);
                         }
                         break;
                     default:
@@ -1039,34 +896,28 @@ public:
             switch (val.type_id())
             {
             case value_type::null_t:
-                new(reinterpret_cast<void*>(&data_))null_data();
-                break;
-            case value_type::empty_object_t:
-                new(reinterpret_cast<void*>(&data_))empty_object_data();
+                data_ = std::make_shared<null_data>();
                 break;
             case value_type::double_t:
-                new(reinterpret_cast<void*>(&data_))double_data(*(val.double_data_cast()));
+                data_ = std::make_shared<double_data>(*(val.double_data_cast()));
                 break;
             case value_type::integer_t:
-                new(reinterpret_cast<void*>(&data_))integer_data(*(val.integer_data_cast()));
+                data_ = std::make_shared<integer_data>(*(val.integer_data_cast()));
                 break;
             case value_type::uinteger_t:
-                new(reinterpret_cast<void*>(&data_))uinteger_data(*(val.uinteger_data_cast()));
+                data_ = std::make_shared<uinteger_data>(*(val.uinteger_data_cast()));
                 break;
             case value_type::bool_t:
-                new(reinterpret_cast<void*>(&data_))bool_data(*(val.bool_data_cast()));
-                break;
-            case value_type::small_string_t:
-                new(reinterpret_cast<void*>(&data_))small_string_data(*(val.small_string_data_cast()));
+                data_ = std::make_shared<bool_data>(*(val.bool_data_cast()));
                 break;
             case value_type::string_t:
-                new(reinterpret_cast<void*>(&data_))string_data(*(val.string_data_cast()));
+                data_ = std::make_shared<string_data>(*(val.string_data_cast()));
                 break;
             case value_type::object_t:
-                new(reinterpret_cast<void*>(&data_))object_data(*(val.object_data_cast()));
+                data_ = std::make_shared<object_data>(*(val.object_data_cast()));
                 break;
             case value_type::array_t:
-                new(reinterpret_cast<void*>(&data_))array_data(*(val.array_data_cast()));
+                data_ = std::make_shared<array_data>(*(val.array_data_cast()));
                 break;
             default:
                 break;
@@ -1078,22 +929,18 @@ public:
             switch (val.type_id())
             {
             case value_type::null_t:
-            case value_type::empty_object_t:
             case value_type::double_t:
             case value_type::integer_t:
             case value_type::uinteger_t:
             case value_type::bool_t:
-            case value_type::small_string_t:
-                Init_(val);
-                break;
             case value_type::string_t:
-                new(reinterpret_cast<void*>(&data_))string_data(*(val.string_data_cast()),a);
+                data_ = std::make_shared<string_data>(*(val.string_data_cast()),a);
                 break;
             case value_type::object_t:
-                new(reinterpret_cast<void*>(&data_))object_data(*(val.object_data_cast()),a);
+                data_ = std::make_shared<object_data>(*(val.object_data_cast()),a);
                 break;
             case value_type::array_t:
-                new(reinterpret_cast<void*>(&data_))array_data(*(val.array_data_cast()),a);
+                data_ = std::make_shared<array_data>(*(val.array_data_cast()),a);
                 break;
             default:
                 break;
@@ -1105,29 +952,25 @@ public:
             switch (val.type_id())
             {
             case value_type::null_t:
-            case value_type::empty_object_t:
             case value_type::double_t:
             case value_type::integer_t:
             case value_type::uinteger_t:
             case value_type::bool_t:
-            case value_type::small_string_t:
-                Init_(val);
-                break;
             case value_type::string_t:
                 {
-                    new(reinterpret_cast<void*>(&data_))string_data(val.string_data_cast()->ptr_);
+                    data_ = std::make_shared<string_data>(val.string_data_cast()->ptr_);
                     val.string_data_cast()->type_id_ = value_type::null_t;
                 }
                 break;
             case value_type::object_t:
                 {
-                    new(reinterpret_cast<void*>(&data_))object_data(val.object_data_cast()->ptr_);
+                    data_ = std::make_shared<object_data>(val.object_data_cast()->ptr_);
                     val.object_data_cast()->type_id_ = value_type::null_t;
                 }
                 break;
             case value_type::array_t:
                 {
-                    new(reinterpret_cast<void*>(&data_))array_data(val.array_data_cast()->ptr_);
+                    data_ = std::make_shared<array_data>(val.array_data_cast()->ptr_);
                     val.array_data_cast()->type_id_ = value_type::null_t;
                 }
                 break;
@@ -1146,14 +989,10 @@ public:
             switch (val.type_id())
             {
             case value_type::null_t:
-            case value_type::empty_object_t:
             case value_type::double_t:
             case value_type::integer_t:
             case value_type::uinteger_t:
             case value_type::bool_t:
-            case value_type::small_string_t:
-                Init_(std::forward<variant>(val));
-                break;
             case value_type::string_t:
                 {
                     if (a == val.string_data_cast()->get_allocator())
@@ -1198,7 +1037,7 @@ public:
 
     bool is_object() const JSONCONS_NOEXCEPT
     {
-        return var_.type_id() == value_type::object_t || var_.type_id() == value_type::empty_object_t;
+        return var_.type_id() == value_type::object_t;
     }
 
     bool is_array() const JSONCONS_NOEXCEPT
@@ -1376,22 +1215,6 @@ public:
         return *this;
     }
 
-    template<class U=allocator_type,
-         typename std::enable_if<is_stateless<U>::value
-            >::type* = nullptr>
-    void create_object_implicitly()
-    {
-        var_ = variant(allocator_type());
-    }
-
-    template<class U=allocator_type,
-         typename std::enable_if<!is_stateless<U>::value
-            >::type* = nullptr>
-    void create_object_implicitly() const
-    {
-        JSONCONS_THROW_EXCEPTION(std::runtime_error,"Cannot create object implicitly - allocator is not default constructible.");
-    }
-
     void reserve(size_t n)
     {
         switch (var_.type_id())
@@ -1399,12 +1222,6 @@ public:
         case value_type::array_t:
             array_value().reserve(n);
             break;
-        case value_type::empty_object_t:
-        {
-            create_object_implicitly();
-            object_value().reserve(n);
-        }
-        break;
         case value_type::object_t:
         {
             object_value().reserve(n);
@@ -1540,9 +1357,6 @@ public:
     {
         switch (var_.type_id())
         {
-        case value_type::empty_object_t:
-            create_object_implicitly();
-            // FALLTHRU
         case value_type::object_t:
             return var_.object_data_cast()->value();
         default:
@@ -1555,9 +1369,6 @@ public:
     {
         switch (var_.type_id())
         {
-        case value_type::empty_object_t:
-            const_cast<json_type*>(this)->create_object_implicitly(); // HERE
-            // FALLTHRU
         case value_type::object_t:
             return var_.object_data_cast()->value();
         default:
