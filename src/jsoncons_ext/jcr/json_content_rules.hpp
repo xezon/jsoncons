@@ -211,75 +211,53 @@ public:
 
         struct string_data : public rule
         {
-            typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<Json_string_<json_type>> string_holder_allocator_type;
-            typedef typename std::allocator_traits<string_holder_allocator_type>::pointer pointer;
-
-            pointer ptr_;
+            std::shared_ptr<Json_string_<json_type>> ptr_;
 
             template <typename... Args>
-            void create(string_holder_allocator_type allocator, Args&& ... args)
+            void create(Args&& ... args)
             {
-                typename std::allocator_traits<allocator_type>:: template rebind_alloc<Json_string_<json_type>> alloc(allocator);
-                ptr_ = alloc.allocate(1);
-                try
-                {
-                    std::allocator_traits<string_holder_allocator_type>:: template rebind_traits<Json_string_<json_type>>::construct(alloc, to_plain_pointer(ptr_), std::forward<Args>(args)...);
-                }
-                catch (...)
-                {
-                    alloc.deallocate(ptr_,1);
-                    throw;
-                }
+                ptr_ = std::make_shared<Json_string_<json_type>>(std::forward<Args>(args)...);
             }
 
             string_data(const Json_string_<json_type>& val)
                 : rule(value_type::string_t)
             {
-                create(val.get_allocator(), val);
-            }
-
-            string_data(pointer ptr)
-                : rule(value_type::string_t)
-            {
-                ptr_ = ptr;
+                create(val);
             }
 
             string_data(const Json_string_<json_type>& val, const allocator_type& a)
                 : rule(value_type::string_t)
             {
-                create(string_holder_allocator_type(a), val, a);
+                create(val, a);
             }
 
             string_data(const string_data & val)
                 : rule(value_type::string_t)
             {
-                create(val.ptr_->get_allocator(), *(val.ptr_));
+                create(*(val.ptr_));
             }
 
             string_data(const string_data & val, const allocator_type& a)
                 : rule(value_type::string_t)
             {
-                create(string_holder_allocator_type(a), *(val.ptr_), a);
+                create(*(val.ptr_), a);
             }
 
             template<class InputIterator>
             string_data(InputIterator first, InputIterator last, const allocator_type& a)
                 : rule(value_type::string_t)
             {
-                create(string_holder_allocator_type(a), first, last, a);
+                create(first, last, a);
             }
 
             string_data(const char_type* data, size_t length, const allocator_type& a)
                 : rule(value_type::string_t)
             {
-                create(string_holder_allocator_type(a), data, length, a);
+                create(data, length, a);
             }
 
             ~string_data()
             {
-                typename std::allocator_traits<string_holder_allocator_type>:: template rebind_alloc<Json_string_<json_type>> alloc(ptr_->get_allocator());
-                std::allocator_traits<string_holder_allocator_type>:: template rebind_traits<Json_string_<json_type>>::destroy(alloc, to_plain_pointer(ptr_));
-                alloc.deallocate(ptr_,1);
             }
 
             const char_type* data() const
@@ -498,17 +476,6 @@ public:
             Init_(val,allocator);
         }
 
-        variant(variant&& val) JSONCONS_NOEXCEPT
-        {
-            Init_rv_(std::forward<variant>(val));
-        }
-
-        variant(variant&& val, const allocator_type& allocator) JSONCONS_NOEXCEPT
-        {
-            Init_rv_(std::forward<variant>(val), allocator,
-                     typename std::allocator_traits<allocator_type>::propagate_on_container_move_assignment());
-        }
-
         explicit variant(null_type)
         {
             data_ = std::make_shared<null_data>();
@@ -690,204 +657,11 @@ public:
 
         void swap(variant& rhs) JSONCONS_NOEXCEPT
         {
-            if (this != &rhs)
+            if (this == &rhs)
             {
-                switch (type_id())
-                {
-                case value_type::string_t:
-                    {
-                        auto ptr = string_data_cast()->ptr_;
-                        switch (rhs.type_id())
-                        {
-                        case value_type::object_t:
-                            data_ = std::make_shared<object_data>(rhs.object_data_cast()->ptr_);
-                            break;
-                        case value_type::array_t:
-                            data_ = std::make_shared<array_data>(rhs.array_data_cast()->ptr_);
-                            break;
-                        case value_type::string_t:
-                            data_ = std::make_shared<string_data>(rhs.string_data_cast()->ptr_);
-                            break;
-                        case value_type::null_t:
-                            data_ = std::make_shared<null_data>();
-                            break;
-                        case value_type::double_t:
-                            data_ = std::make_shared<double_data>(*(rhs.double_data_cast()));
-                            break;
-                        case value_type::integer_t:
-                            data_ = std::make_shared<integer_data>(*(rhs.integer_data_cast()));
-                            break;
-                        case value_type::uinteger_t:
-                            data_ = std::make_shared<uinteger_data>(*(rhs.uinteger_data_cast()));
-                            break;
-                        case value_type::bool_t:
-                            data_ = std::make_shared<bool_data>(*(rhs.bool_data_cast()));
-                            break;
-                        default:
-                            break;
-                        }
-                        new(reinterpret_cast<void*>(&(rhs.data_)))string_data(ptr);
-                    }
-                    break;
-                case value_type::object_t:
-                    {
-                        auto ptr = object_data_cast()->ptr_;
-                        switch (rhs.type_id())
-                        {
-                        case value_type::object_t:
-                            data_ = std::make_shared<object_data>(rhs.object_data_cast()->ptr_);
-                            break;
-                        case value_type::array_t:
-                            data_ = std::make_shared<array_data>(rhs.array_data_cast()->ptr_);
-                            break;
-                        case value_type::string_t:
-                            data_ = std::make_shared<string_data>(rhs.string_data_cast()->ptr_);
-                            break;
-                        case value_type::null_t:
-                            data_ = std::make_shared<null_data>();
-                            break;
-                        case value_type::double_t:
-                            data_ = std::make_shared<double_data>(*(rhs.double_data_cast()));
-                            break;
-                        case value_type::integer_t:
-                            data_ = std::make_shared<integer_data>(*(rhs.integer_data_cast()));
-                            break;
-                        case value_type::uinteger_t:
-                            data_ = std::make_shared<uinteger_data>(*(rhs.uinteger_data_cast()));
-                            break;
-                        case value_type::bool_t:
-                            data_ = std::make_shared<bool_data>(*(rhs.bool_data_cast()));
-                            break;
-                        default:
-                            break;
-                        }
-                        new(reinterpret_cast<void*>(&(rhs.data_)))object_data(ptr);
-                    }
-                    break;
-                case value_type::array_t:
-                    {
-                        auto ptr = array_data_cast()->ptr_;
-                        switch (rhs.type_id())
-                        {
-                        case value_type::object_t:
-                            data_ = std::make_shared<object_data>(rhs.object_data_cast()->ptr_);
-                            break;
-                        case value_type::array_t:
-                            data_ = std::make_shared<array_data>(rhs.array_data_cast()->ptr_);
-                            break;
-                        case value_type::string_t:
-                            data_ = std::make_shared<string_data>(rhs.string_data_cast()->ptr_);
-                            break;
-                        case value_type::null_t:
-                            data_ = std::make_shared<null_data>();
-                            break;
-                        case value_type::double_t:
-                            data_ = std::make_shared<double_data>(*(rhs.double_data_cast()));
-                            break;
-                        case value_type::integer_t:
-                            data_ = std::make_shared<integer_data>(*(rhs.integer_data_cast()));
-                            break;
-                        case value_type::uinteger_t:
-                            data_ = std::make_shared<uinteger_data>(*(rhs.uinteger_data_cast()));
-                            break;
-                        case value_type::bool_t:
-                            data_ = std::make_shared<bool_data>(*(rhs.bool_data_cast()));
-                            break;
-                        default:
-                            break;
-                        }
-                        new(reinterpret_cast<void*>(&(rhs.data_)))array_data(ptr);
-                    }
-                    break;
-                default:
-                    switch (rhs.type_id())
-                    {
-                    case value_type::string_t:
-                        {
-                            auto ptr = rhs.string_data_cast()->ptr_;
-                            switch (type_id())
-                            {
-                            case value_type::null_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))null_data();
-                                break;
-                            case value_type::double_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))double_data(*(double_data_cast()));
-                                break;
-                            case value_type::integer_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))integer_data(*(integer_data_cast()));
-                                break;
-                            case value_type::uinteger_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))uinteger_data(*(uinteger_data_cast()));
-                                break;
-                            case value_type::bool_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))bool_data(*(bool_data_cast()));
-                                break;
-                            default:
-                                break;
-                            }
-                            data_ = std::make_shared<string_data>(ptr);
-                        }
-                        break;
-                    case value_type::object_t:
-                        {
-                            auto ptr = rhs.object_data_cast()->ptr_;
-                            switch (type_id())
-                            {
-                            case value_type::null_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))null_data();
-                                break;
-                            case value_type::double_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))double_data(*(double_data_cast()));
-                                break;
-                            case value_type::integer_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))integer_data(*(integer_data_cast()));
-                                break;
-                            case value_type::uinteger_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))uinteger_data(*(uinteger_data_cast()));
-                                break;
-                            case value_type::bool_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))bool_data(*(bool_data_cast()));
-                                break;
-                            default:
-                                break;
-                            }
-                            data_ = std::make_shared<object_data>(ptr);
-                        }
-                        break;
-                    case value_type::array_t:
-                        {
-                            auto ptr = rhs.array_data_cast()->ptr_;
-                            switch (type_id())
-                            {
-                            case value_type::null_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))null_data();
-                                break;
-                            case value_type::double_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))double_data(*(double_data_cast()));
-                                break;
-                            case value_type::integer_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))integer_data(*(integer_data_cast()));
-                                break;
-                            case value_type::uinteger_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))uinteger_data(*(uinteger_data_cast()));
-                                break;
-                            case value_type::bool_t:
-                                new(reinterpret_cast<void*>(&rhs.data_))bool_data(*(bool_data_cast()));
-                                break;
-                            default:
-                                break;
-                            }
-                            data_ = std::make_shared<array_data>(ptr);
-                        }
-                        break;
-                    default:
-                        {
-                            std::swap(data_,rhs.data_);
-                        }
-                        break;
-                    }
-                }
+                return;
             }
+            std::swap(data_,rhs.data_);
         }
     private:
 
@@ -941,93 +715,6 @@ public:
                 break;
             case value_type::array_t:
                 data_ = std::make_shared<array_data>(*(val.array_data_cast()),a);
-                break;
-            default:
-                break;
-            }
-        }
-
-        void Init_rv_(variant&& val) JSONCONS_NOEXCEPT
-        {
-            switch (val.type_id())
-            {
-            case value_type::null_t:
-            case value_type::double_t:
-            case value_type::integer_t:
-            case value_type::uinteger_t:
-            case value_type::bool_t:
-            case value_type::string_t:
-                {
-                    data_ = std::make_shared<string_data>(val.string_data_cast()->ptr_);
-                    val.string_data_cast()->type_id_ = value_type::null_t;
-                }
-                break;
-            case value_type::object_t:
-                {
-                    data_ = std::make_shared<object_data>(val.object_data_cast()->ptr_);
-                    val.object_data_cast()->type_id_ = value_type::null_t;
-                }
-                break;
-            case value_type::array_t:
-                {
-                    data_ = std::make_shared<array_data>(val.array_data_cast()->ptr_);
-                    val.array_data_cast()->type_id_ = value_type::null_t;
-                }
-                break;
-            default:
-                break;
-            }
-        }
-
-        void Init_rv_(variant&& val, const allocator_type& a, std::true_type) JSONCONS_NOEXCEPT
-        {
-            Init_rv_(std::forward<variant>(val));
-        }
-
-        void Init_rv_(variant&& val, const allocator_type& a, std::false_type) JSONCONS_NOEXCEPT
-        {
-            switch (val.type_id())
-            {
-            case value_type::null_t:
-            case value_type::double_t:
-            case value_type::integer_t:
-            case value_type::uinteger_t:
-            case value_type::bool_t:
-            case value_type::string_t:
-                {
-                    if (a == val.string_data_cast()->get_allocator())
-                    {
-                        Init_rv_(std::forward<variant>(val), a, std::true_type());
-                    }
-                    else
-                    {
-                        Init_(val,a);
-                    }
-                }
-                break;
-            case value_type::object_t:
-                {
-                    if (a == val.object_data_cast()->get_allocator())
-                    {
-                        Init_rv_(std::forward<variant>(val), a, std::true_type());
-                    }
-                    else
-                    {
-                        Init_(val,a);
-                    }
-                }
-                break;
-            case value_type::array_t:
-                {
-                    if (a == val.array_data_cast()->get_allocator())
-                    {
-                        Init_rv_(std::forward<variant>(val), a, std::true_type());
-                    }
-                    else
-                    {
-                        Init_(val,a);
-                    }
-                }
                 break;
             default:
                 break;
