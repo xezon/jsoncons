@@ -19,32 +19,34 @@ Features:
 
 Extensions:
 
-- The [jsonpath](#user-content-ext_jsonpath) extension supports search using [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/).  It also supports search and replace using JsonPath expressions.
-- The [csv](#user-content-ext_csv) extension supports reading (writing) JSON values from (to) CSV files
-- The [msgpack](#user-content-ext_msgpack) extension supports encoding to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
-- The [cbor](#user-content-ext_cbor) extension supports encoding to and decoding from the [cbor](http://cbor.io/) binary serialization format.
+- [jsonpointer](#user-content-ext_jsonpointer) implements the IETF standard [JavaScript Object Notation (JSON) Pointer](https://tools.ietf.org/html/rfc6901)
+- [jsonpatch](#user-content-ext_jsonpatch) implements the IETF standard [JavaScript Object Notation (JSON) Patch](https://tools.ietf.org/html/rfc6902)
+- [jsonpath](#user-content-ext_jsonpath) implements [Stefan Goessner's JsonPath](http://goessner.net/articles/JsonPath/).  It also supports search and replace using JsonPath expressions.
+- [csv](#user-content-ext_csv) implements reading (writing) JSON values from (to) CSV files
+- [msgpack](#user-content-ext_msgpack) implements encode to and decode from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
+- [cbor](#user-content-ext_cbor) implements encode to and decode from the IETF standard [Concise Binary Object Representation (CBOR)](http://cbor.io/).
 
 Planned new features are listed on the [roadmap](doc/Roadmap.md)
 
-## Get jsoncons
+### Get jsoncons
 
 Download the [latest release](https://github.com/danielaparker/jsoncons/releases) and unpack the zip file. Find the directory `jsoncons` under `src`, and copy it to your `include` directory. If you wish to use extensions, copy the `jsoncons_ext` directory as well. 
 
 Or, download the latest code on [master](https://github.com/danielaparker/jsoncons/archive/master.zip).
 
-## How to use it
+### How to use it
 
 - For a quick guide, see [jsoncons: a C++ library for json construction](http://danielaparker.github.io/jsoncons). 
-- Consult the [documentation](doc/Home.md) for the details. 
+- For the details, see the [documentation](doc/Home.md). 
 
-As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the [deprecated list](doc/Classes/deprecated.md) for the status of old names. The deprecated names can be suppressed by defining macro `JSONCONS_NO_DEPRECATED`, which is recommended for new code.
+As the `jsoncons` library has evolved, names have sometimes changed. To ease transition, jsoncons deprecates the old names but continues to support many of them. See the [deprecated list](doc/ref/deprecated.md) for the status of old names. The deprecated names can be suppressed by defining macro `JSONCONS_NO_DEPRECATED`, which is recommended for new code.
 
-## Benchmarks
+### Benchmarks
 
 [json_benchmarks](https://github.com/danielaparker/json_benchmarks) provides some measurements about how `jsoncons` compares to other `json` libraries.
 Results for [JSONTestSuite](https://github.com/nst/JSONTestSuite) and [JSON_checker](http://www.json.org/JSON_checker/) tests may be found [here](https://danielaparker.github.io/json_benchmarks/).
 
-## A simple program using jsoncons
+### A simple program using jsoncons
 
 ```c++
 #include <iostream>
@@ -57,9 +59,9 @@ using jsoncons::json;
 int main()
 {
     json color_spaces = json::array();
-    color_spaces.add("sRGB");
-    color_spaces.add("AdobeRGB");
-    color_spaces.add("ProPhoto RGB");
+    color_spaces.push_back("sRGB");
+    color_spaces.push_back("AdobeRGB");
+    color_spaces.push_back("ProPhoto RGB");
 
     json image_sizing; // empty object
     image_sizing["Resize To Fit"] = true; // a boolean 
@@ -115,7 +117,7 @@ Output:
 (3) Dimension 2 = 0.0
 ```
 
-## About jsoncons::basic_json
+### About jsoncons::basic_json
 
 The jsoncons library provides a `basic_json` class template, which is the generalization of a `json` value for different character types, different policies for ordering name-value pairs, etc.
 ```c++
@@ -125,17 +127,17 @@ typedef basic_json<char,
 ```
 The library includes four instantiations of `basic_json`:
 
-- [json](doc/Classes/json.md) constructs a utf8 character json value that sorts name-value members alphabetically
+- [json](doc/ref/json.md) constructs a utf8 character json value that sorts name-value members alphabetically
 
-- [ojson](doc/Classes/ojson.md) constructs a utf8 character json value that preserves the original name-value insertion order
+- [ojson](doc/ref/ojson.md) constructs a utf8 character json value that preserves the original name-value insertion order
 
-- [wjson](doc/Classes/wjson.md) constructs a wide character json value that sorts name-value members alphabetically
+- [wjson](doc/ref/wjson.md) constructs a wide character json value that sorts name-value members alphabetically
 
-- [wojson](doc/Classes/wojson.md) constructs a wide character json value that preserves the original name-value insertion order
+- [wojson](doc/ref/wojson.md) constructs a wide character json value that preserves the original name-value insertion order
 
-## Features
+### Features
 
-### Meaningful error messages
+#### Meaningful error messages
 
 ```c++
 try 
@@ -152,7 +154,7 @@ Output:
 Extra comma at line 1 and column 10
 ```
 
-### Validation without parse exceptions
+#### Validation without parse exceptions
 
 ```c++
 std::string s = R"(
@@ -179,7 +181,7 @@ Output:
 ```
 Expected name separator ':' on line 4 and column 20
 ```
-### Range-based for loops with arrays
+#### Range-based for loops with arrays
 
 ```c++
 json j = json::array{1,2,3,4};
@@ -190,7 +192,7 @@ for (auto val : book.array_range())
 }
 ```
 
-### Range-based for loops with objects
+#### Range-based for loops with objects
 
 ```c++
 json book = json::object{
@@ -205,7 +207,7 @@ for (const auto& kv : book.object_range())
               << kv.value() << std::endl;
 }
 ```
-### _json and _ojson literal operators
+#### _json and _ojson literal operators
 
 ```c++
 using namespace jsoncons::literals;
@@ -219,7 +221,7 @@ ojson j2 = R"(
 )"_ojson;
 ```
 
-### Multi-dimensional json arrays
+#### Multi-dimensional json arrays
 ```c++
 json a = json::make_array<3>(4, 3, 2, 0.0);
 double val = 1.0;
@@ -261,9 +263,9 @@ Output:
     ]
 ]
 ```
-See [json::make_array](doc/Classes/json-make_array.md) for details
+See [json::make_array](doc/ref/json/make_array.md) for details
 
-### Merge key-value pairs from another json object
+#### Merge key-value pairs from another json object
 ```c++
 json j = json::parse(R"(
 {
@@ -290,10 +292,10 @@ Output:
     "c": [4,5,6]
 }
 ```
-See [json::merge](doc/Classes/json%20merge.md) 
-and [json::merge_or_update](doc/Classes/json%20merge_or_update.md) for details.
+See [json::merge](doc/ref/json/merge.md) 
+and [json::merge_or_update](doc/ref/json/merge_or_update.md) for details.
 
-### Convert from and to standard library sequence containers
+#### Convert from and to standard library sequence containers
 
 ```c++
 std::vector<int> v{1, 2, 3, 4};
@@ -306,7 +308,7 @@ Output:
 (1) [1,2,3,4]
 ```
 
-### Convert from and to standard library associative containers
+#### Convert from and to standard library associative containers
 
 ```c++
 std::map<std::string,int> m{{"one",1},{"two",2},{"three",3}};
@@ -319,7 +321,7 @@ Output:
 (1) {"one":1,"three":3,"two":2}
 ```
 
-### Convert from and to std::tuple
+#### Convert from and to std::tuple
 
 ```c++
 auto t = std::make_tuple(false,1,"foo");
@@ -332,7 +334,7 @@ Output:
 (1) [false,1,"foo"]
 ```
 
-### Convert from and to user defined types (and standard library containers of user defined types)
+#### Convert from and to user defined types (and standard library containers of user defined types)
 
 ```c++
 struct book
@@ -361,9 +363,9 @@ json j = v;
 std::list<book> l = j.as<std::list<book>>();
 ```
 
-See [Type Extensibility](doc/Classes/Type%20Extensibility.md) for details.
+See [Type Extensibility](doc/ref/Type%20Extensibility.md) for details.
 
-### Serialize C++ objects directly to JSON formatted streams, governed by `json_stream_traits` 
+#### Serialize C++ objects directly to JSON formatted streams, governed by `json_stream_traits` 
 
 ```c++
 #include <iostream>
@@ -401,9 +403,9 @@ Output:
 }
 ```
 
-### Filter json names and values
+#### Filter json names and values
 
-You can rename object member names with the built in filter [rename_name_filter](doc/Classes/rename_name_filter.md)
+You can rename object member names with the built in filter [rename_name_filter](doc/ref/rename_name_filter.md)
 
 ```c++
 #include <sstream>
@@ -442,13 +444,100 @@ Output:
 (1) {"first":1,"second":2,"third":3,"fourth":4}
 (2) {"first":1,"second":2,"third":3,"fourth":4}
 ```
-Or define and use your own filters. See [json_filter](doc/Classes/json_filter.md) for details.
+Or define and use your own filters. See [json_filter](doc/ref/json_filter.md) for details.
 
-## Extensions
+### Extensions
+
+<div id="ext_jsonpointer"/>
+
+#### jsonpointer
+
+Example. Select author from second book
+
+```c++
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpointer/jsonpointer.hpp>
+
+using namespace jsoncons;
+
+int main()
+{
+    json root = json::parse(R"(
+        [
+          { "category": "reference",
+            "author": "Nigel Rees",
+            "title": "Sayings of the Century",
+            "price": 8.95
+          },
+          { "category": "fiction",
+            "author": "Evelyn Waugh",
+            "title": "Sword of Honour",
+            "price": 12.99
+          }
+        ]
+    )");
+
+    json result;
+    jsonpointer::jsonpointer_errc ec;
+    std::tie(result,ec) = jsonpointer::get(root, "/1/author");
+
+    if (ec == jsonpointer::jsonpointer_errc())
+    {
+        std::cout << result << std::endl;
+    }
+}
+```
+Output:
+```json
+"Evelyn Waugh"
+```
+
+See [get](doc/ref/jsonpointer/get.md), [insert](doc/ref/jsonpointer/insert.md), [insert_or_assign](doc/ref/jsonpointer/insert_or_assign.md), [erase](doc/ref/jsonpointer/erase.md) and [assign](doc/ref/jsonpointer/assign.md). 
+
+<div id="ext_jsonpatch"/>
+
+#### jsonpatch
+
+```c++
+#include <jsoncons/json.hpp>
+#include <jsoncons_ext/jsonpatch/jsonpatch.hpp>
+
+using namespace jsoncons;
+using namespace jsoncons::literals;
+
+int main()
+{
+    json target = R"(
+        { "foo": "bar"}
+    )"_json;
+
+    json patch = R"(
+        [
+            { "op": "add", "path": "/baz", "value": "qux" },
+            { "op": "add", "path": "/foo", "value": [ "bar", "baz" ] }
+        ]
+    )"_json;
+
+    jsonpatch::jsonpatch_errc ec;
+    std::string path;
+    std::tie(ec,path) = jsonpatch::patch(target,patch);
+
+    std::cout << pretty_print(target) << std::endl;
+}
+```
+Output:
+```
+{
+    "baz": "qux",
+    "foo": ["bar","baz"]
+}
+```
+
+See [patch](doc/ref/jsonpatch/patch.md)
 
 <div id="ext_jsonpath"/>
 
-### jsonpath
+#### jsonpath
 
 Example file (store.json):
 ```json
@@ -545,11 +634,11 @@ Output:
 }
 ```
 
-See [json_query](doc/Classes/json_query.md), [json_replace](doc/Classes/json_replace.md), and [Basics](doc/Tutorials/Basics.md) for details.
+See [json_query](doc/ref/json_query.md), [json_replace](doc/ref/json_replace.md), and [Basics](doc/Tutorials/Basics.md) for details.
 
 <div id="ext_csv"/>
 
-### csv
+#### csv
 Example file (tasks.csv)
 ```csv
 project_id, task_name, task_start, task_finish
@@ -634,15 +723,13 @@ project_id,task_name,task_start,task_finish
 4002,task2,05/01/2003,
 ```
 
-See [csv_reader](doc/Classes/csv_reader.md) and [csv_serializer](doc/Classes/csv_serializer.md) for details.
+See [csv_reader](doc/ref/csv_reader.md) and [csv_serializer](doc/ref/csv_serializer.md) for details.
 
 <div id="ext_msgpack"/>
 
-### msgpack
+#### msgpack
 
 The `msgpack` extension supports encoding json to and decoding from the [MessagePack](http://msgpack.org/index.html) binary serialization format.
-
-#### MessagePack example
 
 Example file (book.json):
 ```json
@@ -707,15 +794,13 @@ Output:
 ]
 ```
 
-See [encode_msgpack](doc/Classes/encode_msgpack.md) and [decode_msgpack](doc/Classes/decode_msgpack.md) for details.
+See [encode_msgpack](doc/ref/encode_msgpack.md) and [decode_msgpack](doc/ref/decode_msgpack.md) for details.
 
 <div id="ext_cbor"/>
 
-### cbor
+#### cbor
 
 The `cbor` extension supports encoding json to and decoding from the [cbor](http://cbor.io/) binary serialization format.
-
-#### cbor reputon example
 
 This example illustrates encoding a [Reputation Interchange](https://tools.ietf.org/rfc/rfc7071.txt) data object to and from cbor.
 
@@ -763,9 +848,9 @@ Output:
 }
 ```
 
-See [encode_cbor](doc/Classes/encode_cbor.md) and [decode_cbor](doc/Classes/decode_cbor.md) for details.
+See [encode_cbor](doc/ref/encode_cbor.md) and [decode_cbor](doc/ref/decode_cbor.md) for details.
 
-## Building the test suite and examples with CMake
+### Building the test suite and examples with CMake
 
 [CMake](https://cmake.org/) is a cross-platform build tool that generates makefiles and solutions for the compiler environment of your choice. On Windows you can download a [Windows Installer package](https://cmake.org/download/). On Linux it is usually available as a package, e.g., on Ubuntu,
 ```
@@ -774,13 +859,13 @@ sudo apt-get install cmake
 
 Instructions for building the test suite with CMake may be found in
 
-    jsoncons/test_suite/build/cmake/README.txt
+    jsoncons/tests/build/cmake/README.txt
 
 Instructions for building the examples with CMake may be found in
 
     jsoncons/examples/build/cmake/README.txt
 
-## Acknowledgements
+### Acknowledgements
 
 Special thanks to our [contributors](https://github.com/danielaparker/jsoncons/blob/master/acknowledgements.txt)
 

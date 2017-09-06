@@ -19,9 +19,9 @@
 #include <iomanip>
 #include <utility>
 #include <initializer_list>
-#include <jsoncons/jsoncons.hpp>
+#include <jsoncons/json_exception.hpp>
 #include <jsoncons/json_traits.hpp>
-#include <jsoncons/jsoncons_util.hpp>
+#include <jsoncons/detail/jsoncons_utilities.hpp>
 
 namespace jsoncons {
 
@@ -274,7 +274,12 @@ public:
         elements_.erase(elements_.begin()+from_index,elements_.begin()+to_index);
     }
 
-    void erase(iterator first, iterator last) 
+    void erase(const_iterator pos) 
+    {
+        elements_.erase(pos);
+    }
+
+    void erase(const_iterator first, const_iterator last) 
     {
         elements_.erase(first,last);
     }
@@ -283,18 +288,18 @@ public:
 
     const Json& operator[](size_t i) const {return elements_[i];}
 
-    // add
+    // push_back
 
     template <class T, class A=allocator_type>
     typename std::enable_if<is_stateless<A>::value,void>::type 
-    add(T&& value)
+    push_back(T&& value)
     {
         elements_.emplace_back(std::forward<T>(value));
     }
 
     template <class T, class A=allocator_type>
     typename std::enable_if<!is_stateless<A>::value,void>::type 
-    add(T&& value)
+    push_back(T&& value)
     {
         elements_.emplace_back(std::forward<T>(value),get_allocator());
     }
@@ -303,7 +308,7 @@ public:
     // work around https://gcc.gnu.org/bugzilla/show_bug.cgi?id=54577
     template <class T, class A=allocator_type>
     typename std::enable_if<is_stateless<A>::value,iterator>::type 
-    add(const_iterator pos, T&& value)
+    insert(const_iterator pos, T&& value)
     {
         iterator it = elements_.begin() + (pos - elements_.begin());
         return elements_.emplace(it, std::forward<T>(value));
@@ -311,7 +316,7 @@ public:
 #else
     template <class T, class A=allocator_type>
     typename std::enable_if<is_stateless<A>::value,iterator>::type 
-    add(const_iterator pos, T&& value)
+    insert(const_iterator pos, T&& value)
     {
         return elements_.emplace(pos, std::forward<T>(value));
     }
@@ -777,7 +782,12 @@ public:
         return result;
     }
 
-    void erase(iterator first, iterator last) 
+    void erase(const_iterator pos) 
+    {
+        this->members_.erase(pos);
+    }
+
+    void erase(const_iterator first, const_iterator last) 
     {
         this->members_.erase(first,last);
     }
@@ -1494,7 +1504,7 @@ public:
                             [name](const value_type& kv){return kv.key() == name;});
     }
 
-    void erase(iterator first, iterator last) 
+    void erase(const_iterator first, const_iterator last) 
     {
         this->members_.erase(first,last);
     }

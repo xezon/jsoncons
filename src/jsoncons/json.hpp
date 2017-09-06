@@ -17,7 +17,8 @@
 #include <memory>
 #include <typeinfo>
 #include <cstring>
-#include <jsoncons/jsoncons.hpp>
+#include <jsoncons/json_exception.hpp>
+#include <jsoncons/detail/jsoncons_utilities.hpp>
 #include <jsoncons/json_traits.hpp>
 #include <jsoncons/json_structures.hpp>
 #include <jsoncons/json_output_handler.hpp>
@@ -132,6 +133,7 @@ public:
 #if !defined(JSONCONS_NO_DEPRECATED)
     typedef key_value_pair_type kvp_type;
     typedef key_value_pair_type member_type;
+    typedef jsoncons::null_type null_type;
 #endif
 
     typedef typename std::allocator_traits<allocator_type>:: template rebind_alloc<json_type> val_allocator_type;
@@ -144,11 +146,8 @@ public:
     using object_storage_type = typename json_traits_type::template object_storage<key_value_pair_type , kvp_allocator_type>;
     typedef json_object<key_storage_type,json_type,json_traits_type::preserve_order> object;
 
-
     typedef typename std::allocator_traits<Allocator>:: template rebind_alloc<array> array_allocator;
     typedef typename std::allocator_traits<Allocator>:: template rebind_alloc<object> object_allocator;
-
-    typedef jsoncons::null_type null_type;
 
     typedef typename object::iterator object_iterator;
     typedef typename object::const_iterator const_object_iterator;
@@ -1818,21 +1817,34 @@ public:
         }
         // Remove all elements from an array or object
 
-        void erase(object_iterator first, object_iterator last)
+        void erase(const_object_iterator pos)
+        {
+            evaluate().erase(pos);
+        }
+        // Remove a range of elements from an object 
+
+        void erase(const_object_iterator first, const_object_iterator last)
         {
             evaluate().erase(first, last);
         }
         // Remove a range of elements from an object 
 
-        void erase(array_iterator first, array_iterator last)
-        {
-            evaluate().erase(first, last);
-        }
-
         void erase(string_view_type name)
         {
             evaluate().erase(name);
         }
+
+        void erase(const_array_iterator pos)
+        {
+            evaluate().erase(pos);
+        }
+        // Removes the element at pos 
+
+        void erase(const_array_iterator first, const_array_iterator last)
+        {
+            evaluate().erase(first, last);
+        }
+        // Remove a range of elements from an array 
 
         // merge
 
@@ -1949,9 +1961,21 @@ public:
         }
 
         template <class T>
+        void push_back(T&& val)
+        {
+            evaluate_with_default().push_back(std::forward<T>(val));
+        }
+
+        template <class T>
         array_iterator add(const_array_iterator pos, T&& val)
         {
             return evaluate_with_default().add(pos, std::forward<T>(val));
+        }
+
+        template <class T>
+        array_iterator insert(const_array_iterator pos, T&& val)
+        {
+            return evaluate_with_default().insert(pos, std::forward<T>(val));
         }
 
         template <class SAllocator>
@@ -2465,15 +2489,22 @@ public:
     {
     }
 
-    basic_json(const char_type *s, size_t length, const Allocator& allocator = Allocator())
+    basic_json(const char_type *s, size_t length)
+        : var_(s, length)
+    {
+    }
+
+    basic_json(const char_type *s, size_t length, const Allocator& allocator)
         : var_(s, length, allocator)
     {
     }
+#if !defined(JSONCONS_NO_DEPRECATED)
     template<class InputIterator>
     basic_json(InputIterator first, InputIterator last, const Allocator& allocator = Allocator())
         : var_(first,last,allocator)
     {
     }
+#endif
 
     ~basic_json()
     {
@@ -3386,7 +3417,22 @@ public:
         }
     }
 
-    void erase(object_iterator first, object_iterator last)
+    void erase(const_object_iterator pos)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::empty_object_t:
+            break;
+        case value_type::object_t:
+            object_value().erase(pos);
+            break;
+        default:
+            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an object");
+            break;
+        }
+    }
+
+    void erase(const_object_iterator first, const_object_iterator last)
     {
         switch (var_.type_id())
         {
@@ -3401,7 +3447,20 @@ public:
         }
     }
 
-    void erase(array_iterator first, array_iterator last)
+    void erase(const_array_iterator pos)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::array_t:
+            array_value().erase(pos);
+            break;
+        default:
+            JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an array");
+            break;
+        }
+    }
+
+    void erase(const_array_iterator first, const_array_iterator last)
     {
         switch (var_.type_id())
         {
@@ -3709,7 +3768,22 @@ public:
         switch (var_.type_id())
         {
         case value_type::array_t:
-            array_value().add(std::forward<T>(val));
+            array_value().push_back(std::forward<T>(val));
+            break;
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
+            }
+        }
+    }
+
+    template <class T>
+    void push_back(T&& val)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::array_t:
+            array_value().push_back(std::forward<T>(val));
             break;
         default:
             {
@@ -3724,7 +3798,22 @@ public:
         switch (var_.type_id())
         {
         case value_type::array_t:
-            return array_value().add(pos, std::forward<T>(val));
+            return array_value().insert(pos, std::forward<T>(val));
+            break;
+        default:
+            {
+                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
+            }
+        }
+    }
+
+    template <class T>
+    array_iterator insert(const_array_iterator pos, T&& val)
+    {
+        switch (var_.type_id())
+        {
+        case value_type::array_t:
+            return array_value().insert(pos, std::forward<T>(val));
             break;
         default:
             {
@@ -4014,32 +4103,6 @@ public:
             return var_.bool_data_cast()->value() ? 1 : 0;
         default:
             JSONCONS_THROW_EXCEPTION(std::runtime_error,"Not an unsigned long");
-        }
-    }
-
-    void add(size_t index, const json_type& value)
-    {
-        switch (var_.type_id())
-        {
-        case value_type::array_t:
-            array_value().add(index, value);
-            break;
-        default:
-            {
-                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
-            }
-        }
-    }
-
-    void add(size_t index, json_type&& value){
-        switch (var_.type_id()){
-        case value_type::array_t:
-            array_value().add(index, std::forward<json_type>(value));
-            break;
-        default:
-            {
-                JSONCONS_THROW_EXCEPTION(std::runtime_error,"Attempting to insert into a value that is not an array");
-            }
         }
     }
 

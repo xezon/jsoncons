@@ -23,6 +23,8 @@ void jsonpath_examples();
 void json_is_as_examples();
 void msgpack_examples();
 void streaming_examples();
+void jsonpointer_examples();
+void jsonpatch_examples();
 
 void first_example_a()
 {
@@ -136,7 +138,7 @@ void second_example_a()
             book["title"] = "Kafka on the Shore";
             book["author"] = "Haruki Murakami";
             book["price"] = 25.17;
-            books.add(std::move(book));
+            books.push_back(std::move(book));
         }
 
         {
@@ -144,14 +146,14 @@ void second_example_a()
             book["title"] = "Women: A Novel";
             book["author"] = "Charles Bukowski";
             book["price"] = 12.00;
-            books.add(std::move(book));
+            books.push_back(std::move(book));
         }
 
         {
             json book;
             book["title"] = "Cutter's Way";
             book["author"] = "Ivan Passer";
-            books.add(std::move(book));
+            books.push_back(std::move(book));
         }
 
         std::cout << pretty_print(books) << std::endl;
@@ -187,10 +189,10 @@ void construction_in_code()
 
     // An array value with four elements
     json arr = json::array();
-    arr.add(null_val);
-    arr.add(flag);
-    arr.add(number);
-    arr.add(obj);
+    arr.push_back(null_val);
+    arr.push_back(flag);
+    arr.push_back(number);
+    arr.push_back(obj);
 
     serialization_options format;
     std::cout << pretty_print(arr) << std::endl;
@@ -256,9 +258,9 @@ void more_examples()
     json image_formats = json::array{"JPEG","PSD","TIFF","DNG"};
 
     json color_spaces = json::array();
-    color_spaces.add("sRGB");
-    color_spaces.add("AdobeRGB");
-    color_spaces.add("ProPhoto RGB");
+    color_spaces.push_back("sRGB");
+    color_spaces.push_back("AdobeRGB");
+    color_spaces.push_back("ProPhoto RGB");
 
     json export_settings;
     export_settings["File Format Options"]["Color Spaces"] = std::move(color_spaces);
@@ -288,7 +290,7 @@ void more_examples()
 
 }
 
-void parse_exception_example()
+void parse_error_example()
 {
     std::string s = "[1,2,3,4,]";
     try 
@@ -360,7 +362,7 @@ int main()
 
         serialization_examples();
 
-        parse_exception_example();
+        parse_error_example();
 
         type_extensibility_examples();
 
@@ -375,6 +377,10 @@ int main()
         streaming_examples();
 
         validation_example();
+
+        jsonpointer_examples();
+
+        jsonpatch_examples();
     }
     catch (const std::exception& e)
     {

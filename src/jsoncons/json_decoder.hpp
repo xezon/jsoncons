@@ -13,7 +13,7 @@
 #include <istream>
 #include <cstdlib>
 #include <memory>
-#include <jsoncons/jsoncons.hpp>
+#include <jsoncons/json_exception.hpp>
 #include <jsoncons/json_input_handler.hpp>
 
 namespace jsoncons {
@@ -196,7 +196,7 @@ private:
 
             while (it != end)
             {
-                j.add(std::move(it->value_));
+                j.push_back(std::move(it->value_));
                 ++it;
             }
             top_ -= count;
@@ -255,7 +255,7 @@ private:
 
     void do_null_value(const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = null_type();
+        stack_[top_].value_ = Json::null();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
