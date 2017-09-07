@@ -9,7 +9,7 @@
 
 #include <system_error>
 #include <string>
-#include <jsoncons/jsoncons_config.hpp>
+#include <jsoncons/detail/jsoncons_config.hpp>
 
 namespace jsoncons {
 namespace jcr {

@@ -8,8 +8,8 @@
 #define JSONCONS_JCR_JCR_INPUT_HANDLER_HPP
 
 #include <string>
-#include <jsoncons/jsoncons.hpp>
-#include <jsoncons/jsoncons_util.hpp>
+#include <jsoncons/json.hpp>
+#include <jsoncons/detail/jsoncons_utilities.hpp>
 #include <jsoncons/parse_error_handler.hpp>
 
 namespace jsoncons { namespace jcr {

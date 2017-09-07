@@ -932,7 +932,7 @@ public:
         switch (var_.type_id())
         {
         case value_type::array_t:
-            array_value().add(std::forward<T>(val));
+            array_value().push_back(std::forward<T>(val));
             break;
         default:
             {
