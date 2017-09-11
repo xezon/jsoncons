@@ -4,8 +4,8 @@
 
 // See https://github.com/danielaparker/jsoncons for latest version
 
-#ifndef JSONCONS_JSONCPP_CPP_DECODER_HPP
-#define JSONCONS_JSONCPP_CPP_DECODER_HPP
+#ifndef JSONCONS_JSONDIRECT_CPPDECODER_HPP
+#define JSONCONS_JSONDIRECT_CPPDECODER_HPP
 
 #include <string>
 #include <sstream>
@@ -16,31 +16,214 @@
 #include <jsoncons/json_exception.hpp>
 #include <jsoncons/json_input_handler.hpp>
 
-namespace jsoncons { namespace cppjson {
+namespace jsoncons { namespace jsondirect {
+
+// cpp_array_decoder
 
 template <class Json>
-class cpp_decoder : public basic_json_input_handler<typename Json::char_type>
+class cpp_array_decoder : public basic_json_input_handler<char>
 {
 public:
-    typedef typename Json::char_type char_type;
-    using typename basic_json_input_handler<char_type>::string_view_type                                 ;
+    typedef typename char char_type;
+    using typename basic_json_input_handler<char>::string_view_type;
+
+    static const int default_stack_size = 1000;
+
+    typedef Json json_type;
+    typedef std::string string_type;
+    typedef std::string key_storage_type;
+
+    Json& result_;
+
+public:
+    cpp_array_decoder(Json& result)
+        : result_(result)
+    {
+    }
+
+private:
+    void do_begin_json() override
+    {
+    }
+
+    void do_end_json() override
+    {
+    }
+
+    void do_begin_object(const basic_parsing_context<char_type>&) override
+    {
+    }
+
+    void do_end_object(const basic_parsing_context<char_type>&) override
+    {
+    }
+
+    void do_begin_array(const basic_parsing_context<char_type>&) override
+    {
+    }
+
+    void do_end_array(const basic_parsing_context<char_type>&) override
+    {
+    }
+
+    void do_name(string_view_type name, const basic_parsing_context<char_type>&) override
+    {
+        // Error
+    }
+
+    void do_string_value(string_view_type val, const basic_parsing_context<char_type>&) override
+    {
+        result_.push_back(val);
+    }
+
+    void do_integer_value(int64_t value, const basic_parsing_context<char_type>&) override
+    {
+        //result_.push_back(value);
+    }
+
+    void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>&) override
+    {
+        //result_.push_back(value);
+    }
+
+    void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>&) override
+    {
+        //result_.push_back(value);
+    }
+
+    void do_bool_value(bool value, const basic_parsing_context<char_type>&) override
+    {
+        //result_.push_back(value);
+    }
+
+    void do_null_value(const basic_parsing_context<char_type>&) override
+    {
+    }
+};
+
+// cpp_decoder
+
+template <class Json>
+class cpp_decoder : public basic_json_input_handler<char>
+{
+public:
+    typedef basic_json_input_handler<char> input_handler;
+    typedef typename char char_type;
+    using typename basic_json_input_handler<char>::string_view_type;
+
+    static const int default_stack_size = 1000;
+
+    typedef Json json_type;
+    //typedef typename Json::key_value_pair_type key_value_pair_type;
+    typedef std::string string_type;
+    typedef std::string key_storage_type;
+
+    Json result_;
+
+    std::vector<std::shared_ptr<input_handler>> stack_;
+    bool is_valid_;
+
+public:
+    cpp_decoder()
+        : is_valid_(false) 
+
+    {
+        stack_.reserve(default_stack_size);
+    }
+
+    bool is_valid() const
+    {
+        return is_valid_;
+    }
+
+    Json get_result()
+    {
+        is_valid_ = false;
+        return std::move(result_);
+    }
+
+private:
+
+    void do_begin_json() override
+    {
+        is_valid_ = false;
+    }
+
+    void do_end_json() override
+    {
+        is_valid_ = true;
+    }
+
+    void do_begin_object(const basic_parsing_context<char_type>&) override
+    {
+    }
+
+    void do_end_object(const basic_parsing_context<char_type>&) override
+    {
+    }
+
+    void do_begin_array(const basic_parsing_context<char_type>&) override
+    {
+        stack_.push_back(std::make_shared<cpp_array_decoder<Json>>(result_));
+    }
+
+    void do_end_array(const basic_parsing_context<char_type>&) override
+    {
+        stack_.pop_back();
+    }
+
+    void do_name(string_view_type name, const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->name(name, context);
+    }
+
+    void do_string_value(string_view_type val, const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->string_value(val, context);
+    }
+
+    void do_integer_value(int64_t value, const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->integer_value(value, context);
+    }
+
+    void do_uinteger_value(uint64_t value, const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->uinteger_value(value, context);
+    }
+
+    void do_double_value(double value, uint8_t precision, const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->double_value(value, precision, context);
+    }
+
+    void do_bool_value(bool value, const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->bool_value(value, context);
+    }
+
+    void do_null_value(const basic_parsing_context<char_type>& context) override
+    {
+        stack_.back()->null_value(context);
+    }
+};
+
+
+// cpp_object_decoder
+
+template <class Json>
+class cpp_object_decoder : public basic_json_input_handler<char>
+{
+public:
+    typedef typename char char_type;
+    using typename basic_json_input_handler<char>::string_view_type;
 
     static const int default_stack_size = 1000;
 
     typedef Json json_type;
     typedef typename Json::key_value_pair_type key_value_pair_type;
     typedef typename Json::string_type string_type;
-    typedef typename Json::key_storage_type key_storage_type;
-    typedef typename string_type::allocator_type char_allocator;
-    typedef typename Json::allocator_type allocator_type;
-    typedef typename Json::array array;
-    typedef typename array::allocator_type array_allocator;
-    typedef typename Json::object object;
-    typedef typename object::allocator_type object_allocator;
-
-    char_allocator sa_;
-    object_allocator oa_;
-    array_allocator aa_;
+    typedef typename std::string key_storage_type;
 
     Json result_;
     size_t top_;
@@ -55,12 +238,8 @@ public:
     bool is_valid_;
 
 public:
-    cpp_decoder(const char_allocator& sa = char_allocator(),
-                            const allocator_type& allocator = allocator_type())
-        : sa_(sa),
-          oa_(allocator),
-          aa_(allocator),
-          top_(0),
+    cpp_object_decoder()
+        : top_(0),
           stack_(default_stack_size),
           stack_offsets_(),
           is_valid_(false) 
@@ -79,13 +258,6 @@ public:
         is_valid_ = false;
         return std::move(result_);
     }
-
-#if !defined(JSONCONS_NO_DEPRECATED)
-    Json& root()
-    {
-        return result_;
-    }
-#endif
 
 private:
 
@@ -124,7 +296,7 @@ private:
     void push_array()
     {
         stack_offsets_.push_back(top_);
-        stack_[top_].value_ = array(aa_);
+        stack_[top_].value_ = array();
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
@@ -205,12 +377,12 @@ private:
 
     void do_name(string_view_type name, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].name_ = key_storage_type(name.begin(),name.end(),sa_);
+        stack_[top_].name_ = name;
     }
 
     void do_string_value(string_view_type val, const basic_parsing_context<char_type>&) override
     {
-        stack_[top_].value_ = Json(val.data(),val.length(),sa_);
+        stack_[top_].value_ = Json(val.data(),val.length());
         if (++top_ >= stack_.size())
         {
             stack_.resize(top_*2);
