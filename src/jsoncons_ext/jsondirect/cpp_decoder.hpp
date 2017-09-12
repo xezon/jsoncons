@@ -24,7 +24,7 @@ template <class Json>
 class cpp_array_decoder : public basic_json_input_handler<char>
 {
 public:
-    typedef typename char char_type;
+    typedef char char_type;
     using typename basic_json_input_handler<char>::string_view_type;
 
     static const int default_stack_size = 1000;
@@ -108,7 +108,7 @@ class cpp_decoder : public basic_json_input_handler<char>
 {
 public:
     typedef basic_json_input_handler<char> input_handler;
-    typedef typename char char_type;
+    typedef char char_type;
     using typename basic_json_input_handler<char>::string_view_type;
 
     static const int default_stack_size = 1000;
@@ -215,7 +215,7 @@ template <class Json>
 class cpp_object_decoder : public basic_json_input_handler<char>
 {
 public:
-    typedef typename char char_type;
+    typedef char char_type;
     using typename basic_json_input_handler<char>::string_view_type;
 
     static const int default_stack_size = 1000;

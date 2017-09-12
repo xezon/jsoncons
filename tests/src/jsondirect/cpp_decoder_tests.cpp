@@ -21,7 +21,7 @@ using namespace jsoncons;
 
 BOOST_AUTO_TEST_SUITE(cpp_decoder_tests)
 
-BOOST_AUTO_TEST_CASE(test_decoder_test)
+BOOST_AUTO_TEST_CASE(test_vector_of_string)
 {
     std::string s = R"(
         [ "all", "cows", "eat", "grass" ] 
@@ -29,6 +29,31 @@ BOOST_AUTO_TEST_CASE(test_decoder_test)
     std::istringstream is(s);
 
     jsondirect::cpp_decoder<std::vector<std::string>> decoder;
+    try
+    {
+        json_reader reader(is, decoder);
+        reader.read_next();
+    }
+    catch (const std::exception&)
+    {
+    }
+
+    auto v = decoder.get_result();
+    for (const auto& s : v)
+    {
+        std::cout << s << std::endl;
+    }
+    //BOOST_CHECK(decoder.is_valid());
+}
+
+BOOST_AUTO_TEST_CASE(test_vector_of_int)
+{
+    std::string s = R"(
+        [ 1, 2, 3, 4 ] 
+    )";
+    std::istringstream is(s);
+
+    jsondirect::cpp_decoder<std::vector<int>> decoder;
     try
     {
         json_reader reader(is, decoder);
