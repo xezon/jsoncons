@@ -47,6 +47,7 @@ public:
 
     struct stack_item
     {
+        size_t structure_index_;
         key_storage_type name_;
         Json value_;
     };
@@ -91,17 +92,14 @@ private:
 
     void push_initial()
     {
-        top_ = 0;
-        if (top_ >= stack_.size())
-        {
-            stack_.resize(top_*2);
-        }
+        top_ = 1;
+        JSONCONS_ASSERT(top_ < stack_.size());
     }
 
     void pop_initial()
     {
-        JSONCONS_ASSERT(top_ == 1);
-        result_.swap(stack_[0].value_);
+        JSONCONS_ASSERT(top_ == 2);
+        result_.swap(stack_[1].value_);
         --top_;
     }
 

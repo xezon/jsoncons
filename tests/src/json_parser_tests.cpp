@@ -14,7 +14,7 @@
 using namespace jsoncons;
 
 BOOST_AUTO_TEST_SUITE(json_parser_tests)
-
+#if 0
 BOOST_AUTO_TEST_CASE(test_skip_bom)
 {
     std::string s = "\xEF\xBB\xBF[1,2,3]";
@@ -154,7 +154,7 @@ BOOST_AUTO_TEST_CASE(test_false)
 
     json j = decoder.get_result();
 }
-
+#endif
 BOOST_AUTO_TEST_CASE(test_true)
 {
     jsoncons::json_decoder<json> decoder;
@@ -172,7 +172,7 @@ BOOST_AUTO_TEST_CASE(test_true)
 
     json j = decoder.get_result();
 }
-
+#if 0
 BOOST_AUTO_TEST_CASE(test_null)
 {
     jsoncons::json_decoder<json> decoder;
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(test_array_string)
 
     json j = decoder.get_result();
 }
-
+#endif
 BOOST_AUTO_TEST_SUITE_END()
 
 
