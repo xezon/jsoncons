@@ -52,7 +52,6 @@ public:
         Json value_;
     };
     std::vector<stack_item> stack_;
-    std::vector<size_t> stack_offsets_;
     bool is_valid_;
 
 public:
@@ -63,11 +62,9 @@ public:
           aa_(allocator),
           top_(0),
           stack_(default_stack_size),
-          stack_offsets_(),
           is_valid_(false) 
 
     {
-        stack_offsets_.reserve(100);
     }
 
     bool is_valid() const
@@ -94,6 +91,7 @@ private:
     {
         top_ = 1;
         JSONCONS_ASSERT(top_ < stack_.size());
+        stack_[0].structure_index_ = 0;
     }
 
     void pop_initial()
@@ -105,7 +103,7 @@ private:
 
     void push_object()
     {
-        stack_offsets_.push_back(top_);
+        stack_[top_].structure_index_ = top_;
         stack_[top_].value_ = object(oa_);
         if (++top_ >= stack_.size())
         {
@@ -115,13 +113,12 @@ private:
 
     void pop_object()
     {
-        stack_offsets_.pop_back();
         JSONCONS_ASSERT(top_ > 0);
     }
 
     void push_array()
     {
-        stack_offsets_.push_back(top_);
+        stack_[top_].structure_index_ = top_;
         stack_[top_].value_ = array(aa_);
         if (++top_ >= stack_.size())
         {
@@ -131,7 +128,6 @@ private:
 
     void pop_array()
     {
-        stack_offsets_.pop_back();
         JSONCONS_ASSERT(top_ > 0);
     }
 
@@ -171,34 +167,29 @@ private:
 
     void end_structure() 
     {
-        JSONCONS_ASSERT(stack_offsets_.size() > 0);
-        if (stack_[stack_offsets_.back()].value_.is_object())
+        size_t structure_index = stack_[top_-1].structure_index_;
+        size_t count = top_ - (structure_index + 1);
+        auto it = stack_.begin() + (structure_index + 1);
+        auto end = it + count;
+        if (stack_[structure_index].value_.is_object())
         {
-            size_t count = top_ - (stack_offsets_.back() + 1);
-            auto s = stack_.begin() + (stack_offsets_.back()+1);
-            auto send = s + count;
-            stack_[stack_offsets_.back()].value_.object_value().insert(
-                std::make_move_iterator(s),
-                std::make_move_iterator(send),
+            stack_[structure_index].value_.object_value().insert(
+                std::make_move_iterator(it),
+                std::make_move_iterator(end),
                 [](stack_item&& val){return key_value_pair_type(std::move(val.name_),std::move(val.value_));});
-            top_ -= count;
         }
         else
         {
-            auto& j = stack_[stack_offsets_.back()].value_;
-
-            auto it = stack_.begin() + (stack_offsets_.back()+1);
-            auto end = stack_.begin() + top_;
-            size_t count = end - it;
+            auto& j = stack_[structure_index].value_;
             j.reserve(count);
-
             while (it != end)
             {
                 j.push_back(std::move(it->value_));
                 ++it;
             }
-            top_ -= count;
         }
+        top_ -= count;
+        stack_[top_-1].structure_index_ = stack_[top_-2].structure_index_;
     }
 
     void do_name(string_view_type name, const parsing_context&) override
@@ -208,6 +199,7 @@ private:
 
     void do_string_value(string_view_type val, const parsing_context&) override
     {
+        stack_[top_].structure_index_ = stack_[top_-1].structure_index_;
         stack_[top_].value_ = Json(val.data(),val.length(),sa_);
         if (++top_ >= stack_.size())
         {
@@ -217,6 +209,7 @@ private:
 
     void do_integer_value(int64_t value, const parsing_context&) override
     {
+        stack_[top_].structure_index_ = stack_[top_-1].structure_index_;
         stack_[top_].value_ = value;
         if (++top_ >= stack_.size())
         {
@@ -226,6 +219,7 @@ private:
 
     void do_uinteger_value(uint64_t value, const parsing_context&) override
     {
+        stack_[top_].structure_index_ = stack_[top_-1].structure_index_;
         stack_[top_].value_ = value;
         if (++top_ >= stack_.size())
         {
@@ -235,6 +229,7 @@ private:
 
     void do_double_value(double value, uint8_t precision, const parsing_context&) override
     {
+        stack_[top_].structure_index_ = stack_[top_-1].structure_index_;
         stack_[top_].value_ = Json(value,precision);
         if (++top_ >= stack_.size())
         {
@@ -244,6 +239,7 @@ private:
 
     void do_bool_value(bool value, const parsing_context&) override
     {
+        stack_[top_].structure_index_ = stack_[top_-1].structure_index_;
         stack_[top_].value_ = value;
         if (++top_ >= stack_.size())
         {
@@ -253,6 +249,7 @@ private:
 
     void do_null_value(const parsing_context&) override
     {
+        stack_[top_].structure_index_ = stack_[top_-1].structure_index_;
         stack_[top_].value_ = Json::null();
         if (++top_ >= stack_.size())
         {
