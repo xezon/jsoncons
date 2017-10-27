@@ -718,17 +718,81 @@ namespace detail {
     }
 }
 
+template <class V>
+class object_iterator
+{
+    V current;
+    const uint8_t* end_;
+public:
+    typedef typename V::value_type value_type;
+    typedef std::ptrdiff_t difference_type;
+    typedef typename V::pointer pointer;
+    typedef typename V::reference reference;
+    typedef std::bidirectional_iterator_tag iterator_category;
+
+    object_iterator(const uint8_t* first, const uint8_t* last)
+        : end_(last)
+    {
+        const uint8_t* next = walk(first,end_);
+        next = walk(next,end_);
+        current_ = V(first,next-first); 
+    }
+
+    object_iterator(const object_iterator&) = default;
+
+    object_iterator& operator=(const object_iterator& rhs) = default;
+
+    object_iterator& operator++()
+    {
+        const uint8_t* first = current_.buffer()+current_.buflen();
+        const uint8_t* next = walk(first,end_);
+        next = walk(next,end_);
+        current_ = V(first,next-first);
+        return *this;
+    }
+
+    object_iterator operator++(int) // postfix increment
+    {
+        object_iterator temp(*this);
+        const uint8_t* first = current_.buffer()+current_.buflen();
+        const uint8_t* next = walk(first,end_);
+        next = walk(next,end_);
+        current_ = V(first,next-first);
+        return temp;
+    }
+
+    reference operator*() const
+    {
+        return *current_;
+    }
+
+    pointer operator->() const
+    {
+        return &(*current_);
+    }
+
+    friend bool operator==(const object_iterator& it1, const object_iterator& it2)
+    {
+        return it1.current_ == it2.current_;
+    }
+    friend bool operator!=(const object_iterator& it1, const object_iterator& it2)
+    {
+        return !(it1 == it2);
+    }
+};
+
 // cbor_view
 
 class cbor_view 
 {
     const uint8_t* buffer_;
     size_t buflen_; 
+
 public:
     typedef cbor_view value_type;
-    typedef cbor_view& reference;
+    typedef const cbor_view& reference;
     typedef const cbor_view& const_reference;
-    typedef cbor_view* pointer;
+    typedef const cbor_view* pointer;
     typedef const cbor_view* const_pointer;
     typedef std::string string_type;
     typedef char char_type;
@@ -738,6 +802,7 @@ public:
 #else
     typedef std::basic_string_view<char_type,char_traits_type> string_view_type;
 #endif
+
 
     cbor_view()
         : buffer_(nullptr), buflen_(0)
@@ -877,6 +942,7 @@ public:
         }
         return false;
     }
+
 };
 
 struct Encode_cbor_
